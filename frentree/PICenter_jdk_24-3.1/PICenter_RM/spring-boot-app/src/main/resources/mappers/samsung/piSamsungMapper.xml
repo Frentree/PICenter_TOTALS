@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.samsung.dao.piSamsungDAO">
+
+    <select id="checkMemberGrade" parameterType="hashmap" resultType="hashmap">
+		SELECT U.USER_NO, U.USER_GRADE
+		FROM PI_USER U 
+		WHERE U.USER_NO = #{user_no}
+			AND U.ACC_YN NOT IN ('R', 'N')
+	</select>
+	
+	<select id="SSOSelectMember" parameterType="hashmap" resultType="hashmap">
+	   SELECT DISTINCT U.USER_NO, 
+	   				   U.USER_ID,
+	   				   U.JIKWEE, 
+	   				   U.JIKGUK, 
+	   				   U.BOSS_NAME, 
+	   				   U.USER_GRADE, 
+	   				   U.USER_NAME, 
+	   				   U.INSA_CODE, 
+	   				   G.TEAM_NAME, 
+	   				   U.REGDATE,
+					   'Y' AS PASSWORD,
+					   U.USER_GRADE, 
+					   GU.GRADE_NAME,
+					   REPLACE(IFNULL(U.ACCESS_IP, ''), ' ', '') AS ACCESS_IP,
+					   '' AS OFFICE_NM,
+					   U.ENDDATE,
+					   U.STARTDATE,
+					   U.FAILED_COUNT,
+					   if(NOW() > LOCK_DATE, 'N', 'Y') LOCK_ACCOUNT,
+					   CASE WHEN U.PWD_UPT_DT &lt; DATE_ADD(NOW(), INTERVAL -90 DAY) THEN 'Y' ELSE 'N' END AS PWD_EXPIRE,
+					   U.USER_PHONE		AS USER_PHONE,
+					   U.SOSOK,
+					   U.USER_PHONE,
+					   U.USER_EMAIL,
+					   PWD_RESET_STATUS,
+					   U.LOGINDATE,
+					   U.LOCK_STATUS
+		 FROM PI_USER U, PI_GROUP G, PI_GRADE_USER GU
+		WHERE U.INSA_CODE = G.INSA_CODE
+		  AND U.USER_GRADE = GU.GRADE_NO
+		  AND U.ACC_YN NOT IN ('R', 'N')
+		  AND U.USER_NO = (#{user_no})
+	</select>
+</mapper>

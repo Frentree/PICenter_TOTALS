@@ -1,0 +1,159 @@
+#searchConditionsContainer .search-condition-box{
+	position: relative;
+	border: 1px solid #cdcdcd;
+	border-radius: 4px;
+	padding: 5px; 
+	float: right;
+	margin-right: 10px; 
+	height: 30px;
+	bottom: 5px;
+}
+.ui-jqgrid .loading {
+    font-size: 15px;
+}
+
+.ui-jqdialog {
+    width: 489px !important;
+}
+.add-group, .add-rule, .delete-rule{
+	background-color: #fff;
+	border: 1px solid #cdcdcd; 
+	color:#000;
+	font-size: 12px;
+    font-weight: 500;
+    height: 27px;
+    padding: 0 20px;
+    border-radius: 4px;
+}
+.ui-widget-header{
+	background: #ffff;
+	border: 0;
+}
+
+.toggle-switch {
+    position: relative;
+    width: 60px;
+    height: 24px;
+}
+
+.toggle-checkbox {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-label {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    border-radius: 34px;
+    height: 25px;
+    margin-top: 8px;
+    cursor: pointer;
+    transition: background-color 0.4s;
+}
+
+.toggle-label::before {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 5px;
+    bottom: 4px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.4s;
+    box-shadow: 0 0 2px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-checkbox:checked + .toggle-label {
+    background-color: #6FC6F0;
+    height: 25px;
+    margin-top: 8px;
+}
+
+.toggle-checkbox:checked + .toggle-label::before {
+    transform: translateX(32px);
+}
+
+.filterBox{
+	border: 1px solid #cdcdcd;
+	padding:3px;
+	margin: 2px;
+	border-radius: 4px;
+	display:inline-block
+}
+
+.searchFilterBox:hover{
+	z-index:999;
+	overflow-x: auto; 
+}
+
+.searchFilterBox::-webkit-scrollbar{
+	background-color: #FFFFFF;
+	height:3px;
+	border-radius: 10%;
+
+}
+
+.searchFilterBox::-webkit-scrollbar-track{
+	background-color: #FFFFFF; 
+	border-radius: 10%;
+
+}
+
+.searchFilterBox::-webkit-scrollbar-thumb{
+	background-color: #FFFFFF;
+	border-radius: 15%;
+	cursor: pointer;
+}
+.navGridNullChk + label {
+	vertical-align: middle;
+}
+
+/* .searchFilterBox:hover::-webkit-scrollbar-thumb{
+
+	background-color: #2F353A;
+
+	border-radius: 15%;
+
+	cursor: pointer;
+
+} */
+ 
+.searchFilterBox{
+	display:inline-block;
+	position:absolute;
+	white-space: nowrap;
+	overflow-x:hidden; 
+
+}
+  
+/* 전체 자동완성 목록 스타일 */
+.ui-autocomplete {
+    background-color: white; 
+    border: 1px solid #ccc;  
+    max-height: 200px;       
+    overflow-y: auto;        
+    overflow-x: hidden;      
+    z-index: 1000;
+}
+
+/* 자동완성 항목 스타일 */
+.ui-menu-item {
+    padding: 8px 12px;         
+    cursor: pointer;           
+    font-weight: 400; 
+    font-family: 'NotoSansR',dotum,'돋움',sans-serif;
+}
+    
+/* 포커스된 항목에 대한 스타일 */
+.pic-grid-focus {
+    background-color: #F0F0F0;  
+    color: #000;                
+    font-weight: bold;          
+}
+

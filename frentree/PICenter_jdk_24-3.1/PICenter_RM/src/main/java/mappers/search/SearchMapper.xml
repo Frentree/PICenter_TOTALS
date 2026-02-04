@@ -1,0 +1,1848 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.search.dao.SearchDAO">
+
+   <insert id="insertProfile" parameterType="hashmap">
+		INSERT INTO pi_datatypes_user (
+			DATATYPE_ID, 
+			DATATYPE_LABEL, 
+			CREATE_USER, 
+			DATATYPE,
+		 	OCR, RECENT,
+		 	CAPTURE,
+		 	AP_NO,
+		 	STD_ID,
+		 	EXTENSION
+		)
+		VALUES (
+			#{datatype_id}, 
+			#{datatype_label}, 
+			#{create_user},
+			#{datatype},
+			#{ocr},
+			#{recent},
+			#{capture},
+			#{ap_no},
+			#{std_id},
+			#{extension}
+		)
+	</insert>
+	
+   <insert id="insertProfileList" parameterType="hashmap">
+		INSERT INTO pi_datatypes (
+			DATATYPE_ID, 
+		 	STD_ID,
+		 	DATATYPE,
+		 	OCR, RECENT,
+		 	EXTENSION
+		)
+		VALUES (
+			#{datatype_id}, 
+			#{std_id},
+			#{datatype},
+			#{ocr},
+			#{recent},
+			#{extension}
+		)
+	</insert>
+	
+   <insert id="updateProfileList" parameterType="hashmap">
+		INSERT INTO pi_datatypes (
+			DATATYPE_ID, 
+		 	STD_ID,
+		 	DATATYPE,
+		 	OCR, RECENT,
+		 	EXTENSION
+		)
+		VALUES (
+			#{datatype_id}, 
+			#{std_id},
+			#{datatype},
+			#{ocr},
+			#{recent},
+			#{extension}
+		)
+	</insert>
+    
+    <select id="getProfile" parameterType="hashmap" resultType="hashmap">
+    	SELECT DATATYPE_ID,
+     		STD_ID,
+			DATATYPE_LABEL, 
+			CREATE_USER, 
+			DATATYPE,
+		 	OCR, RECENT,
+		 	CAPTURE, EXTENSION
+		FROM PI_AP_SERVER AP, PI_DATATYPES_USER DU
+		WHERE 1=1
+		  AND DU.ENABLE = 1
+		  AND AP.AP_NO = DU.AP_NO
+		  AND AP.AP_NO = 0
+		 <if test="datatype_id != null">
+		  	AND DU.STD_ID = #{datatype_id}
+		  </if>
+		  <if test="name != null">
+		  	AND DU.DATATYPE_LABEL like concat('%', #{name}, '%')
+		  </if>
+		ORDER BY DU.DATATYPE_LABEL
+	</select>
+	
+	<update id="updateProfile" parameterType="hashmap">
+		UPDATE pi_datatypes_user
+		SET
+			DATATYPE_ID = #{datatype_id},
+			DATATYPE_LABEL = #{datatype_label},
+			DATATYPE = #{datatype},
+			OCR=#{ocr},
+			RECENT=#{recent},
+			CAPTURE=#{capture},
+			EXTENSION=#{extension}
+		WHERE 1 = 1
+		  AND STD_ID = #{std_id}
+		  AND AP_NO = #{ap_no}
+		  AND ENABLE = 1
+	</update>
+	
+	<select id="getDatatypesUserSize" parameterType="String" resultType="int">
+		SELECT COUNT(STD_ID) FROM PI_DATATYPES_USER WHERE STD_ID = #{value}
+	</select>
+	
+	<update id="updateStandardId" parameterType="hashmap">
+		UPDATE PI_DATATYPES_USER SET DATATYPE = #{new_std_id} WHERE STD_ID = #{std_id} AND ENABLE = 1
+	</update>
+	
+	<update id="updateDatatypeInPolicy" parameterType="hashmap">
+		UPDATE PI_SCAN_POLICY SET
+		    datatype_id = #{new_std_id}
+     	WHERE datatype_id = #{std_id}
+	</update>
+	
+	<select id="selectDataTypeById" parameterType="hashmap" resultType="hashmap">
+		SELECT 
+			  datatype_id, datatype_label, create_user, regdate, ocr, capture, enable
+		FROM PI_DATATYPES_USER
+     	WHERE DATATYPE_ID = #{DATATYPE_ID}
+     	GROUP BY DATATYPE_ID
+	</select>
+	
+	<update id="deleteProfile" parameterType="hashmap">
+		UPDATE PI_DATATYPES_USER
+		   SET ENABLE = 0
+     	WHERE STD_ID = #{DATATYPE_ID}
+	</update>
+	
+	<select id="getPolicy" parameterType="hashmap" resultType="hashmap">
+     	SELECT
+			 SP.IDX 	AS IDX
+			,SP.POLICY_NAME		AS NAME 
+			,SP.COMMENT			AS COMMENT
+			,DU.datatype_label	AS TYPE
+			,DU.datatype_label	AS TYPE1
+			,DU.DATATYPE_ID		AS DATATYPE_ID
+			,DU.STD_ID			AS STD_ID
+			,SP.SCHEDULE_PAUSE_DAYS	AS PAUSE_DAYS
+			,SP.ENABLED			AS ENABLED
+			,SP.VIEW_USER		AS VIEW_USER
+			,SP.CYCLE			AS CYCLE
+			,IFNULL(SP.ACTION, 0)		AS ACTION
+			,DATE_FORMAT(SP.START_DTM, '%Y-%m-%d %H:%i')		AS START_DTM
+			,SCHEDULE_PAUSE_FROM  AS PAUSE_FROM
+			,SCHEDULE_PAUSE_FROM_MINU  AS PAUSE_FROM_MINU
+			,SCHEDULE_PAUSE_TO  AS PAUSE_TO
+			,SCHEDULE_PAUSE_TO_MINU  AS PAUSE_TO_MINU
+			,DU.DATATYPE AS DATATYPE
+			,policy_type 		AS POLICY_TYPE
+			,DU.recent AS RECENT,
+			SP.RECON_CPU,
+			SP.RECON_MEMORY,
+			SP.THROUGHPUT_RATE,
+			SP.RECON_TRACE
+			,IFNULL((SELECT COUNT(*) FROM pi_scan_policy_server where policy_id =SP.IDX GROUP BY IDX),0) AS SERVER_CNT
+<!-- 			,IFNULL((SELECT CONCAT('[',GROUP_CONCAT(IN_IDX),']')  FROM pi_scan_policy_server where policy_id =SP.IDX GROUP BY IDX),'[]') AS SERVER -->
+			,IFNULL((SELECT CONCAT('["', GROUP_CONCAT(IN_IDX SEPARATOR '","'), '"]')  FROM pi_scan_policy_server where policy_id =SP.IDX GROUP BY IDX),'[]') AS SERVER
+			<!-- ,IFNULL((SELECT CONCAT('[',GROUP_CONCAT(JSON_OBJECT('target_id', target_id,'ap_no',ap_no)),']')  FROM pi_scan_policy_server where policy_id =SP.IDX GROUP BY IDX),'[]') AS SERVER -->
+     	FROM PI_SCAN_POLICY SP
+     		LEFT OUTER JOIN PI_DATATYPES_USER DU ON SP.STD_ID = DU.STD_ID
+     		<if test="schedule_use != 1 and schedule_use != 2">
+     		 AND DU.ENABLE = 1
+     		</if>
+     	WHERE 1=1
+     	<if test="schedule_use == 2">
+     		 AND DU.ENABLE = 1
+     		 <if test="grade != 9">
+     		 	AND POLICY_TYPE = 1
+     		 	AND SP.ENABLED = 1
+     		 </if>
+     	</if>
+		<if test="name != null and name != ''">
+		  	AND POLICY_NAME like concat('%', #{name}, '%')
+		</if>
+		<if test="policyid != null">
+		  	AND IDX = #{policyid}
+		</if>
+		<if test="policy_name != null and policy_name != ''">
+		  	AND DU.datatype_label like concat('%', #{policy_name}, '%')
+		</if>
+		AND SP.ENABLE = 1
+		GROUP BY IDX
+		ORDER BY SP.IDX DESC
+	</select>
+	
+	<delete id="deletePolicy" parameterType="hashmap">
+		<!-- DELETE FROM PI_SCAN_POLICY
+		WHERE 1=1
+			AND IDX = #{idx} -->
+			
+		UPDATE PI_SCAN_POLICY SET ENABLE = 0
+		WHERE 1 = 1
+		  AND IDX = #{idx}
+	</delete>
+	
+	<update id="modifyPolicy" parameterType="hashmap">
+		UPDATE PI_SCAN_POLICY SET
+		    POLICY_NAME = #{policy_name}
+		   ,COMMENT = #{comment}
+		   ,CYCLE = #{cycle}
+		   ,ACTION = #{action}
+		   ,DATATYPE_ID = #{datatype_id}
+		   ,STD_ID = #{std_id}
+		   ,ENABLED = #{enabled}
+		   ,VIEW_USER = #{user_no}
+		   ,START_DTM = STR_TO_DATE(#{start_dtm},'%Y-%m-%d %H:%i')
+		   , SCHEDULE_PAUSE_DAYS = #{pause_days}
+		   , SCHEDULE_PAUSE_FROM = #{from_time_hour}
+		   , SCHEDULE_PAUSE_FROM_MINU =#{from_time_minutes}
+		   , SCHEDULE_PAUSE_TO = #{to_time_hour}
+		   , SCHEDULE_PAUSE_TO_MINU = #{to_time_minutes}
+		   , POLICY_TYPE = #{policy_type}
+		   , RECON_CPU = #{cpu}
+		   , RECON_MEMORY = #{memory}
+		   , THROUGHPUT_RATE = #{throughput}
+		   , RECON_TRACE = #{scanTrace} 
+     	WHERE IDX = #{idx}
+	</update>
+	
+	<insert id="insertPolicy" parameterType="hashmap">
+		INSERT INTO PI_SCAN_POLICY
+			(POLICY_NAME, COMMENT, CYCLE, ACTION, DATATYPE_ID, STD_ID, ENABLED, START_DTM, SCHEDULE_PAUSE_DAYS, SCHEDULE_PAUSE_FROM, SCHEDULE_PAUSE_FROM_MINU, SCHEDULE_PAUSE_TO, SCHEDULE_PAUSE_TO_MINU, VIEW_USER, POLICY_TYPE, RECON_CPU, RECON_MEMORY, THROUGHPUT_RATE, RECON_TRACE)
+		VALUES
+			(#{policy_name}, #{comment}, #{cycle}, #{action}, #{datatype_id}, #{std_id}, #{enabled}, STR_TO_DATE(#{start_dtm},'%Y-%m-%d %H:%i'), #{pause_days}, #{from_time_hour}, #{from_time_minutes}, #{to_time_hour}, #{to_time_minutes}, #{user_no}, #{policy_type}, #{cpu}, #{memory}, #{throughput}, #{scanTrace})
+		<selectKey resultType="int" keyProperty="policy_id" order="AFTER">
+			SELECT LAST_INSERT_ID() AS policy_id
+		</selectKey>	
+			
+	</insert>
+	
+	<select id="getStatusList" parameterType="hashmap" resultType="hashmap">
+		SELECT DATA.TARGET_ID,
+                        DATA.AP_NO,
+                        DATA.FULL_NAME,
+                        DATA.HOST_NAME,
+                        DATA.NAME,
+                        DATA.SERIAL,
+                        DATA.PLATFORM,
+                        DATA.TARGET_USE,
+                        DATA.PATH_CNT,
+                        DATA.TOTAL,
+                        DATA.REGDATE,
+                        DATA.SCHEDULE_ID,
+                        DATA.LOCATION_ID,
+                        DATA.DATATYPE_ID,
+                        DATA.SCHEDULE_STATUS,
+                        DATA.SCHEDULE_STATUS AS SCHEDULE_STATUS2,
+                        DATA.SCHEDULE_PAUSE_DAYS,
+                        DATA.SCHEDULE_PAUSE_FROM,
+                        DATA.SCHEDULE_PAUSE_TO,
+                        DATA.SCHEDULE_REPEAT_DAYS,
+                        DATA.SCHEDULE_REPEAT_MONTHS,
+                        DATA.SCAN_TIME,
+                        IF(DATA.SCHEDULE_STATUS IN ('completed', 'stopped', 'interrupted'), DATA.SCAN_COMPLETE_TIME, NULL) AS SCAN_COMPLETE_TIME,
+                        DATA.GROUP_NAME,
+                        <foreach collection="mngrList" item="mngrList">
+                        	DATA.${mngrList.MGNR_FLAG},
+                        	DATA.${mngrList.MGNR_FLAG}_nm,
+                        </foreach>
+                        DATA.CONFIRM,
+                        DATA.POLICY_ID,
+                        DATA.ENABLE,
+                        DATA.POLICY_NM,
+                        DATA.MEMO,
+                        DATA.RECON_AP
+                FROM (
+                        SELECT T.TARGET_ID,
+                                T.AP_NO,
+                                T.NAME AS FULL_NAME,
+                                SUBSTRING_INDEX(T.NAME, '.', 1) AS HOST_NAME,
+                                SUBSTRING_INDEX(SUBSTRING_INDEX(T.NAME, '.', -2), '.', 1) AS NAME,
+                                SUBSTRING_INDEX(T.NAME, '.', -1) AS SERIAL,
+                                T.TARGET_USE,
+                                MAX_TP.PATH_CNT,
+                                MAX_TP.TOTAL,
+                                MAX_TP.REGDATE,
+                                SD.SCHEDULE_ID,
+                                SDL.LOCATION_ID,
+                                SD.SCHEDULE_DATATYPE_PROFILES AS DATATYPE_ID,
+                                SD.SCHEDULE_STATUS,
+                                SD.SCHEDULE_PAUSE_DAYS,
+                                 SD.SCHEDULE_PAUSE_FROM,
+                                SD.SCHEDULE_PAUSE_TO,
+                                SD.SCHEDULE_REPEAT_DAYS,
+                                SD.SCHEDULE_REPEAT_MONTHS,
+                                FROM_UNIXTIME(SD.SCHEDULE_NEXT_SCAN,'%Y-%m-%d %H:%i') AS SCAN_TIME,
+                                FROM_UNIXTIME(SDL.UPDATED,'%Y-%m-%d %H:%i') AS SCAN_COMPLETE_TIME,
+							 	CONCAT('recon0',SUM(T.AP_NO + 1),'(', AP.IP, ')') AS RECON_AP,
+								TU.GROUP_NM AS GROUP_NAME,
+								(SELECT NAME FROM pi_target_group WHERE IDX = TG.UP_IDX) AS PLATFORM,
+                                IFNULL(TU.SERVICE_NM, '-') AS SERVICE_NM,
+                               <foreach collection="mngrList" item="mngrList">
+	                              	MAX(CASE WHEN TU.userFlag = #{mngrList.MGNR_FLAG} THEN TU.user_no ELSE '' END) AS ${mngrList.MGNR_FLAG},
+	                               (SELECT USER_NAME FROM PI_USER
+	                                WHERE USER_NO = MAX(CASE WHEN TU.userFlag = #{mngrList.MGNR_FLAG} THEN TU.user_no ELSE '' END)) AS ${mngrList.MGNR_FLAG}_nm,
+                               </foreach>
+                                MAX_STS.CONFIRM,
+                                MAX_STS.POLICY_ID,
+                                IFNULL(SP.ENABLE, 2) AS ENABLE,
+                                IFNULL(SP.POLICY_NAME,'') AS POLICY_NM,
+                                '' AS MEMO
+                          FROM PI_AP_SERVER AP, PI_TARGETS T
+                                LEFT OUTER JOIN PI_AGENTS A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO AND AGENT_USE = 'Y'
+                            LEFT OUTER JOIN PI_TARGET_GROUP TG ON T.TARGET_ID = TG.TARGET_ID AND T.AP_NO = TG.AP_NO
+                                LEFT OUTER JOIN PI_TARGET_USER TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+								
+                          LEFT OUTER JOIN (SELECT TP.TARGET_ID, TP.AP_NO, TP.PATH_CNT, TP.TOTAL, TP.REGDATE FROM pi_topcomp TP,
+                                (SELECT TCP.TARGET_ID, TCP.AP_NO ,MAX(TCP.REGDATE) AS REGDATE FROM pi_topcomp TCP GROUP BY TCP.TARGET_ID, TCP.AP_NO) TCP
+                                WHERE TCP.TARGET_ID = TP.TARGET_ID
+                                  AND TCP.AP_NO = TP.AP_NO
+                                  AND TP.REGDATE = TCP.REGDATE
+                                ) AS MAX_TP ON T.TARGET_ID = MAX_TP.TARGET_ID AND T.AP_NO = MAX_TP.AP_NO
+                        LEFT OUTER JOIN (SELECT ST.TARGET_ID, ST.AP_NO, ST.LOCATION_ID, ST.RECON_SCHEDULE_ID,ST.REGDATE, ST.POLICY_ID, ST.CONFIRM FROM pi_schedule_targets ST,
+                                (SELECT STS.TARGET_ID, STS.AP_NO ,MAX(STS.REGDATE) AS REGDATE FROM pi_schedule_targets STS GROUP BY STS.TARGET_ID, STS.AP_NO) STS
+                                WHERE STS.TARGET_ID = ST.TARGET_ID
+                                  AND STS.AP_NO = ST.AP_NO
+                                  AND STS.REGDATE = ST.REGDATE
+                                ) AS MAX_STS ON T.TARGET_ID = MAX_STS.TARGET_ID AND T.AP_NO = MAX_STS.AP_NO
+                        LEFT OUTER JOIN pi_scan_policy SP ON MAX_STS.POLICY_ID = SP.IDX
+                        LEFT OUTER JOIN pi_schedules SD ON MAX_STS.AP_NO = SD.AP_NO AND MAX_STS.RECON_SCHEDULE_ID = SD.SCHEDULE_ID
+                        LEFT OUTER JOIN pi_scheduled_location SDL ON MAX_STS.AP_NO = SDL.AP_NO AND SDL.SCH_ID = SD.SCHEDULE_ID AND SD.SCHEDULE_TARGET_ID = SDL.TARGET_ID
+                WHERE 1 = 1
+                AND T.AP_NO = AP.AP_NO
+                 AND AP.IS_SERVER = 1
+				   AND T.TARGET_USE = 'Y'
+		<choose>
+			<when test="user_grade == 9"></when>
+			<otherwise>
+		  		AND TU.USER_NO = #{user_no}
+			</otherwise>
+		</choose>
+		<if test='sch_host != null and sch_host != ""'>
+	  	  AND T.NAME LIKE concat('%', #{sch_host}, '%')
+		</if>
+		<if test='sch_svcName != null and sch_svcName != ""'>
+		  AND TU.SERVICE_NM LIKE CONCAT('%', #{sch_svcName}, '%')
+		</if>
+		GROUP BY T.TARGET_ID, T.AP_NO
+		) DATA
+		WHERE 1= 1
+			<if test='sch_svcManager != null and sch_svcManager != ""'>
+			  	AND (DATA.USER_NAME LIKE CONCAT('%','${sch_svcManager}','%') OR DATA.SERVICE_USER_NM LIKE CONCAT('%','${sch_svcManager}','%') OR DATA.ADMIN_NM LIKE CONCAT('%','${sch_svcManager}','%'))
+			</if>
+			<if test="mngrSizeList != null ">
+			  	<foreach collection="mngrSizeList" item="mngrSizeList">
+			  	AND (SELECT UA.USER_NAME FROM PI_USER UA WHERE ${mngrSizeList.server} = UA.USER_NO) LIKE CONCAT('%', #{mngrSizeList.server_user},'%')
+				</foreach>			   	
+		  </if>
+		  <if test='sch_group != null and sch_group != ""'>
+			  	AND DATA.GROUP_NAME LIKE CONCAT('%', #{sch_group}, '%')
+			</if>
+		  <if test='sch_policy != null and sch_policy != ""'>
+			  	AND DATA.POLICY_NM LIKE CONCAT('%', #{sch_policy}, '%')
+			</if>
+		<!-- ORDER BY DATA.NAME -->
+		ORDER BY 
+		<!-- 완료, 대기, 비활성, 취소, 실패 -->
+		FIELD(DATA.SCHEDULE_STATUS, 'failed', 'stalled', 'deactivated', 'queued', 'interrupted', 'completed', 'cancelled', 'stop', 'paused', 'scanning', 'scheduled') DESC,
+		DATA.NAME DESC,
+    	DATA.SCHEDULE_STATUS DESC
+	</select>
+	
+	<select id="getUserList" parameterType="hashmap" resultType="hashmap">
+		SELECT DISTINCT 
+			U.USER_GRADE AS CHKBOX, '' as USER_PHONE_STATUS, U.USER_EMAIL,
+			U.USER_NO, U.USER_ID, U.JIKWEE, U.JIKGUK, U.BOSS_NAME, U.USER_NAME, U.INSA_CODE,
+			(SELECT G.TEAM_NAME FROM PI_GROUP G WHERE G.INSA_CODE = U.INSA_CODE) AS TEAM_NAME, 
+			DATE_FORMAT(U.REGDATE, '%Y-%m-%d %h:%i:%s' ) AS REGDATE,
+			DATE_FORMAT(U.STARTDATE, '%Y-%m-%d' ) AS STARTDATE,
+			DATE_FORMAT(U.ENDDATE, '%Y-%m-%d' ) AS ENDDATE,
+			U.USER_GRADE, U.USER_GRADE AS OLD_USER_GRADE,
+			IFNULL(U.USER_PHONE, '') AS USER_PHONE,
+			if(NOW() > LOCK_DATE, 'N', 'Y') AS LOCK_ACCOUNT,
+			U.ACCESS_IP,
+			U.LOCK_STATUS,
+			DATE_FORMAT(U.LOGINDATE, '%Y-%m-%d' ) AS LOGINDATE,
+			DATE_FORMAT(DATE_SUB(U.LOGINDATE, INTERVAL 3 MONTH), '%Y-%m-%d') AS LOGINDATE2,
+			U.UNLOCK_REASON,
+			U.LOCK_STATUS,
+			'' AS MEMBER_STATUS,
+			U.ACC_YN,
+			(CASE WHEN U.ACC_YN = 'B' OR  U.ACC_YN = 'Y' THEN '재직자' 
+				  WHEN U.ACC_YN = 'V' THEN '휴직자'	ELSE '퇴직자' END) AS ACC_YN_NM,
+			LOCK_EMAIL
+		FROM PI_USER U 
+		WHERE 1 = 1
+		#AND U.USER_GRADE != '9'
+		AND U.ACC_YN NOT IN ('R', 'N') 
+			<if test='sch_aut != null and sch_aut != ""'>
+	           AND U.USER_GRADE = #{sch_aut}
+	        </if>
+			<if test='sch_id != null and sch_id != ""'>
+			  	AND U.USER_ID LIKE concat('%', #{sch_id}, '%')
+			</if>
+			<if test='sch_userName != null and sch_userName != ""'>
+			  	AND U.USER_NAME LIKE concat('%', #{sch_userName}, '%')
+			</if>
+			<if test='sch_teamName != null and sch_teamName != ""'>
+			  	AND (SELECT G.TEAM_NAME FROM PI_GROUP G WHERE G.INSA_CODE = U.INSA_CODE) LIKE concat('%', #{sch_teamName}, '%')
+			</if>
+			<if test="sch_userLeave != null and sch_userLeave != ''">
+				<choose>
+					<when test='sch_userLeave == 0'>
+						AND U.ACC_YN IN ('B', 'Y') 
+					</when>
+					<otherwise>
+						AND U.ACC_YN = 'V'
+					</otherwise>
+				</choose>
+			</if>
+			<if test="sch_lockStatus != null and sch_lockStatus != ''">
+				AND DATE_FORMAT(U.LOGINDATE, '%Y-%m-%d') &lt; DATE_FORMAT(NOW(), '%Y-%m-%d') 
+				AND U.LOCK_STATUS = ${sch_lockStatus}
+			</if>
+	</select>
+	
+	<insert id="updateScanSchedule" parameterType="hashmap">
+		INSERT INTO pi_schedules
+		(
+			schedule_id,
+			schedule_status,
+			schedule_label,
+			schedule_repeat_days,
+			schedule_repeat_months,
+			schedule_datatype_profiles,
+			schedule_next_scan,
+			schedule_target_id,
+			schedule_target_name,
+			schedule_cpu,
+			schedule_capture,
+			schedule_trace,
+			ap_no,
+			<if test='pause_days != null and pause_days != ""'>
+			schedule_pause_days,
+		 	</if>
+		 	<if test='pause_from != null and pause_from != ""'>
+			schedule_pause_from,
+		 	</if>
+		 	<if test='pause_to != null and pause_to != ""'>
+			schedule_pause_to,
+		 	</if>
+		 	drm_status,
+			regdate
+		)
+		VALUES
+		(
+			#{id},
+			#{status},
+			#{label},
+			#{repeat_days},
+			#{repeat_months},
+			#{profiles},
+			#{next_scan},
+			#{target_id},
+			#{target_name},
+			#{cpu},
+			#{capture},
+			#{trace},
+			#{ap_no},
+			<if test='pause_days != null and pause_days != ""'>
+				#{pause_days},
+		 	</if>
+		 	<if test='pause_from != null and pause_from != ""'>
+				#{pause_from},
+		 	</if>
+		 	<if test='pause_to != null and pause_to != ""'>
+				#{pause_to},
+		 	</if>
+		 	#{drm},
+			now()
+		)
+		ON DUPLICATE KEY UPDATE
+		schedule_label=#{label},
+		schedule_status=#{status},
+		schedule_repeat_days=#{repeat_days},
+		schedule_repeat_months=#{repeat_months},
+		schedule_datatype_profiles=#{profiles},
+		schedule_cpu=#{cpu},
+		schedule_capture=#{capture},
+		schedule_target_id=#{target_id},
+		schedule_target_name=#{target_name},
+		schedule_trace=#{trace},
+		schedule_next_scan=#{next_scan},
+		<if test='pause_days != null and pause_days != ""'>
+			schedule_pause_days=#{pause_days},
+	 	</if>
+	 	<if test='pause_from != null and pause_from != ""'>
+			schedule_pause_from=#{pause_from},
+	 	</if>
+	 	<if test='pause_to != null and pause_to != ""'>
+			schedule_pause_to=#{pause_to},
+	 	</if>
+	 	<if test='drm != null and drm != "" '>
+	 		drm_status=#{drm},
+	 	</if>
+		regdate=now()
+	</insert>
+	
+	<select id="selectScheduleGroup" parameterType="hashmap" resultType="hashmap">
+		SELECT D.* FROM
+		(SELECT 
+			CONCAT(CAST(COUNT(ST.TARGET_ID) AS CHAR), ' 대') AS SCAN_CNT,
+			G.SCHEDULE_GROUP_ID,
+			G.SCHEDULE_GROUP_NAME,
+			G.USER_NO,
+			(SELECT U.USER_NAME FROM PI_USER U WHERE U.USER_NO = G.USER_NO) AS USER_NAME,
+			G.STATUS,
+			G.TYPE,
+			G.POLICY_ID,
+			IF(G.POLICY_ID = -1, '-',  SP.POLICY_NAME) AS POLICY_NAME,
+			G.DATATYPE_ID,
+			DU.DATATYPE_LABEL,
+			DATE_FORMAT(G.REGDATE, '%Y-%m-%d %H:%i:%S') AS REGDATE,
+			DATE_FORMAT(SP.START_DTM, '%Y-%m-%d %H:%i')	AS START_DTM,
+			T.TARGET_ID,
+			ST.RECON_SCHEDULE_ID
+		FROM pi_schedule_group G
+		 LEFT OUTER JOIN pi_datatypes_user DU ON G.STD_ID = DU.STD_ID
+		 LEFT OUTER JOIN pi_scan_policy SP ON G.POLICY_ID = SP.IDX
+		 LEFT OUTER JOIN pi_schedule_targets ST ON G.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID AND DU.AP_NO = ST.AP_NO
+		 LEFT OUTER JOIN pi_targets T ON ST.TARGET_ID = T.TARGET_ID AND T.AP_NO = ST.AP_NO
+		 LEFT OUTER JOIN pi_target_user TU ON TU.target_id = ST.target_id AND TU.AP_NO = ST.AP_NO 
+		 <if test="user_grade == 9">
+			 AND TU.userFlag = 'server1'
+		  </if>
+		WHERE 1 = 1
+		  <if test="user_grade != 9">
+		  	AND TU.USER_NO = '${user_no}'
+		  </if>
+		  <if test='sch_type != "" and sch_type != null'>
+		  	AND G.TYPE = ${sch_type}
+		  </if>
+		  <if test='title != "" and title != null'>
+		  	AND G.SCHEDULE_GROUP_NAME LIKE CONCAT('%', '${title}', '%')
+		  </if>
+		  AND T.TARGET_ID IS NOT NULL
+		GROUP BY G.SCHEDULE_GROUP_ID) D
+		WHERE 1 = 1
+		  <if test='writer != "" and writer != null'>
+		  	AND D.USER_NAME LIKE CONCAT('%', '${writer}', '%')
+		  </if> 
+		  <if test='fromDate != "" and fromDate != null'>
+			AND D.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		  </if>	
+		ORDER BY D.REGDATE DESC, D.SCHEDULE_GROUP_NAME
+	</select>
+	
+	<select id="selectDaySchedule" parameterType="hashmap" resultType="hashmap">
+		SELECT * FROM 
+			(SELECT ST.SCHEDULE_GROUP_ID, S.SCHEDULE_ID AS SCHEDULE_ID, IFNULL(SG.SCHEDULE_GROUP_NAME, 'Recon Scan') AS SCHEDULE_GROUP_NAME,T.NAME, L.DESCRIPTION
+				, CASE WHEN (SL.STATUS IN ('notscanned','queued','error','interrupted')) THEN S.SCHEDULE_STATUS ELSE SL.STATUS END AS STATUS
+				,DATE_FORMAT(FROM_UNIXTIME(S.SCHEDULE_NEXT_SCAN), '%Y-%m-%d %H:%i:%s') AS REGDATE,  DATE_FORMAT(FROM_UNIXTIME(SL.started), '%Y-%m-%d %H:%i:%s') AS START_TIME , DATE_FORMAT(FROM_UNIXTIME(SL.updated), '%Y-%m-%d %H:%i:%s') AS END_TIME
+				,ST.POLICY_ID, SL.TARGET_ID, SL.AP_NO
+				<foreach collection="patternList" item="cnt">
+						,IFNULL(JSON_EXTRACT(PT.PATTERN_DATA, CONCAT(REPLACE(JSON_SEARCH(JSON_EXTRACT(PT.PATTERN_DATA, '$[*].PATTERN_NUM'),'one', #{cnt}), '"', ''), '.MATCH_CNT')), 0) AS TYPE#{cnt}
+							<!-- IFNULL(JSON_EXTRACT(T.PATTERN_DATA, CONCAT('$[',#{cnt},'].MATCH_CNT')),0) AS TYPE#{cnt}, -->
+				</foreach>
+				,PT.PATH_CNT , PT.TOTAL
+				FROM (SELECT *,DATE(FROM_UNIXTIME(SCHEDULE_NEXT_SCAN)) FROM pi_schedules
+				WHERE 1=1
+					<if test="fromDate!='' and fromDate != null">
+						AND FROM_UNIXTIME(SCHEDULE_NEXT_SCAN) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+					</if>
+					) S
+				JOIN (SELECT *,MAX(UPDATED) FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE(FROM_UNIXTIME(UPDATED))) SL ON SL.sch_id = S.SCHEDULE_ID AND SL.AP_NO = S.AP_NO
+			 	LEFT OUTER JOIN pi_targets T ON T.target_id = SL.TARGET_ID AND T.AP_NO = SL.AP_NO
+				LEFT OUTER JOIN pi_locations L ON SL.TARGET_ID = L.TARGET_ID AND SL.AP_NO = L.AP_NO AND SL.location_id = L.location_id 
+				LEFT OUTER JOIN pi_schedule_targets ST ON ST.recon_schedule_id = S.SCHEDULE_ID
+				LEFT OUTER JOIN pi_schedule_group SG ON SG.schedule_group_id = ST.schedule_group_id
+				LEFT OUTER JOIN pi_TOTAL PT ON DATE(PT.regdate) = DATE(DATE_ADD(FROM_UNIXTIME(SL.updated),INTERVAL 1 DAY)) AND SL.TARGET_ID = PT.TARGET_ID AND SL.AP_NO= PT.AP_NO
+				<if test="user_grade != 9">
+					JOIN pi_target_user TU ON TU.target_id  = SL.TARGET_ID AND TU.AP_NO = SL.AP_NO AND TU.USER_NO = #{user_no}
+				</if>
+				) D
+				
+			WHERE 1=1 
+		<if test="status_flag!='' and status_flag != null">
+			AND D.STATUS = #{status_flag}
+		</if>		
+		<if test="path!='' and path != null">
+			AND D.DESCRIPTION LIKE CONCAT ('%',#{path},'%')
+		</if>		
+		<if test="title!='' and title != null">
+			AND D.SCHEDULE_GROUP_NAME LIKE CONCAT ('%',#{title},'%')
+		</if>		
+		<if test="host!='' and host != null">
+			AND D.NAME LIKE CONCAT ('%',#{host},'%')
+		</if>
+			ORDER BY D.PATH_CNT DESC
+	</select>
+	
+	
+	<select id="selectScheduleTargets" parameterType="hashmap" resultType="hashmap">
+		SELECT 
+			ST.TARGET_ID,
+			ST.AP_NO,
+			T.NAME AS FULL_NAME,
+			SUBSTRING_INDEX(T.NAME, '.', 1) AS HOST_NAME,
+			SUBSTRING_INDEX(SUBSTRING_INDEX(T.NAME, '.', -2), '.', 1) AS NAME,
+			SUBSTRING_INDEX(T.NAME, '.', -1) AS SERIAL,
+			T.PLATFORM,
+			ST.RECON_SCHEDULE_ID,
+			ST.POLICY_ID,
+			ST.DATATYPE_ID,
+			DU.DATATYPE_LABEL,
+			DU.ENABLE,
+			S.SCHEDULE_STATUS,
+			DATE_FORMAT(ST.REGDATE, '%Y-%m-%d %H:%i:%S') AS REGDATE
+		FROM pi_schedule_targets ST
+		  LEFT OUTER JOIN pi_datatypes_user DU ON ST.DATATYPE_ID = DU.DATATYPE_ID
+		  LEFT OUTER JOIN pi_locations L ON L.TARGET_ID = ST.TARGET_ID AND ST.LOCATION_ID = L.LOCATION_ID
+		, pi_schedules S, pi_targets T
+		<if test="user_grade != 9">
+			LEFT OUTER JOIN pi_target_user TU ON T.target_id = TU.TARGET_ID AND TU.AP_NO = T.AP_NO
+		</if>
+		WHERE 1 = 1
+		<if test="user_grade != 9">
+			AND TU.USER_NO =  #{user_no}
+		</if>
+		  AND ST.RECON_SCHEDULE_ID = S.SCHEDULE_ID
+		  AND ST.AP_NO = S.AP_NO
+		  AND ST.TARGET_ID = T.TARGET_ID
+		  AND ST.AP_NO = T.AP_NO
+		  AND ST.SCHEDULE_GROUP_ID = #{group_id}
+		  <if test="taskList != null">
+		  	AND S.SCHEDULE_STATUS IN (
+			<foreach collection="taskList" item="item" separator=",">
+		        #{item}
+		    </foreach>
+		    )
+		  </if>
+		GROUP BY T.TARGET_ID, T.AP_NO, ST.RECON_SCHEDULE_ID
+		ORDER BY T.NAME
+	
+		<!-- SELECT 
+			ST.TARGET_ID,
+			ST.AP_NO,
+			T.NAME,
+			ST.RECON_SCHEDULE_ID,
+			ST.POLICY_ID,
+			DU.DATATYPE_LABEL,
+			DATE_FORMAT(ST.REGDATE, '%Y-%m-%d %H:%i:%S') AS REGDATE
+		FROM pi_schedule_targets ST, pi_datatypes_user DU, PI_TARGETS T
+		WHERE 1 = 1
+		  AND ST.POLICY_ID = DU.STD_ID
+		  AND ST.TARGET_ID = T.TARGET_ID
+		  AND ST.AP_NO = T.AP_NO
+		  AND ST.SCHEDULE_GROUP_ID = #{group_id}
+		GROUP BY T.TARGET_ID, T.AP_NO 
+		ORDER BY T.NAME -->
+	</select>
+	
+	<insert id="insertScheduleGroup" parameterType="hashmap">
+		INSERT INTO pi_schedule_group
+		(
+			SCHEDULE_GROUP_NAME,
+			USER_NO,
+			STATUS,
+			TYPE,
+			POLICY_ID,
+			DATATYPE_ID,
+			STD_ID,
+			REGDATE
+		)
+		VALUES
+		(
+			#{scheduleName},
+			#{user_no},
+			'1',
+			#{type},
+			#{policy_id},
+			#{datatype_id},
+			#{std_id},
+			NOW()
+		)
+		<selectKey resultType="int" keyProperty="SCHEDULE_GROUP_ID" order="AFTER">
+			SELECT LAST_INSERT_ID() AS SCHEDULE_GROUP_ID
+		</selectKey>
+	</insert>
+	
+	<insert id="insertScheduleGroupOneDrive" parameterType="hashmap">
+		INSERT INTO pi_schedule_group
+		(
+			SCHEDULE_GROUP_NAME,
+			USER_NO,
+			STATUS,
+			TYPE,
+			POLICY_ID,
+			DATATYPE_ID,
+			STD_ID,
+			REGDATE
+		)
+		VALUES
+		(
+			#{scheduleName},
+			#{user_no},
+			'1',
+			'2',
+			#{policy_id},
+			#{datatype_id},
+			#{std_id},
+			NOW()
+		)
+		<selectKey resultType="int" keyProperty="SCHEDULE_GROUP_ID" order="AFTER">
+			SELECT LAST_INSERT_ID() AS SCHEDULE_GROUP_ID
+		</selectKey>
+	</insert>
+	
+	<delete id="failedSchedule" parameterType="hashmap">
+	 	DELETE FROM PI_SCHEDULE_GROUP WHERE SCHEDULE_GROUP_ID = ${groupID};
+	</delete>
+	
+	<insert id="insertScheduleTargets" parameterType="hashmap">
+		INSERT INTO pi_schedule_targets
+		(
+			TARGET_ID,
+			LOCATION_ID,
+			AP_NO,
+			SCHEDULE_GROUP_ID,
+			RECON_SCHEDULE_ID,
+			STATUS,
+			POLICY_ID,
+			DATATYPE_ID,
+			CONFIRM,
+			ACTION,
+			REGDATE
+		)
+		VALUES
+		(
+			#{target_id},
+			#{location_id},
+			#{ap_no},
+			#{groupID},
+			#{reconScheduleID},
+			"1",
+			#{policy_id},
+			#{datatype_id},
+			0,
+			#{action},
+			NOW()
+		)
+		<!-- 
+		ON DUPLICATE KEY UPDATE
+		SCHEDULE_GROUP_ID=#{groupID},
+		RECON_SCHEDULE_ID=#{reconScheduleID},
+		POLICY_ID=#{policy_id},
+		DATATYPE_ID=#{datatype_id},
+		REGDATE=NOW() -->
+	</insert>
+	
+	<select id="selectScanDataTypes" parameterType="hashmap" resultType="hashmap">
+		SELECT DU.AP_NO, DU.DATATYPE_ID 
+		FROM pi_datatypes_user DU
+		WHERE DU.STD_ID = #{std_id}
+	</select>
+	
+	<select id="selectSKTScanDataTypes" parameterType="hashmap" resultType="hashmap">
+		SELECT T.TARGET_ID,
+			'8987302884414283716' AS LOCATION_ID,
+			T.AP_NO,
+			T.NAME,
+			DU.DATATYPE_ID,
+			SP.STD_ID,
+			NS.POLICY_ID,
+			SP.ACTION,
+			NS.TRACE,
+			IFNULL(NS.DRM_STATUS, 'NONE') AS DRM_STATUS
+		FROM pi_targets T, skt_net_schedule NS, pi_scan_policy SP, pi_datatypes_user DU, pi_locations L
+		WHERE NS.POLICY_ID = SP.IDX 
+		<choose>
+			<when test="net_type ==3">
+				  AND L.NET_ID = NS.NET_ID
+				  AND NS.LOCATION_ID = L.LOCATION_ID
+			</when>
+			<otherwise>
+				  AND T.NET_ID = NS.NET_ID
+			</otherwise>
+		</choose>
+		  AND SP.STD_ID = DU.STD_ID
+		  AND T.AP_NO = DU.AP_NO
+		  AND T.TARGET_ID = L.TARGET_ID
+		  AND NS.ENABLE = 'Y'
+	      AND T.TARGET_ID = #{target_id}
+	      AND L.LOCATION_ID = #{location_id}
+		  AND T.AP_NO = #{ap_no}
+	</select>
+	
+	<update id="updateConfirmApply" parameterType="hashmap">
+		UPDATE PI_SCHEDULE_TARGETS 
+		SET CONFIRM = ${confirm} 
+		WHERE AP_NO = ${ap_no} 
+		  AND RECON_SCHEDULE_ID = ${schedule_id}
+	</update>
+	
+	<select id="selectNetHost" parameterType="hashmap" resultType="hashmap">
+		SELECT T.TARGET_ID,
+			T.AP_NO,
+			T.NAME,
+			A.AGENT_CONNECTED_IP,
+			L.LOCATION_ID
+		FROM pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME
+			LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+		WHERE T.AP_NO != 0
+		  AND A.AGENT_CONNECTED_IP REGEXP #{net_ip}
+	</select>
+	
+	<select id="selectSchedulePCStatus" parameterType="hashmap" resultType="hashmap">
+		SELECT S.SCHEDULE_ID,
+			S.SCHEDULE_STATUS
+		FROM pi_schedule_targets ST
+		 LEFT OUTER JOIN pi_schedules S ON ST.TARGET_ID = S.SCHEDULE_TARGET_ID AND ST.RECON_SCHEDULE_ID = S.SCHEDULE_ID AND ST.AP_NO = S.AP_NO
+		WHERE 1 = 1
+		  AND S.AP_NO = ${ap_no}
+		  AND ST.TARGET_ID = #{target_id}
+		  AND ST.LOCATION_ID = #{location_id}
+		  AND S.SCHEDULE_STATUS IN ('scheduled', 'scanning', 'paused')
+	</select>
+	
+	<update id="updateScheduleGroupStatus" parameterType="hashmap">
+		UPDATE pi_schedule_group
+		SET STATUS = #{status}
+		WHERE SCHEDULE_GROUP_ID = #{group_id}
+	</update>
+	
+	 <select id="selectScheduleId" parameterType="hashmap" resultType="int">
+	 	SELECT MAX(NET_ID)+1 AS NET_ID FROM skt_net_schedule 
+	 </select>
+	
+	<insert id="insertNetPolicy" parameterType="hashmap">
+		INSERT INTO SKT_NET_SCHEDULE (NET_ID, NET_TYPE, AP_NO, NET_TYPE_ID, NET_TYPE_NM, POLICY_ID, REGDATE, TRACE, DRM_STATUS, SCANDAY) 
+		VALUES (#{net_id}, #{type}, #{ap_no}, #{rangeId}, #{rangeNm}, #{policyId}, NOW(), #{trace}, #{drm}, #{scanday})
+	</insert>
+	
+	<insert id="insertOneDrivePolicy" parameterType="hashmap">
+		INSERT INTO SKT_NET_SCHEDULE (NET_ID, NET_TYPE, AP_NO, NET_TYPE_ID, LOCATION_ID, NET_TYPE_NM, POLICY_ID, REGDATE, TRACE, DRM_STATUS, SCANDAY) 
+		VALUES 
+		(#{net_id}, #{type}, #{ap_no}, #{targetId}, #{rangeId}, #{rangeOneDriveNm}, #{policyId}, NOW(), #{trace}, #{drm}, NULL)
+	</insert>
+	
+	<delete id="deleteNetPolicy" parameterType="hashmap">
+		DELETE FROM SKT_NET_SCHEDULE
+		WHERE NET_ID = #{net_id}
+	</delete>
+	
+	<update id="updateNetPolicy" parameterType="hashmap">
+		UPDATE SKT_NET_SCHEDULE SET 
+			NET_TYPE = #{type}, 
+			AP_NO = #{ap_no},
+			location_id = null, 
+			NET_TYPE_ID = #{rangeId}, 
+			NET_TYPE_NM = #{rangeNm}, 
+			POLICY_ID = #{policyId}, 
+			REGDATE = NOW(), 
+			TRACE = #{trace}, 
+			SCANDAY = #{scanday}, 
+			DRM_STATUS = #{drm}
+		WHERE NET_ID = #{net_id}
+	</update>
+	
+	<update id="updateOneDrivePolicy" parameterType="hashmap">
+		UPDATE SKT_NET_SCHEDULE SET 
+			NET_TYPE = #{type}, 
+			AP_NO = #{rangeId},
+			location_id = #{rangeId}, 
+			NET_TYPE_ID = #{rangeId}, 
+			NET_TYPE_NM = #{rangeOneDriveNm}, 
+			POLICY_ID = #{policyId}, 
+			REGDATE = NOW(), 
+			TRACE = #{trace}, 
+			DAY = #{day}, 
+			DRM_STATUS = NULL
+		WHERE NET_ID = #{net_id}
+	</update>
+	
+	<insert id="insertNetSchedule" parameterType="hashmap">
+		INSERT INTO SKT_NET_SCHEDULE_TIME (NET_ID, SCHEDULE_TIME, NET_TYPE_NM)
+		VALUES
+		<foreach collection="timeArr" item="item" separator=",">
+		 (#{net_id}, #{item}, #{rangeNm})
+		</foreach>
+	</insert>
+	
+	<insert id="updateNetSchedule" parameterType="hashmap">
+		INSERT INTO SKT_NET_SCHEDULE_TIME (NET_ID, SCHEDULE_TIME, NET_TYPE_NM)
+		VALUES
+		<foreach collection="timeArr" item="item" separator=",">
+		 (#{net_id}, #{item}, #{rangeNm})
+		</foreach>
+	</insert>
+	
+	<delete id="deleteNetSchedule" parameterType="hashmap">
+		DELETE FROM SKT_NET_SCHEDULE_TIME
+		WHERE NET_ID = #{net_id}
+	</delete>
+	
+	<update id="updateNetTarget" parameterType="hashmap">
+		UPDATE PI_TARGETS T
+		   SET NET_ID = #{net_id}
+		WHERE 1 = 1
+		<if test="type == 0"><!-- 네트워크 일 경우 -->
+		 	AND NET_TYPE = #{rangeId}
+		</if>
+		 <if test="type == 2"><!-- pc 일 경우 -->
+		 	AND TARGET_ID = #{rangeId}
+		</if>
+	</update>
+	
+	<update id="updateNetDeptTarget" parameterType="hashmap">
+		UPDATE pi_targets T, 
+			(SELECT * FROM 
+			(WITH RECURSIVE CTE AS 
+			(SELECT
+					0 AS LEVEL, 
+					G.INSA_CODE,
+					G.TEAM_NAME,
+					G.TEAM_NAME AS FULL_TEAM_NM,
+					G.UP_IDX
+				FROM pi_group G
+				WHERE 1 = 1
+				  AND G.INSA_CODE = #{rangeId}
+				UNION ALL
+				SELECT 
+					CTE.LEVEL + 1 AS LEVEL,
+					PG.INSA_CODE,
+					PG.TEAM_NAME,
+					CONCAT(CTE.FULL_TEAM_NM, '>', PG.TEAM_NAME) AS FULL_TEAM_NM,
+					PG.UP_IDX
+				FROM pi_group PG, CTE
+				WHERE PG.UP_IDX = CTE.INSA_CODE
+			)
+			SELECT TU.TARGET_ID,
+				TU.AP_NO
+			FROM CTE, pi_user U, pi_target_user TU
+			WHERE CTE.INSA_CODE = U.INSA_CODE
+			  AND TU.USER_NO = U.USER_NO
+			  AND TU.AP_NO != 0) AS D) D
+		SET T.NET_ID = #{net_id}
+		WHERE 1 = 1
+		  AND T.TARGET_ID = D.TARGET_ID
+		  AND T.AP_NO = D.AP_NO
+		  AND T.TARGET_USE = 'Y'
+	</update>
+	
+	<update id="updateNetPCTarget" parameterType="hashmap">
+		UPDATE PI_TARGETS 
+		   SET NET_ID = #{NET_ID}
+		WHERE 1 = 1
+		  AND TARGET_ID = #{rangeId}
+	</update>
+	
+	<update id="updateNetOneDrive" parameterType="hashmap">
+		UPDATE PI_LOCATIONS  SET 
+			NET_ID = #{net_id}
+		WHERE 1 = 1
+			AND TARGET_ID = #{targetId}
+			AND LOCATION_ID IN 
+			<foreach collection="rangeIdArr" item="item" open="(" separator="," close=")">
+			 #{item}
+			</foreach>
+	</update>
+	
+	<update id="updateNetStatus" parameterType="hashmap">
+		UPDATE SKT_NET_SCHEDULE SET   
+			ENABLE = 'N'               
+		WHERE NET_ID = #{before_net_id}             
+			AND LOCATION_ID IS NOT NULL
+			
+	</update>
+	
+	<update id="updateNetOneDriveTarget" parameterType="hashmap">
+		UPDATE PI_LOCATIONS 
+		   SET NET_ID = #{NET_ID}
+		WHERE 1 = 1
+		  AND TARGET_ID = #{targetId}
+		  AND LOCATION_ID = #{rangeId}
+	</update>
+	
+	<select id="selectPCPolicy" parameterType="hashmap" resultType="hashmap">
+		<!-- SELECT NS.NET_ID,
+			NS.NET_TYPE AS TYPE,
+			NS.AP_NO,
+			SP.DATATYPE_ID,
+			(CASE WHEN NS.NET_TYPE = 0 THEN '네트워크' WHEN NS.NET_TYPE = 1 THEN '그룹' WHEN NS.NET_TYPE = 2 THEN 'PC' ELSE 'OneDrive' END) AS TYPE_NM,
+			NS.NET_TYPE_ID,
+			L.LOCATION_ID,
+			CASE WHEN SUBSTRING(T.PLATFORM, 1, 5) = 'Apple' THEN SUBSTRING_INDEX(T.NAME, '.', -1) 
+				  WHEN NS.NET_TYPE = 3 THEN CONCAT(NET_TYPE_NM, ' 외 ' ,COUNT(NS.NET_ID)-1,'건') 
+			ELSE NS.NET_TYPE_NM  END AS NET_TYPE_NM,
+			IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', 1), null) AS MAC_SERIAL,
+			T.PLATFORM,
+			A.AGENT_CONNECTED,
+			NS.POLICY_ID,
+			SP.POLICY_NAME,
+			NS.TRACE,
+			NS.DRM_STATUS,
+			NS.DAY,
+			(CASE WHEN NS.NET_TYPE != 3 THEN (SELECT COUNT(T.NAME) FROM pi_targets T WHERE NS.NET_ID =T.NET_ID AND T.AP_NO != 0)
+				  ELSE (SELECT COUNT(L.PATH) FROM pi_locations L WHERE NS.NET_ID =L.NET_ID ) END) AS PC_COUNT,
+			DATE_FORMAT(NS.REGDATE, '%Y-%m-%d %H:%i') AS REGDATE
+		FROM skt_net_schedule NS
+			LEFT OUTER JOIN pi_targets T ON NS.NET_TYPE_ID = T.TARGET_ID
+			LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND NS.LOCATION_ID = L.LOCATION_ID
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			, pi_scan_policy SP
+		WHERE NS.POLICY_ID = SP.IDX
+		  AND NS.ENABLE = 'Y'
+		  <if test="net_nm != null">
+		  AND SP.POLICY_NAME LIKE CONCAT('%',#{net_nm},'%')
+		  </if>
+		GROUP BY NS.NET_ID
+		ORDER BY NS.REGDATE DESC -->
+		
+		SELECT (CASE WHEN (D.TYPE = 3 AND D.PC_COUNT > 1 ) THEN CONCAT(NET_TYPE_NAME ,'외 ', PC_COUNT-1, '건' )ELSE NET_TYPE_NAME END ) AS  NET_TYPE_NM ,
+				 D.*
+		FROM (SELECT NS.NET_ID,
+					NS.NET_TYPE AS TYPE,
+					NS.AP_NO,
+					SP.DATATYPE_ID,
+					(CASE WHEN NS.NET_TYPE = 0 THEN '네트워크' WHEN NS.NET_TYPE = 1 THEN '그룹' WHEN NS.NET_TYPE = 2 THEN 'PC' ELSE 'OneDrive' END) AS TYPE_NM,
+					NS.NET_TYPE_ID,
+					L.LOCATION_ID,
+					NS.NET_TYPE_NM AS NET_TYPE_NAME,
+					T.PLATFORM,
+					A.AGENT_CONNECTED,
+					NS.POLICY_ID,
+					SP.POLICY_NAME,
+					NS.TRACE,
+					NS.DRM_STATUS,
+					NS.SCANDAY,
+					(CASE WHEN NS.NET_TYPE != 3 THEN (SELECT COUNT(T.NAME) FROM pi_targets T WHERE NS.NET_ID =T.NET_ID AND T.AP_NO != 0)
+						  ELSE (SELECT COUNT(L.PATH) FROM pi_locations L WHERE NS.NET_ID =L.NET_ID ) END) AS PC_COUNT,
+					DATE_FORMAT(NS.REGDATE, '%Y-%m-%d %H:%i') AS REGDATE
+				FROM skt_net_schedule NS
+					LEFT OUTER JOIN pi_targets T ON NS.NET_TYPE_ID = T.TARGET_ID
+					LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND NS.LOCATION_ID = L.LOCATION_ID AND NS.NET_ID =  L.NET_ID
+					LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+					, pi_scan_policy SP
+				WHERE NS.POLICY_ID = SP.IDX
+				  AND NS.ENABLE = 'Y'
+				 <if test="net_nm != null">
+				 	AND SP.POLICY_NAME LIKE CONCAT('%',#{net_nm},'%')
+				  </if>
+				GROUP BY NS.NET_ID
+				ORDER BY NS.REGDATE DESC) D
+    </select>
+    
+    <select id="selectPCPolicyTime" parameterType="hashmap" resultType="hashmap">
+		SELECT NS.NET_ID,
+			 NS.NET_TYPE AS TYPE,
+			 ST.SCHEDULE_TIME,
+			 (CASE WHEN NS.NET_TYPE = 0 THEN '네트워크' WHEN NS.NET_TYPE = 1 THEN '그룹' ELSE 'PC' END) AS TYPE_NM
+		FROM skt_net_schedule NS, skt_net_schedule_time ST
+		WHERE 1=1
+		AND NS.NET_ID = ST.NET_ID
+		<if test="net_id">
+		  AND NS.NET_ID = #{net_id}
+	  	</if>
+    </select>
+    
+    <update id="deletePCPolicy" parameterType="hashmap">
+    	UPDATE skt_net_schedule 
+    	   SET ENABLE = 'N'
+    	WHERE NET_ID = #{NET_ID}
+	</update>
+	
+	 <select id="selectPCSearchStatus" parameterType="hashmap" resultType="hashmap">
+	 	SELECT H.AP_NO,
+			H.TARGET_ID,
+			H.LOCATION_ID,
+			H.NAME,
+			H.NET_ID,
+			H.SCHEDULE_ID,
+			(SELECT S.SCHEDULE_STATUS FROM pi_schedules S WHERE H.SCHEDULE_ID = S.SCHEDULE_ID AND H.AP_NO = S.AP_NO) AS SCHEDULE_STATUS,
+			H.SCAN_TIME
+		FROM
+		(SELECT T.AP_NO,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			T.NAME AS FULL_NAME,
+			SUBSTRING_INDEX(T.NAME, '.', 1) AS HOST_NAME,
+			(CASE WHEN L.PROTOCOL = 'onedrive' THEN L.PATH ELSE SUBSTRING_INDEX(SUBSTRING_INDEX(T.NAME, '.', -2), '.', 1) END) AS NAME,
+			SUBSTRING_INDEX(T.NAME, '.', -1) AS SERIAL,
+			T.NET_ID,
+			MAX(CAST(S.SCHEDULE_ID AS INT)) AS SCHEDULE_ID,
+			S.SCHEDULE_STATUS,
+			FROM_UNIXTIME(S.SCHEDULE_NEXT_SCAN, '%Y-%m-%d %H:%i:%s') AS SCAN_TIME
+		FROM pi_ap_server AP, pi_locations L, pi_targets T
+			LEFT OUTER JOIN pi_schedules S ON T.TARGET_ID = S.SCHEDULE_TARGET_ID AND T.AP_NO = S.AP_NO
+		WHERE 1=1
+		<if test="net_id != '' and net_id != null and type != 3 ">
+		  AND T.NET_ID = #{net_id}
+	    </if>
+	    <if test="type == 3">
+	      AND L.NET_ID = #{net_id}
+		  <!-- AND L.LOCATION_ID = #{location_id} -->
+	    </if>
+		  AND T.AP_NO = AP.AP_NO
+		  AND T.TARGET_ID = L.TARGET_ID
+		  AND AP.IS_SERVER != 1
+		GROUP BY T.AP_NO, 
+		 <choose>
+		 	<when test="type == 3">
+		 		L.LOCATION_ID
+		 	</when>
+		 	<otherwise>
+		 		T.TARGET_ID
+		 	</otherwise>
+		 </choose>
+		) H
+    </select>
+	
+	<select id="selectUpGroupPolicy" parameterType="hashmap" resultType="hashmap">
+		WITH RECURSIVE CTE AS 
+			(SELECT
+					0 AS LEVEL, 
+					G.INSA_CODE,
+					G.TEAM_NAME,
+					G.TEAM_NAME AS FULL_TEAM_NM,
+					G.UP_IDX
+				FROM pi_group G
+				WHERE 1 = 1
+				  AND G.INSA_CODE = #{group_id}
+				UNION ALL
+				SELECT 
+					CTE.LEVEL + 1 AS LEVEL,
+					PG.INSA_CODE,
+					PG.TEAM_NAME,
+					CONCAT(CTE.FULL_TEAM_NM, '>', PG.TEAM_NAME) AS FULL_TEAM_NM,
+					PG.UP_IDX
+				FROM pi_group PG, CTE
+				WHERE PG.INSA_CODE = CTE.UP_IDX
+			)
+			SELECT SNS.NET_ID FROM CTE, skt_net_schedule SNS
+			WHERE CTE.INSA_CODE = SNS.NET_TYPE_ID
+			  AND SNS.NET_TYPE = 1
+			  AND SNS.ENABLE = 'Y'
+			  AND CTE.INSA_CODE != #{group_id}
+			ORDER BY CTE.LEVEL
+			LIMIT 1
+	</select>
+	
+	<select id="selectUpPCPolicy" parameterType="hashmap" resultType="hashmap">
+		WITH RECURSIVE CTE AS 
+			(SELECT
+					0 AS LEVEL, 
+					G.INSA_CODE,
+					G.TEAM_NAME,
+					G.TEAM_NAME AS FULL_TEAM_NM,
+					G.UP_IDX
+				FROM pi_group G
+				WHERE 1 = 1
+				  AND G.INSA_CODE = (SELECT U.INSA_CODE FROM PI_TARGET_USER TU, PI_USER U WHERE TU.TARGET_ID = #{group_id} AND TU.AP_NO = #{ap_no} AND TU.USER_NO = U.USER_NO)
+				UNION ALL
+				SELECT 
+					CTE.LEVEL + 1 AS LEVEL,
+					PG.INSA_CODE,
+					PG.TEAM_NAME,
+					CONCAT(CTE.FULL_TEAM_NM, '>', PG.TEAM_NAME) AS FULL_TEAM_NM,
+					PG.UP_IDX
+				FROM pi_group PG, CTE
+				WHERE PG.INSA_CODE = CTE.UP_IDX
+			)
+			SELECT SNS.NET_ID FROM CTE, skt_net_schedule SNS
+			WHERE CTE.INSA_CODE = SNS.NET_TYPE_ID
+			  AND SNS.NET_TYPE = 1
+			  AND SNS.ENABLE = 'Y'
+			ORDER BY CTE.LEVEL
+			LIMIT 1
+	</select>
+	
+	
+	<!-- PC 정책 삭제시(그룹), 상위 그룹이 없을경우, 망정책으로 변경 -->
+	<update id="updateUpNetwork" parameterType="hashmap">
+		UPDATE PI_TARGETS T, SKT_NET_SCHEDULE SNS
+		   SET T.NET_ID = SNS.NET_ID
+		WHERE T.NET_ID = #{NET_ID}
+		  AND CONCAT('TYPE',T.NET_TYPE) = SNS.NET_TYPE_ID
+		  AND SNS.NET_TYPE = 0
+		  AND SNS.ENABLE = 'Y'
+	</update>
+	
+	<select id="selectUserSearchCount" parameterType="hashmap" resultType="hashmap">
+		SELECT LPAD(COUNT(*)+1, '2', '0') AS COUNT
+		FROM pi_schedule_group G
+		WHERE DATE_FORMAT(G.REGDATE, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')
+		AND G.USER_NO = #{user_no}
+	</select>
+	
+	<!-- 네트워크 -->
+	<select id="netList" parameterType="hashmap" resultType="hashmap">
+		SELECT SNI.TYPE, SNI.TYPE_NAME, IFNULL(SNI.TYPE_CLASS, '-') AS TYPE_CLASS,
+			   SNI.IP, SNI.MASK, SNI.MASK_IP, DATE_FORMAT(SNI.REGDATE,'%Y-%m-%d %H:%i:%s') AS REGDATE
+		FROM SKT_NET_IP SNI
+		WHERE 1=1
+		<if test="net_type != null and net_type != 0 and net_type != ''">
+			AND SNI.TYPE = #{net_type}
+		</if>
+		<if test="net_ip != null and net_ip != ''">
+			AND SNI.IP LIKE CONCAT('%', #{net_ip}, '%')
+		</if>
+		<if test="net_type_class != null and net_type_class != ''">
+			AND SNI.TYPE_CLASS LIKE CONCAT('%', #{net_type_class}, '%')
+		</if>
+		<if test='fromDate != "" and fromDate != null'>
+			AND SNI.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		</if>
+		ORDER BY TYPE
+	</select>
+	
+	<insert id="insertNetIp" parameterType="hashmap">
+		INSERT INTO SKT_NET_IP
+			(TYPE, TYPE_NAME, TYPE_CLASS, IP, MASK, MASK_IP, REGDATE)
+		VALUES
+			(#{type}, #{type_name}, #{type_class}, #{ip}, #{mask}, #{mask_ip}, NOW())
+	</insert>
+	
+	<update id="updateNetIp" parameterType="hashmap">
+		UPDATE SKT_NET_IP SET
+			TYPE = ${type},
+			TYPE_NAME = #{type_name},
+			TYPE_CLASS = #{type_class},
+			IP = #{ip},
+			MASK = #{mask},
+			MASK_IP = #{mask_ip}
+		WHERE 1=1
+			AND IP = #{reachNet_Ip}
+			AND MASK = #{reachNetMask}
+	</update>
+	
+	<delete id="deleteNetIp" parameterType="hashmap">
+		DELETE FROM skt_net_ip
+		WHERE IP = #{ip}
+			AND MASK = #{mask}
+	</delete>
+	
+	<update id="updateScheduleStatus" parameterType="hashmap">
+		UPDATE pi_schedules SET
+			SCHEDULE_STATUS = #{changedTask}
+		WHERE SCHEDULE_ID = #{id}
+			AND AP_NO = #{ap_no}
+	</update>
+	
+	<update id="deleteNetId" parameterType="hashmap">
+		UPDATE PI_TARGETS T SET
+			T.NET_ID  = NULL	
+		WHERE 1=1
+			<if test="beforeType == 0">
+				AND T.NET_TYPE = #{beforeRangeId}
+			</if>
+			<if test="beforeType == 2">
+				AND T.TARGET_ID = #{beforeRangeId}
+			</if>
+	</update>
+	
+	<update id="deleteNetGroup" parameterType="hashmap">
+		UPDATE pi_targets T, 
+			(SELECT * FROM 
+			(WITH RECURSIVE CTE AS 
+			(SELECT
+					0 AS LEVEL, 
+					G.INSA_CODE,
+					G.TEAM_NAME,
+					G.TEAM_NAME AS FULL_TEAM_NM,
+					G.UP_IDX
+				FROM pi_group G
+				WHERE 1 = 1
+				  AND G.INSA_CODE = #{beforeRangeId}
+				UNION ALL
+				SELECT 
+					CTE.LEVEL + 1 AS LEVEL,
+					PG.INSA_CODE,
+					PG.TEAM_NAME,
+					CONCAT(CTE.FULL_TEAM_NM, '>', PG.TEAM_NAME) AS FULL_TEAM_NM,
+					PG.UP_IDX
+				FROM pi_group PG, CTE
+				WHERE PG.UP_IDX = CTE.INSA_CODE
+			)
+			SELECT TU.TARGET_ID,
+				TU.AP_NO
+			FROM CTE, pi_user U, pi_target_user TU
+			WHERE CTE.INSA_CODE = U.INSA_CODE
+			  AND TU.USER_NO = U.USER_NO
+			  AND TU.AP_NO != 0) AS D) D
+		SET T.NET_ID = NULL
+		WHERE 1 = 1
+		  AND T.TARGET_ID = D.TARGET_ID
+		  AND T.AP_NO = D.AP_NO
+	</update>
+	
+	<update id="deleteOneDriveNetId" parameterType="hashmap">
+		UPDATE PI_LOCATIONS SET
+			NET_ID = NULL
+		WHERE 1=1
+			AND NET_ID = #{net_id}
+	</update>
+	
+	<update id="deleteOneDriveNetId2" parameterType="hashmap">
+		UPDATE SKT_NET_SCHEDULE SET
+			LOCATION_ID  = NULL
+		WHERE NET_ID =#{net_id}
+	</update>
+	
+	<!-- 데이터 여부 확인 -->
+	<select id="selectNetMask" parameterType="hashmap" resultType="int">
+	 	SELECT IFNULL(COUNT(NI.IP), 0)
+		FROM skt_net_ip NI
+		WHERE NI.MASK = #{mask}
+			AND NI.IP IN 
+		<foreach collection="IPList" item="item" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	 </select>
+	 
+	<!-- 데이터 여부 확인 -->
+	<select id="selectNetIpCheck" parameterType="hashmap" resultType="int">
+	 	SELECT IFNULL(COUNT(NI.IP), 0)
+		FROM skt_net_ip NI
+		WHERE NI.MASK = #{mask}
+			AND NI.IP = #{ip}
+	 </select>
+	 
+	 <!-- 네트워크 관리 일괄 insert -->
+	 <insert id="insertNetList" parameterType="hashmap">
+	 	INSERT INTO SKT_NET_IP (TYPE, TYPE_NAME, TYPE_CLASS, IP, MASK, MASK_IP, REGDATE)
+		VALUES
+		( #{type}, #{type_name}, #{type_class}, #{ip}, #{mask}, #{mask_ip}, NOW())
+		ON DUPLICATE KEY UPDATE
+			IP = #{ip}
+	 </insert>
+	 
+	 <select id="selectTargetIdAll" parameterType="hashmap" resultType="hashmap">
+	 	SELECT AP.AP_NO, AP.IP
+		FROM PI_AP_SERVER AP
+		WHERE AP.NETWORK = #{ap_nm}
+	 </select>
+	 
+	 <select id="selectTargetId" parameterType="hashmap" resultType="hashmap">
+	 	SELECT T.TARGET_ID, AP.AP_NO, AP.IP
+		FROM PI_AP_SERVER AP
+			LEFT OUTER JOIN PI_TARGETS T ON AP.AP_NO = T.AP_NO AND T.TARGET_USE ='Y' AND T.NAME = #{target_name}
+		WHERE AP.NETWORK = #{ap_nm}
+	 </select>
+	
+	<select id="selectDataTypeId" parameterType="hashmap" resultType="hashmap">
+		SELECT DATATYPE_ID, STD_ID, AP_NO, DATATYPE_LABEL
+		FROM PI_DATATYPES_USER DU
+		WHERE DU.STD_ID = #{std_id}
+			AND DU.AP_NO = #{ap_no}
+	 </select>
+	  
+	  <insert id="insertPauseSchedule" parameterType="hashmap">
+		INSERT INTO pi_schedule_management (
+			recon_id, 
+			schedule_id, 
+			active_status, 
+			start_time,
+		 	pause_time, 
+		 	week_day,
+		 	user_no,
+		 	regdate,
+		 	ap_no
+		)
+		VALUES (
+			#{schedule_id}, 
+			#{schedule_group_id}, 
+			#{active_status},
+			#{start_time},
+			#{pause_time},
+			#{week_day},
+			#{user_no},
+			now(),
+			#{ap_no}
+		)
+	</insert>
+	
+	<select id="getStopSch" parameterType="String" resultType="hashmap">
+		SELECT IDX, SCHEDULE_ID, ACTIVE_STATUS, GROUP_CONCAT(DISTINCT WEEK_DAY) AS WEEK_DAY, START_TIME, PAUSE_TIME
+		FROM PI_SCHEDULE_MANAGEMENT SM
+		WHERE SM.SCHEDULE_ID = #{sch_id}
+			AND SM.ACTIVE_STATUS != '01'
+		GROUP BY START_TIME, PAUSE_TIME
+		ORDER BY ACTIVE_STATUS DESC
+	 </select>
+	
+	<select id="selectReconId" parameterType="String" resultType="hashmap">
+		SELECT AP_NO, SCHEDULE_GROUP_ID, RECON_SCHEDULE_ID
+		FROM PI_SCHEDULE_TARGETS ST
+		WHERE ST.SCHEDULE_GROUP_ID = #{sch_id}
+	</select>
+	
+	<select id="selectPausTimeData" parameterType="String" resultType="hashmap">
+		SELECT IDX, SCHEDULE_ID, ACTIVE_STATUS, GROUP_CONCAT(DISTINCT WEEK_DAY) AS WEEK_DAY, START_TIME, PAUSE_TIME, USER_NO
+		FROM PI_SCHEDULE_MANAGEMENT SM
+		WHERE SM.SCHEDULE_ID = #{sch_id}
+			AND SM.ACTIVE_STATUS = '00'
+		GROUP BY START_TIME, PAUSE_TIME
+		ORDER BY ACTIVE_STATUS DESC
+	</select>
+	 
+	<insert id="insertPausTimeData" parameterType="hashmap">
+         <selectKey resultType="int" keyProperty="AP_NO" order="BEFORE" >
+			SELECT ap_no FROM pi_schedule_targets WHERE schedule_group_id = #{sch_id} AND recon_schedule_id = #{recon_id}
+		</selectKey>
+		INSERT INTO pi_schedule_management 
+			(recon_id, schedule_id, active_status, start_time, pause_time, week_day, user_no, regdate, ap_no)
+		VALUES 
+		 <foreach collection="stopDay" item="day" separator=",">
+         	(#{recon_id}, #{sch_id}, #{active_status}, #{start_time},	#{pause_time}, #{day}, #{user_no}, now(), #{AP_NO})
+         </foreach>
+	</insert>
+	
+	<update id="updatePausTimeData" parameterType="hashmap" >
+		UPDATE pi_schedule_management SET
+			active_status = '01',
+			user_no = #{user_no},
+			regdate = now()
+		WHERE active_status != '02'
+			AND schedule_id = #{sch_id}
+	</update>
+	
+	<select id="selectProxy" resultType="hashmap">
+	 	SELECT A.AGENT_ID AS ID, A.AGENT_NAME AS NAME
+		FROM pi_agents A
+		WHERE 1=1
+		  AND A.AGENT_USE = 'Y'
+		  AND A.AGENT_CONNECTED = 1
+		  AND A.AGENT_PROXY = 1
+		  AND A.AP_NO = 0
+	 </select>
+	 
+	 <select id="selectDefaultGroup" resultType="String">
+		SELECT GROUP_ID
+		FROM PI_GROUPALL
+		WHERE NAME = 'DEFAULT GROUP'
+		AND AP_NO = 0
+		GROUP BY GROUP_ID
+	</select>
+	
+	<insert id="addTarget" parameterType="hashmap">
+		INSERT INTO PI_TARGETS (GROUP_ID, TARGET_ID, AP_NO, NAME, TARGET_USE, SEARCH_TIME, SEARCH_STATUS, PLATFORM, REGDATE, ERROR, NOTICE, MATCHCNT)
+		VALUES (#{group_id}, #{target_id}, 0, #{name}, 'Y', 0, 'none', #{platform}, NOW(), 0, 0, 0)
+	</insert>
+	
+	<insert id="addLocation" parameterType="hashmap">
+		INSERT INTO PI_LOCATIONS (GROUP_ID, TARGET_ID, LOCATION_ID, AP_NO, PROXY_ID, CREDENTIAL_ID, PATH, PROTOCOL, DESCRIPTION, REGDATE)
+		VALUES (#{group_id}, #{target_id}, #{location_id}, 0, #{proxy_id}, #{credential_id}, #{path} , #{protocol}, #{description}, NOW())
+	</insert>
+	
+	<insert id="deleteTargets" parameterType="hashmap">
+		DELETE FROM PI_TARGETS
+		WHERE AP_NO = 0
+		  AND TARGET_ID = #{target_id}
+	</insert>
+	
+	<select id="selectDBStatus" parameterType="hashmap" resultType="hashmap">
+		SELECT L.PROTOCOL, L.CREDENTIAL_ID, L.PROXY_ID
+		FROM pi_locations L
+		 	WHERE L.TARGET_ID = #{target_id}
+		GROUP BY L.TARGET_ID
+	</select>
+	
+	<select id="monthGrpahData" parameterType="hashmap" resultType="hashmap">
+		<!-- SELECT ROUND ((CASE WHEN PD.PREVIOUS_TOTAL = 0  and PD.TOTAL = 0  THEN 0
+							WHEN PD.PREVIOUS_TOTAL = 0  THEN 1
+						ELSE (PD.TOTAL - PD.PREVIOUS_TOTAL) / PD.PREVIOUS_TOTAL END ) * 100, 2) AS TOTAL_RATE, 
+				ROUND ((CASE WHEN PD.PREVIOUS_PATH_CNT = 0  and PD.PATH_CNT = 0 THEN 0
+							 WHEN PD.PREVIOUS_PATH_CNT = 0  THEN 1
+						ELSE (PD.PATH_CNT - PD.PREVIOUS_PATH_CNT) / PD.PREVIOUS_PATH_CNT END ) * 100, 2) AS PATH_RATE, 
+				PD.PATH_CNT, PD.TOTAL, PD.PREVIOUS_PATH_CNT, PD.PREVIOUS_TOTAL, DATES.DATES, DATE_SUB(DATES.DATES, INTERVAL 1 MONTH) AS PREVIOUS_ID
+		FROM (SELECT DISTINCT
+				<if test="fromDate == null or fromDate == '' ">
+					DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -1 YEAR)), INTERVAL seq-1 DAY), '%Y-%m-01') AS DATES
+				</if>
+				<if test="fromDate != null and fromDate != '' ">
+					DATE_FORMAT(DATE_SUB(CONCAT(#{toDate}, '-01'), INTERVAL seq+1 DAY), '%Y-%m-01') AS DATES
+				</if>
+				FROM seq_1_to_365) DATES
+				LEFT OUTER JOIN  
+				(SELECT D.*, IFNULL(SUM(PT.PATH_CNT),0) AS PATH_CNT , IFNULL(SUM(PT.TOTAL),0) AS TOTAL ,
+					IFNULL(SUM(PST.PATH_CNT),0) AS PREVIOUS_PATH_CNT , IFNULL(SUM(PST.TOTAL),0) AS PREVIOUS_TOTAL 
+				FROM (SELECT SL.SCH_ID,T.NAME, SL.TARGET_ID, SL.AP_NO, SL.STATUS,
+							DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y-%m-%d %H:%i:%s') AS SCAN_TIME,
+						 	DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y-%m-01') AS ID, 
+							 DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y년 %m월') AS REGDATE,
+							 DATE(FROM_UNIXTIME(UPDATED)) AS UPDATED,
+							  DATE_SUB(DATE(FROM_UNIXTIME(UPDATED)), INTERVAL 1 MONTH) AS PREVIOUS_UPDATED
+						FROM (SELECT DSL.*
+								FROM (SELECT TARGET_ID , AP_NO, MAX(UPDATED) AS UPDATED 
+										FROM pi_scheduled_location SL GROUP BY TARGET_ID, AP_NO, FROM_UNIXTIME(UPDATED, '%Y-%m')) DS, pi_scheduled_location DSL
+										WHERE DS.TARGET_ID = DSL.TARGET_ID
+										AND DS.AP_NO = DSL.AP_NO
+										AND DS.UPDATED = DSL.UPDATED) SL
+							JOIN pi_targets T ON SL.target_id = T.TARGET_ID AND SL.AP_NO = T.AP_NO AND T.TARGET_USE = 'Y'
+							JOIN pi_ap_server AP ON SL.AP_NO = AP.ap_no AND AP.IS_SERVER = 1
+							JOIN pi_schedules SG ON SG.SCHEDULE_ID = SL.SCH_ID AND SG.AP_NO = SL.AP_NO
+						GROUP BY T.TARGET_ID, T.AP_NO, DATE(FROM_UNIXTIME(UPDATED))
+						 ORDER BY SCAN_TIME) D
+					LEFT OUTER JOIN (SELECT TT.* FROM (SELECT TARGET_ID, AP_NO, MAX(REGDATE) AS REGDATE 
+													FROM PI_TOTAL GROUP BY DATE_FORMAT(REGDATE, '%Y-%m'), TARGET_ID, AP_NO) TD, PI_TOTAL TT
+													WHERE TT.TARGET_ID = TD.TARGET_ID
+														AND TT.AP_NO =  TD.AP_NO
+														AND TT.REGDATE = TD.REGDATE) PT ON D.TARGET_ID = PT.TARGET_ID AND D.AP_NO = PT.AP_NO  
+														AND DATE_FORMAT(D.UPDATED, '%Y-%m') = 
+															 <if test="fromDate == null or fromDate == '' ">
+																	 DATE_FORMAT((DATE_SUB(PT.REGDATE, INTERVAL 1 DAY)), '%Y-%m') 
+															 </if>
+														 <if test="fromDate != null and fromDate != '' ">
+															 #{toDate}
+														 </if>
+															
+					LEFT OUTER JOIN (SELECT TT.*  FROM (SELECT TARGET_ID, AP_NO, MAX(REGDATE) AS REGDATE 
+													FROM PI_TOTAL GROUP BY DATE_FORMAT(REGDATE, '%Y-%m'), TARGET_ID, AP_NO) TD, PI_TOTAL TT
+													WHERE TT.TARGET_ID = TD.TARGET_ID
+														AND TT.AP_NO =  TD.AP_NO
+														AND TT.REGDATE = TD.REGDATE) PST ON PT.TARGET_ID = PST.TARGET_ID AND PT.AP_NO = PST.AP_NO  
+															AND DATE_FORMAT(PST.REGDATE, '%Y-%m')  = 	
+															 <if test="fromDate == null or fromDate == '' ">
+																	 DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 MONTH), '%Y-%m')
+															 </if>
+														 <if test="fromDate != null and fromDate != '' ">
+															 #{fromDate}
+														 </if>
+				GROUP BY D.ID) PD ON PD.ID = DATES.DATES
+			WHERE  1=1
+				<if test="fromDate != null and fromDate != '' ">
+					AND DATES.DATES BETWEEN  CONCAT(#{fromDate}, '-01') AND CONCAT(#{toDate}, '-01')
+				</if>
+				ORDER BY DATES.DATES -->
+	SELECT ROUND((CASE WHEN (IFNULL(PRE_PATH_CNT,0) = 0 AND IFNULL(PATH_CNT,0) = 0) THEN 0
+		 		WHEN (IFNULL(PRE_PATH_CNT,0)= 0 ) THEN 1
+		 		ELSE   (PATH_CNT - PRE_PATH_CNT) / PRE_PATH_CNT END )*100,2) AS PATH_RATE,
+		 ROUND((CASE WHEN (IFNULL(PRE_TOTAL,0) = 0 AND IFNULL(TOTAL,0) = 0) THEN 0
+		 		WHEN (IFNULL(PRE_TOTAL,0)= 0 ) THEN 1
+		 		ELSE   (TOTAL - PRE_TOTAL) / PRE_TOTAL END )*100,2) AS TOTAL_RATE,
+		 		IFNULL(PATH_CNT,0) AS PATH_CNT,
+		 		IFNULL(TOTAL,0) AS TOTAL,
+			DATES.DATES
+		FROM (SELECT DISTINCT
+				<if test="fromDate == null or fromDate == '' ">
+					DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -1 YEAR)), INTERVAL seq-1 DAY), '%Y-%m-01') AS DATES
+					FROM seq_1_to_365
+				</if>
+				<if test="fromDate != null and fromDate != '' ">
+					DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -10 YEAR)), INTERVAL seq-1 MONTH), '%Y-%m-01') AS DATES
+					FROM seq_1_to_365
+					WHERE 
+							DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -10 YEAR)), INTERVAL seq-1 MONTH), '%Y-%m-01') <![CDATA[<=]]> DATE_FORMAT(NOW(), '%Y-%m-01')
+					<!-- FROM seq_1_to_3650 -->
+					<!-- WHERE #DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -1 YEAR)), INTERVAL seq-1 DAY), '%Y-%m') BETWEEN #{fromDate} , #{toDate} -->
+							AND DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -10 YEAR)), INTERVAL seq-1 MONTH), '%Y-%m') >= #{fromDate}
+							AND DATE_FORMAT(DATE_ADD(LAST_DAY(DATE_ADD(NOW(), INTERVAL -10 YEAR)), INTERVAL seq-1 MONTH), '%Y-%m') <![CDATA[<=]]>  #{toDate}
+				</if> 
+				
+				) DATES
+			LEFT OUTER JOIN (SELECT OG.*
+									, IFNULL(PG.PATH_CNT, 0) AS PRE_PATH_CNT
+									, IFNULL(PG.TOTAL,0) AS PRE_TOTAL
+									
+									 FROM 
+							(SELECT SUM(PATH_CNT) AS PATH_CNT,SUM(TOTAL) AS TOTAL,YM  AS CUR_YM, CONCAT(YM,'-01') AS SEARCH_DATE FROM 
+								(SELECT PT.TARGET_ID,PT.ap_no,SL.SEARCH_DATE,PT.PATH_CNT,PT.total,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') AS YM ,RANK() OVER (PARTITION BY SL.TARGET_ID, SL.AP_NO,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') ORDER BY SL.SEARCH_DATE DESC) AS RANK
+								FROM (SELECT *,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d') AS SEARCH_DATE FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d')) SL
+									JOIN pi_total PT ON SL.target_id = PT.TARGET_ID AND SL.AP_NO = PT.AP_NO
+									 AND DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 DAY),'%Y-%m-%d') = SL.SEARCH_DATE) PD
+									 #WHERE RANK = 1	
+								GROUP BY PD.YM) OG
+								LEFT OUTER JOIN (SELECT SUM(PATH_CNT) AS PATH_CNT,SUM(TOTAL) AS TOTAL,YM AS CUR_YM, CONCAT(YM,'-01') AS SEARCH_DATE FROM 
+													(SELECT PT.TARGET_ID,PT.ap_no,SL.SEARCH_DATE,PT.PATH_CNT,PT.total,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') AS YM  ,RANK() OVER (PARTITION BY SL.TARGET_ID, SL.AP_NO,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') ORDER BY SL.SEARCH_DATE DESC) AS RANK
+													FROM (SELECT *,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d') AS SEARCH_DATE FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d')) SL
+														JOIN pi_total PT ON SL.target_id = PT.TARGET_ID AND SL.AP_NO = PT.AP_NO
+														 AND DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 DAY),'%Y-%m-%d') = SL.SEARCH_DATE) PD
+													#WHERE RANK = 1	
+													GROUP BY PD.YM
+													) PG ON DATE_FORMAT(DATE_SUB(OG.SEARCH_DATE, INTERVAL 1 MONTH),'%Y-%m') = PG.CUR_YM) D
+							ON D.SEARCH_DATE = DATES.DATES
+
+	</select>
+	
+	<select id="serverGrpahData" parameterType="hashmap" resultType="hashmap">
+		<!-- SELECT ROUND ((CASE WHEN PD.PREVIOUS_TOTAL = 0  and PD.TOTAL = 0  THEN 0
+							WHEN PD.PREVIOUS_TOTAL = 0  THEN 1
+						ELSE (PD.TOTAL - PD.PREVIOUS_TOTAL) / PD.PREVIOUS_TOTAL END ) * 100, 2) AS TOTAL_RATE, 
+				ROUND ((CASE WHEN PD.PREVIOUS_PATH_CNT = 0  and PD.PATH_CNT = 0 THEN 0
+							 WHEN PD.PREVIOUS_PATH_CNT = 0  THEN 1
+						ELSE (PD.PATH_CNT - PD.PREVIOUS_PATH_CNT) / PD.PREVIOUS_PATH_CNT END ) * 100, 2) AS PATH_RATE, 
+				PD.PATH_CNT, PD.TOTAL, PD.PREVIOUS_PATH_CNT, PD.PREVIOUS_TOTAL, PD.ID,
+				<if test="fromDate == null or fromDate == '' ">
+					DATE_SUB(PD.ID, INTERVAL 1 MONTH) AS PREVIOUS_ID,
+				</if>
+				<if test="fromDate != null and fromDate != '' ">
+					#{fromDate} AS PREVIOUS_ID,
+				</if>
+				PD.TARGET_ID, PD.AP_NO, PD.NAME
+		FROM (SELECT D.*, IFNULL((PT.PATH_CNT),0) AS PATH_CNT , IFNULL((PT.TOTAL),0) AS TOTAL ,
+					IFNULL((PST.PATH_CNT),0) AS PREVIOUS_PATH_CNT , IFNULL((PST.TOTAL),0) AS PREVIOUS_TOTAL 
+				FROM (SELECT SL.SCH_ID,T.NAME, T.TARGET_ID, T.AP_NO, SL.STATUS,
+							DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y-%m-%d %H:%i:%s') AS SCAN_TIME,
+						 	DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y-%m-01') AS ID, 
+							 DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y년 %m월') AS REGDATE,
+							 DATE(FROM_UNIXTIME(UPDATED)) AS UPDATED,
+							 <if test="fromDate == null or fromDate == '' ">
+							  DATE_SUB(DATE(FROM_UNIXTIME(UPDATED)), INTERVAL 1 MONTH) AS PREVIOUS_UPDATED
+							 </if>
+							 <if test="fromDate != null and fromDate != '' ">
+								 #{fromDate} AS PREVIOUS_UPDATED
+							 </if>
+						FROM pi_targets T
+							LEFT OUTER JOIN (SELECT DSL.*
+								FROM (SELECT TARGET_ID , AP_NO, MAX(UPDATED) AS UPDATED 
+										FROM pi_scheduled_location SL GROUP BY TARGET_ID, AP_NO) DS, pi_scheduled_location DSL
+										WHERE DS.TARGET_ID = DSL.TARGET_ID
+										AND DS.AP_NO = DSL.AP_NO
+										AND DS.UPDATED = DSL.UPDATED
+										AND DSL.STATUS IN ('completed', 'stopped', 'interrupted')) SL
+											 ON SL.target_id = T.TARGET_ID AND SL.AP_NO = T.AP_NO AND T.TARGET_USE = 'Y'
+							LEFT OUTER JOIN pi_ap_server AP ON SL.AP_NO = AP.ap_no AND AP.IS_SERVER = 1
+							LEFT OUTER JOIN pi_schedules SG ON SG.SCHEDULE_ID = SL.SCH_ID AND SG.AP_NO = SL.AP_NO
+							WHERE 1=1
+							<if test="target_id != null">
+								AND T.TARGET_ID IN (
+								<foreach collection="target_id" item="item" separator=",">
+									#{item}
+								</foreach>
+								)
+							</if>
+						GROUP BY T.TARGET_ID, T.AP_NO, DATE(FROM_UNIXTIME(UPDATED))
+						 ORDER BY SCAN_TIME) D
+					LEFT OUTER JOIN (SELECT TT.* FROM (SELECT TARGET_ID, AP_NO, MAX(REGDATE) AS REGDATE 
+													FROM PI_TOTAL GROUP BY DATE_FORMAT(REGDATE, '%Y-%m'), TARGET_ID, AP_NO) TD, PI_TOTAL TT
+													WHERE TT.TARGET_ID = TD.TARGET_ID
+														AND TT.AP_NO =  TD.AP_NO
+														AND TT.REGDATE = TD.REGDATE) PT ON D.TARGET_ID = PT.TARGET_ID AND D.AP_NO = PT.AP_NO  
+														AND DATE_FORMAT(D.UPDATED, '%Y-%m') =
+															 <if test="fromDate == null or fromDate == '' ">
+																	 DATE_FORMAT((DATE_SUB(PT.REGDATE, INTERVAL 1 DAY)), '%Y-%m') 
+															 </if>
+														 <if test="fromDate != null and fromDate != '' ">
+															 #{toDate}
+														 </if>
+					LEFT OUTER JOIN (SELECT TT.*  FROM (SELECT TARGET_ID, AP_NO, MAX(REGDATE) AS REGDATE 
+													FROM PI_TOTAL GROUP BY DATE_FORMAT(REGDATE, '%Y-%m'), TARGET_ID, AP_NO) TD, PI_TOTAL TT
+													WHERE TT.TARGET_ID = TD.TARGET_ID
+														AND TT.AP_NO =  TD.AP_NO
+														AND TT.REGDATE = TD.REGDATE) PST ON PT.TARGET_ID = PST.TARGET_ID AND PT.AP_NO = PST.AP_NO  
+															AND DATE_FORMAT(PST.REGDATE, '%Y-%m')  = 	
+															 <if test="fromDate == null or fromDate == '' ">
+																	 DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 MONTH), '%Y-%m')
+															 </if>
+														 <if test="fromDate != null and fromDate != '' ">
+															 #{fromDate}
+														 </if>
+				GROUP BY D.ID, D.target_id, D.ap_no) PD  -->
+				
+				SELECT ROUND((CASE WHEN (IFNULL(PRE_PATH_CNT,0) = 0 AND IFNULL(PATH_CNT,0) = 0) THEN 0
+						 		WHEN (IFNULL(PRE_PATH_CNT,0)= 0 ) THEN 1
+						 		ELSE   (PATH_CNT - PRE_PATH_CNT) / PRE_PATH_CNT END )*100,2) AS PATH_RATE,
+						 ROUND((CASE WHEN (IFNULL(PRE_TOTAL,0) = 0 AND IFNULL(TOTAL,0) = 0) THEN 0
+						 		WHEN (IFNULL(PRE_TOTAL,0)= 0 ) THEN 1
+						 		ELSE   (TOTAL - PRE_TOTAL) / PRE_TOTAL END )*100,2) AS TOTAL_RATE,
+						IFNULL(PATH_CNT,0) AS PATH_CNT,
+						IFNULL(TOTAL,0) AS TOTAL,
+						T.TARGET_ID,
+						T.AP_NO,
+						T.NAME AS NAME
+						FROM PI_TARGETS T
+						LEFT OUTER JOIN 
+						
+						(SELECT OG.*,IFNULL(PG.PATH_CNT, 0) AS PRE_PATH_CNT
+									 , IFNULL(PG.TOTAL,0) AS PRE_TOTAL
+									 , RANK() OVER (PARTITION BY OG.TARGET_ID, OG.AP_NO ORDER BY OG.CUR_YM DESC) AS RANK
+									 FROM 
+						
+						(SELECT T.NAME,PT.TARGET_ID,PT.ap_no,SL.SEARCH_DATE,SUM(PT.PATH_CNT) AS PATH_CNT,SUM(PT.total) AS TOTAL,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') AS CUR_YM 
+													 FROM (SELECT *,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d') AS SEARCH_DATE FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d')) SL
+														JOIN pi_total PT ON SL.target_id = PT.TARGET_ID AND SL.AP_NO = PT.AP_NO
+															AND DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 DAY),'%Y-%m-%d') = SL.SEARCH_DATE
+												JOIN PI_TARGETS T ON PT.TARGET_ID = T.TARGET_ID AND PT.AP_NO = T.AP_NO
+															<if test="fromDate != null and fromDate != '' ">
+																WHERE DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') >= #{fromDate}
+																		AND DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') <![CDATA[<=]]>  #{toDate}
+															</if>
+													
+						
+												GROUP BY T.TARGET_ID, T.AP_NO,CUR_YM) OG
+						LEFT OUTER JOIN (SELECT T.NAME,PT.TARGET_ID,PT.ap_no,SL.SEARCH_DATE,SUM(PT.PATH_CNT) AS PATH_CNT,SUM(PT.total) AS TOTAL,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') AS CUR_YM 
+													 FROM (SELECT *,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d') AS SEARCH_DATE FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d')) SL
+														JOIN pi_total PT ON SL.target_id = PT.TARGET_ID AND SL.AP_NO = PT.AP_NO
+															AND DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 DAY),'%Y-%m-%d') = SL.SEARCH_DATE
+												JOIN PI_TARGETS T ON PT.TARGET_ID = T.TARGET_ID AND PT.AP_NO = T.AP_NO
+												GROUP BY T.TARGET_ID, T.AP_NO,CUR_YM) PG ON DATE_FORMAT(DATE_SUB(OG.SEARCH_DATE, INTERVAL 1 MONTH),'%Y-%m') = PG.CUR_YM AND OG.TARGET_ID = PG.TARGET_ID AND OG.AP_NO = PG.AP_NO) D 
+						ON D.TARGET_ID = T.TARGET_ID AND D.AP_NO = T.AP_NO  AND D.RANK = 1
+						WHERE 1=1
+							<if test="target_id != null">
+									AND T.TARGET_ID IN (
+									<foreach collection="target_id" item="item" separator=",">
+										#{item}
+									</foreach>
+									)
+							</if>
+							<if test="target_id == null">
+								AND D.TARGET_ID IS NOT NULL
+							</if>
+				
+	</select>
+	
+	<select id="groupGrpahData" parameterType="hashmap" resultType="hashmap">
+		<!-- SELECT ROUND ((CASE WHEN PD.PREVIOUS_TOTAL = 0  and PD.TOTAL = 0 THEN 0
+							WHEN PD.PREVIOUS_TOTAL = 0  THEN 1
+						ELSE (PD.TOTAL - PD.PREVIOUS_TOTAL) / PD.PREVIOUS_TOTAL END ) * 100, 2) AS TOTAL_RATE, 
+				ROUND ((CASE WHEN PD.PREVIOUS_PATH_CNT = 0  and PD.PATH_CNT = 0 THEN 0
+							 WHEN PD.PREVIOUS_PATH_CNT = 0  THEN 1
+						ELSE (PD.PATH_CNT - PD.PREVIOUS_PATH_CNT) / PD.PREVIOUS_PATH_CNT END ) * 100, 2) AS PATH_RATE, 
+				PD.PATH_CNT, PD.TOTAL, PD.PREVIOUS_PATH_CNT, PD.PREVIOUS_TOTAL, PD.ID,
+				<if test="fromDate == null or fromDate == '' ">
+					DATE_SUB(PD.ID, INTERVAL 1 MONTH) AS PREVIOUS_ID,
+				</if>
+				<if test="fromDate != null and fromDate != '' ">
+					#{fromDate} AS PREVIOUS_ID,
+				</if>
+				PD.TARGET_ID, PD.AP_NO, IFNULL(PD.GROUP_NAME, '미그룹') AS GROUP_NAME
+		FROM (SELECT D.*, IFNULL(SUM(PT.PATH_CNT),0) AS PATH_CNT , IFNULL(SUM(PT.TOTAL),0) AS TOTAL ,
+					IFNULL(SUM(PST.PATH_CNT),0) AS PREVIOUS_PATH_CNT , IFNULL(SUM(PST.TOTAL),0) AS PREVIOUS_TOTAL 
+				FROM (SELECT SL.SCH_ID,T.NAME, SL.TARGET_ID, SL.AP_NO, SL.STATUS,
+							DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y-%m-%d %H:%i:%s') AS SCAN_TIME,
+						 	DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y-%m-01') AS ID, 
+							 DATE_FORMAT(FROM_UNIXTIME(SG.schedule_next_scan), '%Y년 %m월') AS REGDATE,
+							 DATE(FROM_UNIXTIME(UPDATED)) AS UPDATED,
+							 (SELECT NAME FROM PI_TARGET_GROUP WHERE IDX= TG.UP_IDX) AS GROUP_NAME,
+							 TG.UP_IDX,
+							 <if test="fromDate == null or fromDate == '' ">
+							  DATE_SUB(DATE(FROM_UNIXTIME(UPDATED)), INTERVAL 1 MONTH) AS PREVIOUS_UPDATED
+							 </if>
+							 <if test="fromDate != null and fromDate != '' ">
+								 #{fromDate} AS PREVIOUS_UPDATED
+							 </if>
+						FROM (SELECT DSL.*
+								FROM (SELECT TARGET_ID , AP_NO, MAX(UPDATED) AS UPDATED 
+										FROM pi_scheduled_location SL GROUP BY TARGET_ID, AP_NO) DS, pi_scheduled_location DSL
+										WHERE DS.TARGET_ID = DSL.TARGET_ID
+										AND DS.AP_NO = DSL.AP_NO
+										AND DS.UPDATED = DSL.UPDATED
+										AND DSL.STATUS IN ('completed', 'stopped', 'interrupted')) SL
+							JOIN PI_TARGETS T ON SL.TARGET_ID = T.TARGET_ID AND SL.AP_NO = T.AP_NO AND T.TARGET_USE = 'Y'
+							LEFT OUTER JOIN PI_TARGET_GROUP TG ON T.TARGET_ID = TG.TARGET_ID AND T.AP_NO = TG.AP_NO
+							JOIN pi_ap_server AP ON SL.AP_NO = AP.ap_no AND AP.IS_SERVER = 1
+							JOIN pi_schedules SG ON SG.SCHEDULE_ID = SL.SCH_ID AND SG.AP_NO = SL.AP_NO
+							WHERE 1=1
+							<if test="group_id != null and group_id != '' ">
+								<if test="group_id != 'server' and group_id != 'noGroup' ">
+									AND TG.UP_IDX = #{group_id}
+								</if>
+								<if test="group_id == 'server'">
+									AND TG.UP_IDX IS NOT NULL
+								</if>
+								<if test="group_id == 'noGroup'  ">
+									AND TG.UP_IDX IS NULL
+								</if>
+							</if>
+						GROUP BY T.TARGET_ID, T.AP_NO, DATE(FROM_UNIXTIME(UPDATED))
+						 ORDER BY SCAN_TIME) D
+					LEFT OUTER JOIN (SELECT TT.* FROM (SELECT TARGET_ID, AP_NO, MAX(REGDATE) AS REGDATE 
+													FROM PI_TOTAL GROUP BY DATE_FORMAT(REGDATE, '%Y-%m'), TARGET_ID, AP_NO) TD, PI_TOTAL TT
+													WHERE TT.TARGET_ID = TD.TARGET_ID
+														AND TT.AP_NO =  TD.AP_NO
+														AND TT.REGDATE = TD.REGDATE) PT ON D.TARGET_ID = PT.TARGET_ID AND D.AP_NO = PT.AP_NO  
+														AND DATE_FORMAT(D.UPDATED, '%Y-%m') =
+															 <if test="fromDate == null or fromDate == '' ">
+																	 DATE_FORMAT((DATE_SUB(PT.REGDATE, INTERVAL 1 DAY)), '%Y-%m') 
+															 </if>
+														 <if test="fromDate != null and fromDate != '' ">
+															 #{toDate}
+														 </if>
+															
+
+					LEFT OUTER JOIN (SELECT TT.*  FROM (SELECT TARGET_ID, AP_NO, MAX(REGDATE) AS REGDATE 
+													FROM PI_TOTAL GROUP BY DATE_FORMAT(REGDATE, '%Y-%m'), TARGET_ID, AP_NO) TD, PI_TOTAL TT
+													WHERE TT.TARGET_ID = TD.TARGET_ID
+														AND TT.AP_NO =  TD.AP_NO
+														AND TT.REGDATE = TD.REGDATE) PST ON PT.TARGET_ID = PST.TARGET_ID AND PT.AP_NO = PST.AP_NO  
+															AND DATE_FORMAT(PST.REGDATE, '%Y-%m')  = 	
+															 <if test="fromDate == null or fromDate == '' ">
+																	 DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 MONTH), '%Y-%m')
+															 </if>
+														 <if test="fromDate != null and fromDate != '' ">
+															 #{fromDate}
+														 </if>
+					GROUP BY D.UP_IDX) PD  -->
+					
+			SELECT ROUND((CASE WHEN (IFNULL(PRE_PATH_CNT,0) = 0 AND IFNULL(PATH_CNT,0) = 0) THEN 0
+						 		WHEN (IFNULL(PRE_PATH_CNT,0)= 0 ) THEN 1
+						 		ELSE   (PATH_CNT - PRE_PATH_CNT) / PRE_PATH_CNT END )*100,2) AS PATH_RATE,
+						 ROUND((CASE WHEN (IFNULL(PRE_TOTAL,0) = 0 AND IFNULL(TOTAL,0) = 0) THEN 0
+						 		WHEN (IFNULL(PRE_TOTAL,0)= 0 ) THEN 1
+						 		ELSE   (TOTAL - PRE_TOTAL) / PRE_TOTAL END )*100,2) AS TOTAL_RATE,
+						PATH_CNT,
+						TOTAL,
+						G.NAME AS GROUP_NAME
+				FROM (
+					SELECT NAME,UP_IDX,IDX FROM pi_target_group WHERE TYPE=0
+					UNION ALL SELECT '미그룹' AS NAME , -1 AS UP_IDX, -1 AS IDX
+				
+				) G
+				LEFT OUTER JOIN (SELECT TGS.NAME AS GROUP_NAME,OG.*
+						, IFNULL(PG.PATH_CNT, 0) AS PRE_PATH_CNT
+						, IFNULL(PG.TOTAL,0) AS PRE_TOTAL
+						, RANK() OVER (PARTITION BY UP_IDX ORDER BY OG.CUR_YM DESC) AS RANK
+							 FROM (SELECT TG.NAME,IFNULL(TG.UP_IDX,-1) AS UP_IDX,PT.TARGET_ID,PT.ap_no,SL.SEARCH_DATE,PT.PATH_CNT,PT.total,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') AS CUR_YM 
+							 FROM (SELECT *,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d') AS SEARCH_DATE FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d')) SL
+								JOIN pi_total PT ON SL.target_id = PT.TARGET_ID AND SL.AP_NO = PT.AP_NO
+									AND DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 DAY),'%Y-%m-%d') = SL.SEARCH_DATE
+						LEFT OUTER JOIN pi_target_group TG ON PT.TARGET_ID = TG.TARGET_ID AND PT.AP_NO = TG.AP_NO
+						<if test="fromDate != null and fromDate != '' ">
+							WHERE DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') >= #{fromDate}
+								AND DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') <![CDATA[<=]]>  #{toDate}
+						</if>
+						GROUP BY TG.UP_IDX,CUR_YM) OG
+						LEFT OUTER JOIN pi_target_group TGS ON TGS.IDX = OG.UP_IDX				
+						LEFT OUTER JOIN (SELECT TG.UP_IDX,PT.TARGET_ID,PT.ap_no,SL.SEARCH_DATE,PT.PATH_CNT,PT.total,DATE_FORMAT(SL.SEARCH_DATE, '%Y-%m') AS CUR_YM 
+											FROM (SELECT *,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d') AS SEARCH_DATE FROM pi_scheduled_location GROUP BY TARGET_ID,AP_NO,DATE_FORMAT(FROM_UNIXTIME(updated), '%Y-%m-%d')) SL
+									JOIN pi_total PT ON SL.target_id = PT.TARGET_ID AND SL.AP_NO = PT.AP_NO
+										AND DATE_FORMAT(DATE_SUB(PT.REGDATE, INTERVAL 1 DAY),'%Y-%m-%d') = SL.SEARCH_DATE
+										LEFT OUTER JOIN pi_target_group TG ON PT.TARGET_ID = TG.TARGET_ID AND PT.AP_NO = TG.AP_NO
+										GROUP BY TG.UP_IDX,CUR_YM) PG ON  DATE_FORMAT(DATE_SUB(OG.SEARCH_DATE, INTERVAL 1 MONTH),'%Y-%m') = PG.CUR_YM AND OG.UP_IDX = PG.UP_IDX) D ON D.UP_IDX = G.IDX AND RANK = 1
+	</select>
+	
+	<insert id="insertPolicyServer" parameterType="hashmap">
+		INSERT INTO pi_scan_policy_server (policy_id, in_idx, target_id, ap_no, regdate) VALUES 
+			(#{policy_id}, #{in_idx}, #{target_id}, #{ap_no}, now())
+		ON DUPLICATE KEY UPDATE
+			POLICY_ID = #{policy_id},
+			regdate = NOW() 
+	</insert> 
+	
+	<insert id="deletePolicyServer" parameterType="hashmap">
+		DELETE FROM PI_SCAN_POLICY_SERVER WHERE POLICY_ID = #{policy_id}
+	</insert>
+	
+	<select id="apTypeList" parameterType="hashmap" resultType="hashmap">
+    	SELECT AP.AP_NO, AP.SET_TYPE, AP.IP
+		FROM PI_AP_SERVER AP
+	</select>
+</mapper>

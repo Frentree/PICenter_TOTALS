@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.download.dao.DownloadDAO">
+
+    <select id="selectDownloadIndex" resultType="int">
+		SELECT IFNULL(MAX(NOTICE_FILE_ID),0) AS IDX FROM PI_NOTICE_FILE
+	</select>	
+	
+	
+	<insert id="insertDownload" parameterType="hashmap">
+		INSERT INTO PI_NOTICE_FILE
+		(
+			USER_NO,
+			FILE_NAME,
+			REAL_FILE_NAME,
+			REGDATE
+		)
+		VALUES
+		(
+			#{user_no},
+			#{file_name},
+			#{real_file_name},
+			NOW()
+		)
+		<selectKey resultType="int" keyProperty="NOTICE_FILE_ID" order="AFTER">
+			SELECT LAST_INSERT_ID() AS NOTICE_FILE_ID
+		</selectKey>
+	</insert>
+	
+    <select id="selectFileDownloadIndex" resultType="int">
+		SELECT IFNULL(MAX(DOWNLOAD_FILE_ID),0) AS IDX FROM PI_DOWNLOAD_FILE
+	</select>	
+	
+	
+	<insert id="insertFileDownload" parameterType="hashmap">
+		INSERT INTO pi_download_file
+		(
+			USER_NO,
+			FILE_NAME,
+			REAL_FILE_NAME,
+			REGDATE
+		)
+		VALUES
+		(
+			#{user_no},
+			#{file_name},
+			#{real_file_name},
+			NOW()
+		)
+		<selectKey resultType="int" keyProperty="DOWNLOAD_FILE_ID" order="AFTER">
+			SELECT LAST_INSERT_ID() AS DOWNLOAD_FILE_ID
+		</selectKey>
+	</insert>
+	
+	<select id="downloadList" resultType="hashmap" parameterType="hashmap">
+		SELECT D.*, 
+				(CASE WHEN FILE_STATUS = 'completed' THEN CONCAT('완료 (',  PROCESS_DATA, ')') 
+						WHEN FILE_STATUS = 'wait' THEN CONCAT('대기 (',  PROCESS_DATA, ')') 
+						WHEN FILE_STATUS = 'down' THEN CONCAT('진행중 (',  PROCESS_DATA, ')') 
+						ELSE  CONCAT('에러  (',  PROCESS_DATA, ')') END ) AS STATUS_NAME
+		FROM (SELECT IDX, FILE_NAME, REAL_FILE_NAME, FILE_STATUS, DE.PAGE_NAME, DE.URL, DE.NOTE,
+					CONCAT(DE.COMPLETE_CNT , '/', DE.HOST_CNT) AS PROCESS_DATA, DATE_FORMAT(DE.CREDATE, '%Y-%m-%d %H:%i:%s') AS CREDATE, 
+					DATE_FORMAT(DE.ENDDATE, '%Y-%m-%d %H:%i:%s') AS ENDDATE
+		FROM PI_DOWNLOAD_EXCEL DE
+		WHERE USER_NO = #{user_no}
+			AND (
+				DATE(DE.ENDDATE) > DATE(DATE_SUB(NOW(), INTERVAL ${time} DAY))
+				OR DE.ENDDATE IS NULL
+				)
+			) D
+	</select>
+	
+	<select id="selectExcelDownloadIndex" resultType="int">
+		SELECT IFNULL(MAX(IDX),0) FROM PI_DOWNLOAD_EXCEL        
+	</select>
+    
+    <insert id="insertFileDownLoadStatus" parameterType="hashmap">
+    	INSERT INTO PI_DOWNLOAD_EXCEL (USER_NO, FILE_NAME, real_file_name, host_cnt, credate, page_name, url)
+    	VALUES(#{user_no}, #{file_name}, #{real_file_name}, #{host_cnt}, NOW(), #{page_name}, #{url})
+    </insert>
+</mapper>

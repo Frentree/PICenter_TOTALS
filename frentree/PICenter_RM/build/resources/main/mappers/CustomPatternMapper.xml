@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="customPatternMapper">
+
+	<!-- mybatis-config.xml의 typeAlias에 등록해두지 않았다면 <select id="selectMember" resultType="com.org.iopts.dto.MemberVO" > SELECT ID, PW ,NAME FROM TEST </select> 이렇게 해야 한다. -->
+	<select id="selectCustomPattern" resultType="com.org.iopts.dto.Pi_Custom_PatternVO">
+		SELECT PATTERN_IDX,
+		       PATTERN_EN_NAME,
+		       PATTERN_KR_NAME,
+		       COLOR_CODE
+		FROM pi_custom_pattern
+		ORDER BY PATTERN_IDX
+	</select>	
+
+</mapper>

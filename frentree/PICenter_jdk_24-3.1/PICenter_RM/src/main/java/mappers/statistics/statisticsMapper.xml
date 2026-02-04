@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.statistics.dao.StatisticsDAO">
+
+	<select id="statisticsList" parameterType="hashmap" resultType="hashmap">
+		SELECT T.target_id, T.ap_no, R.data_types, IFNULL(TU.SERVICE_NM,'-') AS SERVICE_NM, CONCAT(T.name, ' [',T.ap_no+1, ']') AS TARGET_NAME,
+		<foreach collection="patternList" item="cnt">
+			JSON_EXTRACT(R.data_types, CONCAT('$[',#{cnt}-1,'].MATCH_CNT')) AS TYPE#{cnt},
+		</foreach> 
+			R.match_locations AS PATH_CNT,
+			R.`match` AS TOTAL
+		FROM pi_ap_server AP, pi_rawisolated R, pi_targets T
+			LEFT OUTER JOIN pi_target_user TU ON TU.TARGET_ID = T.TARGET_ID AND TU.AP_NO = T.AP_NO
+		WHERE AP.ap_no = T.ap_no
+			AND AP.is_server = 1
+			AND R.path = 'All local files'
+			AND R.target_id = T.target_id
+			AND R.ap_no = T.ap_no
+			AND R.`match` != 0
+			AND FROM_UNIXTIME(R.report_timestamp) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		GROUP BY T.TARGET_ID, T.AP_NO 
+		ORDER BY R.`match` DESC
+		LIMIT 5
+	</select>  
+	
+	<select id="manageList" parameterType="hashmap" resultType="hashmap">
+		SELECT DATE_FORMAT(FROM_UNIXTIME(P.report_timestamp), '%Y년 %m월') AS month_day,
+			P.target_id, P.ap_no, P.data_types,
+			P.match_locations, P.`match`, 1 AS host_cnt
+		FROM pi_rawisolated P,(SELECT R.target_id, R.ap_no, MAX(R.report_timestamp) AS report_timestamp
+		FROM pi_rawisolated R, pi_ap_server AP
+		WHERE R.ap_no = AP.ap_no
+			AND AP.is_server = 1
+			AND R.path = 'All local files' 
+			AND DATE_FORMAT(FROM_UNIXTIME(R.report_timestamp), '%Y-%m-%d') BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		GROUP BY R.target_id , R.ap_no, DATE_FORMAT(FROM_UNIXTIME(R.report_timestamp), '%Y%m')) D
+		WHERE P.target_id = D.target_id
+			AND P.ap_no = D.ap_no
+			AND P.report_timestamp = D.report_timestamp
+			AND P.`match` != 0
+		ORDER BY P.report_timestamp
+	</select>
+	
+	<select id="manageBarList" parameterType="hashmap" resultType="hashmap">
+		<!-- SELECT TARGET_ID, RIGHT(REGDATE, 3) AS MONTH, RRN, MOBILE_PHONE, ACCOUNT_NUM,  CARD_NUM, FOREIGNER, DRIVER, EMAIL, PASSPORT, TOTAL, SEARCH, SUCCEED, PATH_CNT
+		FROM ( 
+				SELECT TARGET_ID, REGDATE, SUM(PATH_CNT) AS  PATH_CNT, SUM(RRN) AS RRN, SUM(MOBILE_PHONE) AS MOBILE_PHONE, SUM(ACCOUNT_NUM) AS ACCOUNT_NUM, SUM(CARD_NUM) AS CARD_NUM,
+					 		SUM(FOREIGNER) AS FOREIGNER, SUM(DRIVER) AS DRIVER, SUM(EMAIL) AS EMAIL, SUM(PASSPORT) AS PASSPORT, SUM(TOTAL) AS TOTAL, SUM(SUCCEED) AS SUCCEED, COUNT(TARGET_ID) AS SEARCH
+				FROM (
+						SELECT PATH_CNT, TARGET_ID, RRN, MOBILE_PHONE, ACCOUNT_NUM,  CARD_NUM, FOREIGNER, DRIVER, EMAIL, PASSPORT, TOTAL, MAX(REGDATE) AS REGDATE, SUCCEED
+						FROM( 
+								SELECT PATH_CNT, TARGET_ID, RRN, MOBILE_PHONE, ACCOUNT_NUM,  CARD_NUM, FOREIGNER, DRIVER, EMAIL, PASSPORT, TOTAL, 
+										 DATE_FORMAT(TC.REGDATE, '%y년 %m월') AS REGDATE,	IF(TOTAL != 0, 1,0) AS SUCCEED
+								FROM pi_schedule_targets ST
+									LEFT OUTER JOIN pi_topcomp TC USING(TARGET_ID, AP_NO)
+								WHERE AP_NO = 0
+									AND TC.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') 
+								) D
+						GROUP BY REGDATE, TARGET_ID 
+						) S
+				GROUP BY REGDATE
+				ORDER BY REGDATE DESC 
+				LIMIT 5 
+			) T
+		ORDER BY REGDATE -->
+		SELECT TARGET_ID, RIGHT(REGDATE, 3) AS MONTH, RRN, MOBILE_PHONE, ACCOUNT_NUM,  CARD_NUM, FOREIGNER, DRIVER, EMAIL, PASSPORT, TOTAL, SEARCH, SUCCEED, PATH_CNT
+		FROM ( 
+				SELECT TARGET_ID, REGDATE, SUM(PATH_CNT) AS  PATH_CNT, SUM(RRN) AS RRN, SUM(MOBILE_PHONE) AS MOBILE_PHONE, SUM(ACCOUNT_NUM) AS ACCOUNT_NUM, SUM(CARD_NUM) AS CARD_NUM,
+				 		SUM(FOREIGNER) AS FOREIGNER, SUM(DRIVER) AS DRIVER, SUM(EMAIL) AS EMAIL, SUM(PASSPORT) AS PASSPORT, SUM(TOTAL) AS TOTAL, SUM(SUCCEED) AS SUCCEED, COUNT(*) AS SEARCH
+				FROM (
+						SELECT TC.PATH_CNT, ST.TARGET_ID, TC.RRN, TC.MOBILE_PHONE, TC.ACCOUNT_NUM, TC.CARD_NUM, TC.FOREIGNER, TC.DRIVER, TC.EMAIL, TC.PASSPORT, 
+							   SUM(TC.RRN + TC.MOBILE_PHONE + TC.ACCOUNT_NUM + TC.CARD_NUM + TC.FOREIGNER + TC.DRIVER + TC.EMAIL + TC.PASSPORT) AS TOTAL, 
+							   DATE_FORMAT(SG.REGDATE, '%Y년 %m월') AS REGDATE, IF(TOTAL != 0, 1,0) AS SUCCEED
+						FROM pi_schedule_group SG
+							LEFT OUTER JOIN pi_schedule_targets ST ON SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+							LEFT OUTER JOIN pi_topcomp TC ON ST.TARGET_ID = TC.TARGET_ID AND ST.AP_NO = TC.AP_NO 
+						WHERE 1=1
+						  AND SG.TYPE = 0
+						  AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') 
+						  GROUP BY REGDATE, ST.TARGET_ID, ST.AP_NO
+						  HAVING ST.TARGET_ID
+						) S
+				GROUP BY REGDATE
+				ORDER BY REGDATE DESC 
+				LIMIT 5 
+			) T
+		ORDER BY REGDATE		
+	</select>
+	
+	<select id="mainChartStatistics" parameterType="hashmap" resultType="hashmap">
+		WITH MEASUREMENT AS
+			(SELECT T.TARGET_ID,
+					 T.NAME,
+					 T.AP_NO,
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN RRN') > 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE1,							-- 주민번호
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN FOREIGNER NUMBER') > 0 THEN S.MATCH_COUNT ELSE 0 END)	AS TYPE2,		-- 외국인번호
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN PASSPORT') > 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE3, 					-- 여권번호
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN DRIVER LICENSE NUMBER') > 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE4,	-- 운전자번호
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'ACCOUNT NUMBER') > 0 THEN S.MATCH_COUNT ELSE 0 END)	AS TYPE5,
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'VISA') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'MAESTRO') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'PRIVATE LABEL CARD') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'DINERS CLUB') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'JCB') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'LASER') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'CHINA UNION PAY') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'DISCOVER') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'TROY') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'MASTERCARD') > 0 THEN S.MATCH_COUNT ELSE 0 END) +
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'AMERICAN EXPRESS') > 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE6,
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'EMAIL') > 0 THEN S.MATCH_COUNT ELSE 0 END)	AS TYPE7,
+					 SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN MOBILE PHONE NUMBER') > 0 THEN S.MATCH_COUNT ELSE 0 END)	AS TYPE8
+			FROM pi_ap_server AP, pi_summary S, pi_targets T
+				LEFT OUTER JOIN pi_data_processing DP ON T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO
+			WHERE 1=1
+			  AND T.TARGET_ID = S.TARGET_ID
+			  AND T.AP_NO = S.AP_NO
+			  AND S.AP_NO = AP.AP_NO
+			 # AND DP.HASH_ID = S.OBJECT_ID
+			  AND AP.IS_SERVER = 1
+			  AND DP.PROCESSING_FLAG IN (1, 2, 3)
+			  AND DP.APPROVAL_STATUS = 'E'
+			  AND S.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+			GROUP BY T.TARGET_ID, T.AP_NO)
+			
+		SELECT TARGET_ID, IFNULL(NAME, '합계') AS NAME, 
+				 SUM(TYPE1) AS TYPE1, -- 주민번호
+				 SUM(TYPE2) AS TYPE2, -- 외국인번호
+				 SUM(TYPE3) AS TYPE3, -- 여권번호
+				 SUM(TYPE4) AS TYPE4, -- 운전면허번호
+				 SUM(TYPE5) AS TYPE5, -- 카드번호
+				 SUM(TYPE6) AS TYPE6, -- 계좌번호
+				 SUM(TYPE7) AS TYPE7, -- 이메일
+				 SUM(TYPE8) AS TYPE8  -- 휴대폰 번호
+		FROM MEASUREMENT
+		GROUP BY NAME WITH ROLLUP
+	</select>
+	
+	<select id="trueGridList" parameterType="hashmap" resultType="hashmap">
+		SELECT T.TARGET_ID, 
+				T.AP_NO, 
+				IFNULL((SELECT SERVICE_NM FROM pi_target_user TU WHERE T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO GROUP BY T.TARGET_ID, T.AP_NO),'-') AS SERVICE_NM, 
+				CONCAT(T.NAME, ' [',T.ap_no+1,']') AS NAME, 
+				MAX(S.REGDATE) AS REGDATE,
+				<foreach collection="patternList" item="cnt">
+					SUM(CASE WHEN CP.PATTERN_IDX = #{cnt} THEN S.MATCH_COUNT ELSE 0 END) AS TYPE#{cnt},
+				</foreach>
+				SUM(S.MATCH_COUNT) AS TOTAL,
+				(SELECT COUNT(1) 
+				 FROM pi_data_processing DP
+				 LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON DP.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG 
+				 WHERE DP.TARGET_ID = T.TARGET_ID 
+				 AND DP.AP_NO = T.AP_NO 
+				 AND PRC_FLAG.TYPE = 1
+		  		 AND PRC_FLAG.ENABLE = 1  
+				 AND DP.APPROVAL_STATUS = 'E') AS PATH_CNT
+		FROM pi_ap_server AP, pi_targets T, pi_custom_pattern CP, pi_Summary S, pi_find F
+			LEFT OUTER JOIN pi_data_processing PRC ON PRC.TARGET_ID = F.TARGET_ID AND PRC.AP_NO = F.AP_NO AND PRC.HASH_ID = F.HASH_ID
+			LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON PRC.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG
+			LEFT OUTER JOIN PI_DATA_PROCESSING_GROUP DPG ON PRC.DATA_PROCESSING_GROUP_IDX = DPG.IDX
+			LEFT OUTER JOIN PI_AROCESSING_USER_VIEW AUV ON DPG.DATA_PROCESSING_CHARGE_ID = AUV.CHARGE_ID
+		WHERE 1=1
+		  AND T.TARGET_ID = F.TARGET_ID
+		  AND T.AP_NO = F.AP_NO
+		  AND F.HASH_ID = S.OBJECT_ID
+		  AND T.AP_NO = AP.AP_NO
+		  AND INSTR(UPPER(S.DATA_TYPE), CP.PATTERN_CODE) > 0
+		  AND PRC_FLAG.TYPE = 1
+		  AND PRC_FLAG.ENABLE = 1 
+		  AND PRC.APPROVAL_STATUS = 'E'
+		  AND AP.IS_SERVER = 1
+		  AND F.DELDATE IS NULL
+		  AND AUV.OKDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		GROUP BY T.TARGET_ID, T.AP_NO
+		ORDER BY TOTAL DESC
+		LIMIT 5
+	</select>
+	
+	<select id="falseGridList" parameterType="hashmap" resultType="hashmap">
+		SELECT T.TARGET_ID, 
+				T.AP_NO, 
+				IFNULL((SELECT SERVICE_NM FROM pi_target_user TU WHERE T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO GROUP BY T.TARGET_ID, T.AP_NO),'-') AS SERVICE_NM, 
+				CONCAT(T.NAME, ' [',T.ap_no+1,']') AS NAME,
+				MAX(S.REGDATE) AS REGDATE,
+				<foreach collection="patternList" item="cnt">
+					SUM(CASE WHEN CP.PATTERN_IDX = #{cnt} THEN S.MATCH_COUNT ELSE 0 END) AS TYPE#{cnt},
+				</foreach>
+				SUM(S.MATCH_COUNT) AS TOTAL,
+				(SELECT COUNT(1) 
+				 FROM pi_data_processing DP
+				 LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON DP.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG 
+				 WHERE DP.TARGET_ID = T.TARGET_ID 
+				 AND DP.AP_NO = T.AP_NO 
+				 AND PRC_FLAG.TYPE = 0
+		  		 AND PRC_FLAG.ENABLE = 1  
+				 AND DP.APPROVAL_STATUS = 'E') AS PATH_CNT
+		FROM pi_ap_server AP, pi_targets T, pi_custom_pattern CP, pi_Summary S, pi_find F
+			LEFT OUTER JOIN pi_data_processing PRC ON PRC.TARGET_ID = F.TARGET_ID AND PRC.AP_NO = F.AP_NO AND PRC.HASH_ID = F.HASH_ID
+			LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON PRC.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG
+			LEFT OUTER JOIN PI_DATA_PROCESSING_GROUP DPG ON PRC.DATA_PROCESSING_GROUP_IDX = DPG.IDX
+			LEFT OUTER JOIN PI_AROCESSING_USER_VIEW AUV ON DPG.DATA_PROCESSING_CHARGE_ID = AUV.CHARGE_ID
+		WHERE 1=1
+		  AND T.TARGET_ID = F.TARGET_ID
+		  AND T.AP_NO = F.AP_NO
+		  AND F.HASH_ID = S.OBJECT_ID
+		  AND T.AP_NO = AP.AP_NO
+		  AND INSTR(UPPER(S.DATA_TYPE), CP.PATTERN_CODE) > 0
+		  AND PRC_FLAG.TYPE = 0
+		  AND PRC_FLAG.ENABLE = 1 
+		  AND PRC.APPROVAL_STATUS = 'E'
+		  AND AP.IS_SERVER = 1
+		  AND F.DELDATE IS NULL
+		  AND AUV.OKDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		GROUP BY T.TARGET_ID, T.AP_NO
+		ORDER BY TOTAL DESC
+		LIMIT 5
+	</select>
+	
+	<select id="totalStatistics" parameterType="hashmap" resultType="hashmap">
+		SELECT TARGET_ID, NAME, COUNT_TARGET_ID,
+			<foreach collection="patternList" item="cnt">
+				IFNULL(TYPE#{cnt}, 0) AS TYPE#{cnt},
+				CONCAT(IFNULL(ROUND(( TYPE#{cnt}/TOTAL * 100 ),2), 0),'%') AS TYPE#{cnt}_PERCENTAGE,
+			</foreach>
+			 IFNULL(TOTAL, 0) AS TOTAL
+		FROM 
+			(SELECT TARGET_ID, NAME, COUNT(S1.TARGET_ID) AS COUNT_TARGET_ID,
+							 <foreach collection="patternList" item="cnt">
+							 	SUM(TYPE#{cnt}) AS TYPE#{cnt},
+							 </foreach>
+							 SUM(TOTAL) AS TOTAL
+			FROM
+					(SELECT T.TARGET_ID, 
+									T.AP_NO, 
+									T.NAME, 
+									MAX(S.REGDATE) AS REGDATE,
+									<foreach collection="patternList" item="cnt">
+										SUM(CASE WHEN CP.PATTERN_IDX = #{cnt} THEN S.MATCH_COUNT ELSE 0 END) AS TYPE#{cnt},
+									</foreach>		
+									SUM(S.MATCH_COUNT) AS TOTAL
+					FROM pi_ap_server AP, pi_targets T, pi_custom_pattern CP, pi_Summary S, pi_find F
+						LEFT OUTER JOIN pi_data_processing PRC ON PRC.TARGET_ID = F.TARGET_ID AND PRC.AP_NO = F.AP_NO AND PRC.HASH_ID = F.HASH_ID
+						LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON PRC.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG
+						LEFT OUTER JOIN PI_DATA_PROCESSING_GROUP DPG ON PRC.DATA_PROCESSING_GROUP_IDX = DPG.IDX
+						LEFT OUTER JOIN PI_AROCESSING_USER_VIEW AUV ON DPG.DATA_PROCESSING_CHARGE_ID = AUV.CHARGE_ID
+					WHERE 1=1
+					  AND T.TARGET_ID = F.TARGET_ID
+					  AND T.AP_NO = F.AP_NO
+					  AND F.HASH_ID = S.OBJECT_ID
+					  AND T.AP_NO = AP.AP_NO
+					  AND INSTR(UPPER(S.DATA_TYPE), CP.PATTERN_CODE) > 0
+<!-- 					  AND PRC_FLAG.TYPE = 1 --> 
+		  			  AND PRC_FLAG.ENABLE = 1 
+					  AND PRC.APPROVAL_STATUS = 'E'
+					  AND AP.IS_SERVER = 1
+					  AND F.DELDATE IS NULL
+					  AND AUV.OKDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+					GROUP BY T.TARGET_ID, T.AP_NO
+				) S1
+			) S2
+	</select>
+	<select id="selectDataImple" resultType="hashmap">
+		SELECT CONCAT(P.target_name, ' [',P.ap_no+1,']') as target_name, P.target_id, P.ap_no,
+			MAX(case when P.report_timestamp = D.max_report_id then P.`match` ELSE NULL END) AS max_match,
+			MIN(case when P.report_timestamp = D.min_report_id then P.`match` ELSE NULL END) AS min_match,
+			MAX(case when P.report_timestamp = D.max_report_id then P.match_locations ELSE NULL END) AS max_match_locations,
+			MIN(case when P.report_timestamp = D.min_report_id then P.match_locations ELSE NULL END) AS min_match_locations,
+			DATE_FORMAT(FROM_UNIXTIME(D.min_report_id), '%Y-%m-%d') AS min_report_id,
+			DATE_FORMAT(FROM_UNIXTIME(D.max_report_id), '%Y-%m-%d') AS max_report_id,
+			D.min_report_id, D.max_report_id,
+			D.serach_cnt
+		FROM pi_rawisolated P, (SELECT count(target_id) as serach_cnt, target_id, ap_no, MIN(R.report_timestamp) AS min_report_id, MAX(R.report_timestamp) AS max_report_id
+								FROM pi_rawisolated R
+								WHERE R.path = 'All local files'
+									AND FROM_UNIXTIME(R.report_timestamp) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+								GROUP BY R.target_id, R.ap_no) D
+		WHERE P.target_id = D.target_id
+			AND P.ap_no = D.ap_no
+			AND P.report_timestamp IN (D.min_report_id, D.max_report_id)
+		GROUP BY P.target_id, P.ap_no
+	</select>
+</mapper>

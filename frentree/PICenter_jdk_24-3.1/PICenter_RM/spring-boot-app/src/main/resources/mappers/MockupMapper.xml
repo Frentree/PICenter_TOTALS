@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ 
+<mapper namespace="com.org.iopts.mockup.dao.MockupDAO">
+    <select id="allTargetList" parameterType="hashmap" resultType="hashmap">
+
+		SELECT
+		    CASE
+		        WHEN PT.PLATFORM = 'Remote Access Only' THEN 'DB'
+		        ELSE 'SERVER'
+		    END AS TYPE,
+		    COUNT(*) AS COUNT
+		FROM pi_target_group TG
+		JOIN PI_TARGETS PT ON TG.TARGET_ID = PT.TARGET_ID AND TG.AP_NO = PT.AP_NO
+		WHERE TG.TYPE = 1
+		  AND PT.TARGET_USE = 'Y'
+		<if test="userNo != null">
+		    AND EXISTS (
+		        SELECT 1 FROM pi_target_user TU
+		        WHERE TU.TARGET_ID = TG.TARGET_ID
+		          AND TU.AP_NO = TG.AP_NO
+		          AND TU.USER_NO = #{userNo}
+		    )
+		</if>
+		GROUP BY
+		    CASE
+		        WHEN PT.PLATFORM = 'Remote Access Only' THEN 'DB'
+		        ELSE 'SERVER'
+		    END
+    </select>
+    
+
+    
+    <select id="getServerColumns" resultType="hashmap">
+        SELECT 
+            idx AS IDX, 
+            name AS NAME
+        FROM pi_custom_name
+        WHERE flag = 'server'
+          AND idx IS NOT NULL 
+          AND name IS NOT NULL
+        ORDER BY idx
+    </select>
+
+
+    <select id="customPatterns" resultType="hashmap">
+		SELECT
+			PATTERN_IDX AS PATTERN_IDX,
+			PATTERN_CODE AS PATTERN_CODE,
+			PATTERN_KR_NAME AS PATTERN_KR_NAME,
+			COLOR_CODE AS COLOR_CODE
+		FROM pi_custom_pattern
+		ORDER BY PATTERN_IDX ASC
+	</select>      
+	
+	<select id="getAllServerDataWithDetails" parameterType="hashmap" resultType="hashmap">
+		SELECT
+		    CASE
+		        WHEN TG.TYPE = 1 THEN
+		            COALESCE(
+		                (SELECT PG.NAME FROM pi_target_group PG WHERE PG.IDX = TG.UP_IDX),
+		                '-'
+		            )
+		        ELSE TG.NAME
+		    END AS GROUP_NM,
+		    TG.NAME AS SERVER_NM,
+		    CASE
+		        WHEN PT.PLATFORM = 'Remote Access Only' THEN 'DB'
+		        ELSE 'SERVER'
+		    END AS PLATFORM,
+		    TG.TARGET_ID,
+		    TG.AP_NO,
+		    <foreach collection="serverColumns" item="col" separator=",">
+		    (SELECT U.user_name
+		     FROM pi_target_user TU2
+		     JOIN pi_user U ON U.USER_NO = TU2.USER_NO
+		     WHERE TU2.TARGET_ID = TG.TARGET_ID
+		       AND TU2.AP_NO = TG.AP_NO
+		       AND TU2.USERFLAG = CONCAT('server', #{col.IDX})
+		     LIMIT 1) AS `${col.NAME}`
+		    </foreach>,
+		    CASE
+		        WHEN PT.PLATFORM = 'Remote Access Only' THEN IFNULL(DB24H.total_match_24h, 0)
+		        ELSE IFNULL(LATEST_RAW.match_value, 0)
+		    END AS PII_CNT,
+		    CASE
+		        WHEN PT.PLATFORM = 'Remote Access Only' THEN DB24H.data_types_24h
+		        ELSE LATEST_RAW.data_types_value
+		    END AS DATA_TYPES_JSON
+		FROM pi_target_group TG
+		JOIN pi_targets PT ON TG.TARGET_ID = PT.TARGET_ID AND TG.AP_NO = PT.AP_NO
+		LEFT JOIN (
+		    SELECT
+		        RI.target_id,
+		        RI.ap_no,
+		        RI.`match` AS match_value,
+		        RI.data_types AS data_types_value
+		    FROM (
+		        SELECT
+		            RI2.target_id,
+		            RI2.ap_no,
+		            RI2.`match`,
+		            RI2.data_types,
+		            RI2.report_timestamp,
+		            ROW_NUMBER() OVER (PARTITION BY RI2.target_id, RI2.ap_no ORDER BY RI2.`timestamp` DESC) AS rn
+		        FROM pi_rawisolated RI2
+		        JOIN pi_targets T2 ON RI2.target_id = T2.target_id AND RI2.ap_no = T2.ap_no
+		        JOIN (
+		            SELECT
+		                target_id,
+		                ap_no,
+		                report_id,
+		                ROW_NUMBER() OVER (PARTITION BY target_id, ap_no ORDER BY regdate DESC) AS rn
+		            FROM pi_isolated
+		        ) LATEST_ISO ON LATEST_ISO.target_id = RI2.target_id
+		            AND LATEST_ISO.ap_no = RI2.ap_no
+		            AND LATEST_ISO.rn = 1
+		        WHERE RI2.report_timestamp = LATEST_ISO.report_id
+		          AND T2.platform != 'Remote Access Only'
+		          AND RI2.path = 'All local files'
+		    ) RI
+		    WHERE RI.rn = 1
+		) LATEST_RAW ON LATEST_RAW.target_id = TG.TARGET_ID AND LATEST_RAW.ap_no = TG.AP_NO
+		LEFT JOIN (
+		    SELECT
+		        base.target_id,
+		        base.ap_no,
+		        IFNULL(SUM(RI.`match`), 0) AS total_match_24h,
+		        GROUP_CONCAT(RI.data_types ORDER BY RI.`timestamp` SEPARATOR '|||') AS data_types_24h
+		    FROM (
+		        SELECT
+		            RI2.target_id,
+		            RI2.ap_no,
+		            MAX(RI2.`timestamp`) AS latest_ts
+		        FROM pi_rawisolated RI2
+		        JOIN pi_targets T2 ON RI2.target_id = T2.target_id AND RI2.ap_no = T2.ap_no
+		        WHERE T2.platform = 'Remote Access Only'
+		        GROUP BY RI2.target_id, RI2.ap_no
+		    ) base
+		    JOIN pi_rawisolated RI ON RI.target_id = base.target_id
+		        AND RI.ap_no = base.ap_no
+		        AND RI.`timestamp` BETWEEN base.latest_ts - 86400 AND base.latest_ts
+		        AND RI.data_types IS NOT NULL
+		        AND RI.data_types != ''
+		    GROUP BY base.target_id, base.ap_no
+		) DB24H ON DB24H.target_id = TG.TARGET_ID AND DB24H.ap_no = TG.AP_NO
+		WHERE TG.TYPE = 1
+		  AND PT.TARGET_USE = 'Y'
+		<if test="userNo != null">
+		    AND EXISTS (
+		        SELECT 1 FROM pi_target_user TU
+		        WHERE TU.TARGET_ID = TG.TARGET_ID
+		          AND TU.AP_NO = TG.AP_NO
+		          AND TU.USER_NO = #{userNo}
+		    )
+		</if>
+		ORDER BY PII_CNT DESC
+	</select>
+</mapper>

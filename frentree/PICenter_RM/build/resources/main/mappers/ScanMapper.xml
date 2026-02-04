@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ScanMapper">
+
+	<!-- mybatis-config.xml의 typeAlias에 등록해두지 않았다면 <select id="selectMember" resultType="com.org.iopts.dto.MemberVO" > SELECT ID, PW ,NAME FROM TEST </select> 이렇게 해야 한다. -->
+
+
+	<select id="selectScanHost" resultType="com.org.iopts.dto.Pi_Scan_HostVO">
+		SELECT T.target_id, T.name, L.location_id, L.description FROM pi_targets T, pi_locations L WHERE T.target_id = L.target_id ORDER BY
+		T.target_id,L.description
+	</select>
+	
+	<select id="getConnectHistSeq" resultType="Integer">
+     	SELECT NEXT VALUE FOR pi_er2_connect_hist_seq
+	</select>	
+	
+	<insert id="insConnectHist" parameterType="hashmap">
+		INSERT INTO PI_ER2_CONNECT_HIST (
+			ID, RECON_ID, URL, METHOD, REQ_DATA,
+			SND_DTM
+		) VALUES (
+			#{id}, #{recon_id}, #{url}, #{method}, #{req_data},  
+			DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')
+		)
+	</insert>
+	
+	<update id="uptConnectHist" parameterType="hashmap">
+		UPDATE PI_ER2_CONNECT_HIST SET
+			RSP_DTM = DATE_FORMAT(NOW(), '%Y%m%d%H%i%s'),
+			RSP_CD = #{rsp_cd},
+			RSP_MSG = #{rsp_msg}
+		WHERE 1=1
+			AND ID = #{id}
+			AND RECON_ID = #{recon_id}
+			AND URL = #{url}
+			AND METHOD = #{method}
+	</update>
+	
+	<select id="getTargetName" parameterType="String" resultType="String">
+     	SELECT name FROM pi_targets
+		WHERE TARGET_ID = #{value}
+		limit 1
+	</select>	
+	
+	<select id="selectGroupList" parameterType="String" resultType="hashmap">
+     	SELECT TG.NAME
+		, TG.IDX
+		, TG.UP_IDX
+		, FNC.LEVEL AS LEVEL
+		<if test='user_no != null and user_no != ""'>
+		, (SELECT COUNT(*) FROM pi_targets T LEFT OUTER JOIN  pi_target_user U on T.TARGET_ID = U.target_id WHERE TG.IDX = T.GROUP_IDX AND T.TARGET_USE = 'Y' AND U.USER_NO = #{user_no}) AS CNT
+	 	</if>
+	 	<if test='user_no == null or user_no == ""'>
+		, (SELECT COUNT(*) FROM pi_targets T LEFT OUTER JOIN  pi_target_user U on T.TARGET_ID = U.target_id WHERE TG.IDX = T.GROUP_IDX AND T.TARGET_USE = 'Y') AS CNT
+	 	</if>
+		, (
+			(SELECT COUNT(*) FROM pi_targets T, pi_target_user U WHERE T.TARGET_ID = U.target_id AND TG.IDX = T.GROUP_IDX AND T.TARGET_USE = 'Y') + 
+			(SELECT COUNT(*) FROM pi_target_group G WHERE G.UP_IDX = TG.IDX)
+		) AS BELOW
+		FROM 
+			(SELECT FNC_TARGET_GROUPING() AS ID, @LEVEL AS LEVEL
+				FROM (SELECT @start_with:=0, @id:=@start_with, @LEVEL:=0) vars
+				JOIN pi_target_group
+				WHERE @id IS NOT NULL) fnc
+				left outer JOIN pi_target_group TG ON FNC.ID = TG.IDX
+	</select>	
+	
+	<select id="getApList" resultType="hashmap">
+		SELECT AP_NO, AP_NAME, AP_IP FROM SKT_AP_INFORMATION
+	</select>
+	
+</mapper>

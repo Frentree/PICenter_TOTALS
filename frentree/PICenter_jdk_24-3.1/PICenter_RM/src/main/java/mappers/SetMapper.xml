@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.mapper.SetMapper">
+
+	<select id="selectSetting" resultType="hashmap" parameterType="int">
+		SELECT S.NAME, S.STATUS, S.DETAIL_NAME, S.SEQ, S.IDX
+		FROM PI_SETTING S
+		WHERE TYPE = #{type}
+		ORDER BY SEQ
+	</select>
+	
+	<select id="selectApprovalStatus" resultType="hashmap">
+		SELECT CONCAT(CN.FLAG,'_',CN.IDX) AS STATUS, CN.NAME
+		FROM PI_CUSTOM_NAME CN
+		WHERE CN.FLAG ='approval'
+			AND CN.ADD_DATA = 'Y'
+	</select>
+	
+	<select id="selectApprovalStatusAll" resultType="hashmap">
+		SELECT CONCAT(CN.FLAG,'_',CN.IDX) AS STATUS, CN.NAME
+		FROM PI_CUSTOM_NAME CN
+		WHERE CN.FLAG ='approval'
+	</select>
+	
+	<select id="selectApprovalGroupCnt" resultType="hashmap">
+		SELECT 'teamStaus' AS sType, COUNT(idx) AS cnt
+		FROM pi_setting WHERE NAME ='group_approval_mngr' AND STATUS = 'Y'
+		UNION ALL
+		SELECT 'userLIst' AS sType, COUNT(idx) AS cnt
+		FROM pi_setting_data sd
+		WHERE sd.name = 'approval_group'
+			AND sd.`status` != 'N'
+			AND sd.`status` = #{insa_code}
+	</select>
+	
+	<select id="patternList" resultType="hashmap">
+		SELECT CP.PATTERN_CODE, CP.PATTERN_IDX, CP.PATTERN_CNT, CP.PATTERN_EN_NAME, CP.PATTERN_KR_NAME, 
+			CP.COLOR_CODE, CP.MASK_CNT, CP.MASK_CHK, CP.MASK_TYPE, CP.PATTERN_RULE, CP.PATTERN_UPDATED
+		FROM PI_CUSTOM_PATTERN CP
+		ORDER BY CP.PATTERN_CNT
+	</select>
+	
+	<select id="selectbatchData" resultType="hashmap">
+		SELECT IDX, NAME, STATUS, DAY, TIME, COM, PWD
+		FROM PI_SETTING_DATA
+		WHERE STATUS != 'N'
+			AND NAME = 'mail'
+	</select>
+	
+	<select id="checkPageGrade" resultType="hashmap" parameterType="hashmap">
+		SELECT HI.RETRUN_URL, 
+			HI.HEADER_NO,
+			IF(HI.SUB_NO = 0, CONCAT('[', HI.HEADER_NAME, ']' ), 
+				CONCAT('[', (SELECT D.HEADER_NAME FROM PI_HEADER_INFORMATION D WHERE D.SUB_NO = 0 AND D.HEADER_NO = HI.HEADER_NO) , ' > ', HI.HEADER_NAME, ']') ) AS HEADER_NAME
+		FROM PI_HEADER_INFORMATION HI, PI_GRADE_HEADER GH
+		WHERE HI.IDX = GH.HEADER_IDX
+			AND HI.URL = #{requestUrl}
+			AND GH.GRADE_NO = ${userGrade}
+	</select>	
+	
+	<update id="updateCustomPattern" parameterType="hashmap">
+		UPDATE pi_custom_pattern SET
+			PATTERN_CODE = #{patternReconNm},
+			PATTERN_RULE = #{patternRuleTd},
+			PATTERN_EN_NAME = #{patternNameEr},
+			PATTERN_KR_NAME = #{patternNameKr},
+			CREUSER_NO = #{user_no},
+			COLOR_CODE = #{patternColor},
+			MASK_CNT = #{patternMaskCnt},
+			MASK_TYPE = #{patternMaskType},
+			MASK_CHK = #{patternMaskChk},
+			regdate = NOW()
+		WHERE PATTERN_IDX = #{patternIDX}
+	</update>
+	
+	<update id="customPatternChagne" parameterType="hashmap">
+		UPDATE pi_custom_pattern SET
+			PATTERN_CNT = ${cnt}
+		WHERE PATTERN_IDX = ${idx}
+	</update>
+	
+	<delete id="deleteCustomPattern" parameterType="hashmap">
+		DELETE FROM pi_custom_pattern WHERE PATTERN_UPDATED = 'Y' AND PATTERN_IDX = #{patternIDX}
+	</delete>
+	
+	<insert id="insertCustomPattern" parameterType="hashmap">
+		INSERT INTO  pi_custom_pattern  
+		(PATTERN_CODE, PATTERN_RULE, PATTERN_EN_NAME, PATTERN_KR_NAME, PATTERN_UPDATED, CREUSER_NO, COLOR_CODE, MASK_CNT, MASK_TYPE, MASK_CHK, regdate ) VALUES
+		(#{patternReconNm}, #{patternRuleTd},  #{patternNameEr}, #{patternNameKr}, 'Y', #{user_no}, #{patternColor}, #{patternMaskCnt}, #{patternMaskType}, #{patternMaskChk}, NOW())
+	</insert>
+	
+	<select id="nameList" resultType="hashmap" parameterType="String">
+		SELECT TF.IDX, TF.NAME, TF.DELETE_TYPE , TF.ADD_DATA FROM PI_CUSTOM_NAME TF WHERE TF.FLAG = #{value}
+	</select>
+	
+	<update id="nameListUpdate" parameterType="hashmap">
+		UPDATE PI_CUSTOM_NAME SET
+			NAME = #{name}  
+		WHERE IDX = #{idx}
+			AND FLAG = #{status}
+	</update>
+	
+	<delete id="nameListDelete" parameterType="hashmap">
+		DELETE FROM PI_CUSTOM_NAME WHERE IDX = #{idx} AND FLAG = #{status} AND PI_CUSTOM_NAME.DELETE_TYPE = 'Y'
+	</delete>
+	
+	<insert id="nameListCreate" parameterType="hashmap">
+		INSERT INTO PI_CUSTOM_NAME  
+		(NAME, ADD_DATA, FLAG) VALUES
+		(#{name} , 'Y', #{status})
+	</insert>
+	
+	<select id="conDataList" resultType="hashmap">
+		SELECT T.IDX, T.NAME, T.CON, T.FLAG, SF.NAME AS FLAG_CON, T.USER_NO , T.FLAG_CON AS FLAG_STATUS
+		FROM PI_TEMPLATE T
+			LEFT OUTER JOIN PI_SETTING_FLAG SF ON T.FLAG_CON = SF.FLAG
+		WHERE T.FLAG = 'Y'
+	</select>
+	
+	<update id="ConListUpdate" parameterType="hashmap">
+		UPDATE PI_TEMPLATE SET
+			FLAG = #{flag}
+			<if test="conDetailNm != null and conDetailNm != ''">
+				,NAME = #{conDetailNm}
+			</if>
+			<if test="conDetailContent != null and conDetailContent != ''">
+				,CON = #{conDetailContent}
+			</if>
+		WHERE IDX = #{idx}
+	</update>
+	
+	<select id="selectContentList" parameterType="String" resultType="hashmap" >
+		SELECT T.NAME, T.CON
+		FROM PI_TEMPLATE T
+		WHERE T.FLAG_CON = #{value}
+<!-- 			AND T.FLAG = 'Y' -->
+	</select>
+	
+	<select id="selectGroupApprovalUser" parameterType="String" resultType="hashmap" >
+		SELECT u.user_no, u.user_name, u.jikwee, u.jikguk , sd.status as insa_code
+		FROM pi_user u, pi_setting_data sd
+		WHERE u.user_no = sd.user_no
+			AND sd.name = 'approval_group'
+			AND sd.status = #{value}
+	</select>
+	
+	<select id="approvalList" resultType="hashmap" parameterType="String">
+		SELECT CU.NAME, SD.USER_NO, SD.STATUS, U.JIKWEE, SD.COM, U.USER_NAME, SD.IDX, U.USER_EMAIL, U.JIKGUK
+		FROM PI_SETTING_DATA SD
+			LEFT OUTER JOIN PI_CUSTOM_NAME CU ON CONCAT(CU.FLAG,'_',CU.IDX)  = SD.STATUS
+			LEFT OUTER JOIN PI_USER U  ON SD.USER_NO = U.USER_NO
+			LEFT OUTER JOIN PI_GROUP G ON U.INSA_CODE = G.INSA_CODE
+		WHERE SD.NAME = 'approval'
+			AND SD.STATUS != 'N'
+		ORDER BY CU.flag_cnt
+	</select>
+	
+	<select id="approvalStatus" resultType="hashmap" parameterType="String">
+		SELECT CU.NAME, SD.USER_NO, SD.STATUS, U.JIKWEE, SD.COM, U.USER_NAME, SD.IDX, U.USER_EMAIL
+		FROM PI_SETTING_DATA SD
+			LEFT OUTER JOIN PI_CUSTOM_NAME CU ON CONCAT(CU.FLAG,'_',CU.IDX)  = SD.STATUS
+			LEFT OUTER JOIN PI_USER U  ON SD.USER_NO = U.USER_NO
+			LEFT OUTER JOIN PI_GROUP G ON U.INSA_CODE = G.INSA_CODE
+		WHERE SD.NAME = 'approval'
+			AND SD.STATUS != 'N'
+			ORDER BY SD.STATUS DESC 
+	</select>
+	
+	<select id="selectMailBatchMax" parameterType="hashmap" resultType="hashmap">
+		SELECT IFNULL(MAX(IDX),0) AS IDX
+		FROM PI_SETTING_DATA
+		WHERE name = #{name}
+	</select>
+	
+	<update id="updateBatchSchedule" parameterType="hashmap">
+		UPDATE PI_SETTING_DATA SET
+			STATUS = 'N'
+		WHERE name = #{name}
+			AND IDX &lt;=  #{idx}
+			AND STATUS != 'N'
+	</update>
+	
+	<insert id="insertApprovalUser" parameterType="hashmap">
+		INSERT INTO PI_SETTING_DATA
+		<choose>
+            <when test='idx != "" and idx != null'>
+				(IDX, NAME, USER, STATUS, COM)
+					VALUES
+				(#{idx}, #{name}, #{userNo}, #{status}, #{com})
+				ON DUPLICATE KEY UPDATE
+				IDX = #{idx},
+				STATUS = #{status}
+            </when>
+            <otherwise>
+            	(NAME, USER_NO, STATUS, COM)
+            		VALUES
+				(#{name}, #{userNo}, #{status}, #{com})
+            </otherwise>
+        </choose>
+	</insert>
+	  
+	 <select id="selectTeamApprovalUserCnt"  parameterType="hashmap" resultType="hashmap">
+		SELECT count(user_no) as cnt FROM pi_setting_data
+		WHERE NAME = 'approval_group'
+			AND STATUS = #{status}
+			AND user_no = #{userNo} 
+	</select>
+	
+<!-- 	조치 계획 관리 -->
+	<select id="getProcessingFlag" parameterType="hashmap" resultType="hashmap">
+		SELECT DPF.PROCESSING_FLAG,
+			DPF.PROCESSING_FLAG_NAME,
+			DPF.DATE_ENABLE,
+			DPF.COMMENT_ENABLE,
+			DPF.COMMENT_TITLE,
+			DPF.COMMENT_TEXT,
+			DPF.BOTTOM_TEXT,
+			DPF.ENABLE,
+			(CASE WHEN DPF.TYPE=1 THEN '(정탐) '
+				WHEN DPF.TYPE=0 THEN '(오탐) '
+				WHEN DPF.TYPE=2 THEN '(경로예외) ' ELSE '' END) AS APRROVAL_TYPE
+		FROM PI_DATA_PROCESSING_FLAG DPF
+		WHERE 1 = 1
+			<if test="type != null">
+				AND DPF.TYPE = #{type} 
+			</if>
+    </select>
+    
+    <update id="updateProcessingFlag" parameterType="hashmap" >
+        update pi_data_processing_flag
+            set processing_flag = #{processing_flag},
+            processing_flag_name = #{processing_flag_name},
+            date_enable = #{date_enable},
+            comment_enable = #{comment_enable},
+            comment_title = #{comment_title},
+            comment_text = #{comment_text},
+            type = #{type}
+            WHERE PROCESSING_FLAG = #{processing_flag}
+            AND TYPE = #{type}
+    </update>
+    
+    <delete id="deleteProcessingFlag" parameterType="hashmap" >
+    	DELETE FROM pi_data_processing_flag WHERE processing_flag = #{processing_flag} AND TYPE = #{type}
+    </delete>
+    
+    <update id="deleteGroupApprovalUser" parameterType="hashmap" >
+        UPDATE pi_setting_data SET
+		STATUS = 'N'
+		WHERE NAME = 'approval_group'
+			AND STATUS = #{insa_code}
+			AND user_no = #{user_no}
+    </update>
+    
+    <update id="updateExceptionFlag" parameterType="hashmap" >
+        update pi_path_exception_flag
+            set
+            PATH_EX_FLAG_NAME = #{path_ex_flag_name},
+            ENABLE = #{enable}
+            WHERE PATH_EX_FLAG = #{path_ex_flag}
+    </update>
+    
+    <insert id="insertProcessingFlag" parameterType="hashmap" >
+        INSERT INTO pi_data_processing_flag 
+            (TYPE , PROCESSING_FLAG_NAME , DATE_ENABLE , COMMENT_ENABLE , COMMENT_TITLE, COMMENT_TEXT)
+        VALUES
+            (#{type},#{processing_flag_name},#{date_enable},#{comment_enable},#{comment_title},#{comment_text})
+    </insert>
+    
+    <select id="getExceptionFlag"  resultType="hashmap">
+        SELECT PATH_EX_FLAG,
+                PATH_EX_FLAG_NAME,
+                ENABLE
+         FROM pi_path_exception_flag
+         WHERE ENABLE = '1'
+    </select>
+    
+    <insert id="insertExceptionFlag" parameterType="hashmap" >
+        INSERT INTO pi_path_exception_flag 
+            (PATH_EX_FLAG_NAME, ENABLE)
+        VALUES
+            (#{path_ex_flag_name}, #{enable})
+    </insert>    
+    
+    <insert id="insertBatchSchedule" parameterType="hashmap">
+		INSERT INTO PI_SETTING_DATA
+		(NAME, USER_NO, STATUS, DAY, TIME, COM, PWD)
+		VALUES
+		(#{name}, #{userNo}, #{status}, #{day}, #{time}, #{email}, #{pwd})
+	</insert>
+    
+    <select id="rollBackList" resultType="hashmap">
+		SELECT IDX, NAME FROM PI_DB_BACKUP
+		ORDER BY IDX DESC
+	</select>
+	
+    <select id="getSessionTimeout" resultType="int">
+		SELECT SESSION_TIME FROM PI_VERSION
+	</select>
+	
+	<insert id="insertBackUpFile" parameterType="hashmap" >
+        INSERT INTO PI_DB_BACKUP 
+            (NAME)
+        VALUES
+            (#{fileName})
+    </insert>   
+    
+    <select id="reportHeaderList" resultType="hashmap" parameterType="hashmap">
+    	SELECT RH.type ,RH.header_name, RH.header_type
+		FROM pi_setting S, pi_report_header RH
+		WHERE S.`type` = 3
+			AND S.name LIKE CONCAT(#{report_flag}, '%')
+			AND S.IDX = RH.`type`
+		ORDER BY RH.IDX
+    </select>
+    
+    <select id="groupApprovalList" resultType="hashmap" parameterType="hashmap">
+    	SELECT G.insa_code, G.team_name, COUNT(S.user_no) AS user_cnt, G.fullname
+		FROM pi_group G
+			LEFT OUTER JOIN pi_setting_data S ON S.status = G.insa_code AND S.status != 'N'
+		GROUP BY G.insa_code
+    </select>
+    
+</mapper>

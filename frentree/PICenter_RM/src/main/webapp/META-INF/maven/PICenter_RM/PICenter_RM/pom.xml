@@ -1,0 +1,279 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 D:\workspace2\maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>PICenter_RM</groupId>
+  <artifactId>PICenter_RM</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <packaging>war</packaging>
+	<properties>
+		<java-version>17</java-version>
+        <org.springframework-version>6.1.16</org.springframework-version>
+		<org.aspectj-version>1.6.10</org.aspectj-version>
+		<org.slf4j-version>1.7.26</org.slf4j-version>
+		<org.apache.tiles-version>3.0.8</org.apache.tiles-version>
+		<org.mybatis-version>3.5.17</org.mybatis-version>
+		<org.mybatis-spring-version>3.0.3</org.mybatis-spring-version>
+	</properties>
+  
+	<dependencies>
+		<dependency>
+		    <groupId>ch.qos.logback</groupId>
+		    <artifactId>logback-core</artifactId>
+		    <version>1.5.18</version>
+		</dependency>
+		<dependency>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+			<version>1.5.18</version>
+		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.springframework</groupId>-->
+<!--			<artifactId>spring-context-support</artifactId>-->
+<!--			<version>${org.springframework-version}</version>-->
+<!--		</dependency>-->
+<!--		<dependency>-->
+<!--			<groupId>org.springframework</groupId>-->
+<!--			<artifactId>spring-webmvc</artifactId>-->
+<!--			<version>${org.springframework-version}</version>-->
+<!--		</dependency>-->
+<!--		<dependency>-->
+<!--		  <groupId>org.springframework</groupId>-->
+<!--		  <artifactId>spring-context</artifactId>-->
+<!--		  <version>${org.springframework-version}</version>-->
+<!--		</dependency>-->
+<!--		<dependency>-->
+<!--		  <groupId>org.springframework</groupId>-->
+<!--		  <artifactId>spring-core</artifactId>-->
+<!--		  <version>${org.springframework-version}</version>-->
+<!--		</dependency>-->
+			<!-- Spring Core -->
+			<dependency>
+			  <groupId>org.springframework</groupId>
+			  <artifactId>spring-core</artifactId>
+			  <version>${org.springframework-version}</version>
+			</dependency>
+			
+			<!-- Spring Context -->
+			<dependency>
+			  <groupId>org.springframework</groupId>
+			  <artifactId>spring-context</artifactId>
+			  <version>${org.springframework-version}</version>
+			</dependency>
+			
+			<!-- Spring Context Support (optional, 필요하면 유지) -->
+			<dependency>
+			  <groupId>org.springframework</groupId>
+			  <artifactId>spring-context-support</artifactId>
+			  <version>${org.springframework-version}</version>
+			</dependency>
+			
+			<!-- Spring Web (중요: ContextLoaderListener 포함) -->
+			<dependency>
+			  <groupId>org.springframework</groupId>
+			  <artifactId>spring-web</artifactId>
+			  <version>${org.springframework-version}</version>
+			</dependency>
+			
+			<!-- Spring Web MVC -->
+			<dependency>
+			  <groupId>org.springframework</groupId>
+			  <artifactId>spring-webmvc</artifactId>
+			  <version>${org.springframework-version}</version>
+			</dependency>
+		
+		
+		<dependency>
+		  <groupId>jakarta.servlet</groupId>
+		  <artifactId>jakarta.servlet-api</artifactId>
+		  <version>6.0.0</version>
+		  <scope>provided</scope>
+		</dependency>
+		
+		<dependency>
+		  <groupId>jakarta.servlet.jsp</groupId>
+		  <artifactId>jakarta.servlet.jsp-api</artifactId>
+		  <version>3.0.0</version>
+		  <scope>provided</scope>
+		</dependency>
+		<dependency>
+		    <groupId>jakarta.annotation</groupId>
+		    <artifactId>jakarta.annotation-api</artifactId>
+		    <version>2.1.1</version>
+		</dependency>
+		<dependency>
+		  <groupId>jakarta.servlet.jsp.jstl</groupId>
+		  <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+		  <version>3.0.0</version>
+		</dependency>
+		<dependency>
+		  <groupId>org.glassfish.web</groupId>
+		  <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+		  <version>3.0.1</version>
+		</dependency>
+		
+		<dependency>
+		  <groupId>jakarta.inject</groupId>
+		  <artifactId>jakarta.inject-api</artifactId>
+		  <version>2.0.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>${org.springframework-version}</version>
+		</dependency>
+
+		<!-- MariaDB JDBC Driver -->
+		<dependency>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
+			<version>3.5.1</version>
+		</dependency>
+
+		<!-- Log4JDBC (optional, for SQL logging) -->
+		<dependency>
+			<groupId>com.googlecode.log4jdbc</groupId>
+			<artifactId>log4jdbc</artifactId>
+			<version>1.2</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
+		<dependency>
+		    <groupId>com.google.code.gson</groupId>
+		    <artifactId>gson</artifactId>
+		    <version>2.11.0</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis</artifactId>
+			<version>${org.mybatis-version}</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.mybatis</groupId>
+			<artifactId>mybatis-spring</artifactId>
+			<version>${org.mybatis-spring-version}</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>5.4.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.4.0</version>
+		</dependency>
+
+		<dependency>
+		    <groupId>org.apache.commons</groupId>
+		    <artifactId>commons-text</artifactId>
+		    <version>1.10.0</version> <!-- 최신 버전 권장 -->
+		</dependency>
+
+	    
+		<dependency>
+		  <groupId>com.fasterxml.jackson.core</groupId>
+		  <artifactId>jackson-databind</artifactId>
+		  <version>2.15.3</version>
+		</dependency>
+		<dependency>
+		  <groupId>com.fasterxml.jackson.core</groupId>
+		  <artifactId>jackson-core</artifactId>
+		  <version>2.15.3</version>
+		</dependency>
+		<dependency>
+		  <groupId>com.fasterxml.jackson.core</groupId>
+		  <artifactId>jackson-annotations</artifactId>
+		  <version>2.15.3</version>
+		</dependency>	
+		
+		<!--강-->
+		<!--<dependency>
+		  <groupId>javax.servlet</groupId>
+		  <artifactId>servlet-api</artifactId>
+		  <version>2.5</version>
+		  <scope>provided</scope>
+		  <exclusions>
+		    <exclusion>
+		      <groupId>*</groupId>
+		      <artifactId>*</artifactId>
+		    </exclusion>
+		  </exclusions>
+		</dependency>-->
+		
+		<!-- [1] 파일 업로드: IO 포함 -->
+		<dependency>
+		  <groupId>commons-io</groupId>
+		  <artifactId>commons-io</artifactId>
+		  <version>2.16.1</version>
+		</dependency>
+		<dependency>
+		  <groupId>commons-fileupload</groupId>
+		  <artifactId>commons-fileupload</artifactId>
+		  <version>1.5</version> <!-- 혹은 네가 이전에 쓰던 안정된 버전 -->
+		</dependency>
+		
+		
+		<!-- [3] JSP 구현체 (톰캣 10.1.x 호환용) -->
+		<!-- EL API + 구현체 -->
+		<dependency>
+		  <groupId>jakarta.el</groupId>
+		  <artifactId>jakarta.el-api</artifactId>
+		  <version>4.0.0</version>
+		</dependency>
+		<dependency>
+		  <groupId>org.glassfish</groupId>
+		  <artifactId>jakarta.el</artifactId>
+		  <version>4.0.2</version>
+		</dependency>
+		
+		<dependency>
+		  <groupId>org.apache.tomcat</groupId>
+		  <artifactId>tomcat-jasper</artifactId>
+		  <version>10.1.40</version>
+				<exclusions>
+			        <exclusion>
+			            <groupId>javax.servlet.jsp</groupId>
+			            <artifactId>javax.servlet.jsp-api</artifactId>
+			        </exclusion>
+			    </exclusions> 
+		</dependency>
+		<dependency>
+		  <groupId>org.apache.tomcat</groupId>
+		  <artifactId>tomcat-jasper-el</artifactId>
+		  <version>10.1.40</version>
+			<exclusions>
+		        <exclusion>
+		            <groupId>javax.servlet.jsp</groupId>
+		            <artifactId>javax.servlet.jsp-api</artifactId>
+		        </exclusion>
+		    </exclusions>
+		</dependency>
+    </dependencies>
+  
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <excludes>
+          <exclude>**/*.java</exclude>
+        </excludes>
+      </resource>
+    </resources>
+    <outputDirectory>${project.basedir}/bin</outputDirectory>
+    <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>17</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>3.2.3</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

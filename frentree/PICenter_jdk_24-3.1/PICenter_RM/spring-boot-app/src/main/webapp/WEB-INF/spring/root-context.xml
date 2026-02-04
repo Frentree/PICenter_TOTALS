@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc-4.3.xsd
+		http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring-1.2.xsd">
+
+	<!-- DB 설정 -->
+	<bean id="propertyConfigurer" class="com.org.iopts.util.DecryptingPropertyUtil">
+		<property name="locations">
+			<list>
+				<value>classpath:/property/dbpool.properties</value>
+			</list>
+		</property>
+	</bean>
+
+	<bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="driverClassName" value="${jdbc.driver}" />
+		<property name="url" value="${jdbc.url}" />
+		<property name="username" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+	</bean>
+
+	<!-- MyBatis -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:/mybatis-config.xml" />
+		<property name="mapperLocations" value="classpath:mappers/**/*Mapper.xml" />
+	</bean>
+
+	<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate" destroy-method="clearCache">
+		<constructor-arg index="0" name="sqlSessionFactory" ref="sqlSessionFactory" />
+	</bean>
+
+	<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.org.iopts.**.dao" />
+	</bean>
+
+	<!-- Quartz Scheduler 설정 -->
+	<bean id="quartzService" class="com.org.iopts.service.Pi_QuartzServiceImpl" />
+
+	<bean id="jobScanSchedule" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="quartzService" />
+		<property name="targetMethod" value="executeScanSchedule" />
+		<property name="concurrent" value="false" />
+	</bean>
+
+	<bean id="jobScanScheduleTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="jobScanSchedule" />
+<!-- 		<property name="cronExpression" value="0 0/1 * * * ?" /> -->
+		<property name="cronExpression" value="5 1 0/1 * * ?" />
+	</bean>
+
+	<bean id="jobStopSchedule" class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject" ref="quartzService" />
+		<property name="targetMethod" value="executeStopSchedule" />
+		<property name="concurrent" value="false" />
+	</bean>
+
+	<bean id="jobStopScheduleTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="jobStopSchedule" />
+		<property name="cronExpression" value="0 0/1 * * * ?" />
+	</bean>
+
+	<bean id="jobScheduler" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="jobScanScheduleTrigger" />
+				<ref bean="jobStopScheduleTrigger" />
+			</list>
+		</property>
+	</bean>
+
+	<bean id="multipartResolver" class="org.springframework.web.multipart.support.StandardServletMultipartResolver" />
+	<!-- 예외 처리 -->
+	<bean id="exceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver">
+		<property name="exceptionMappings">
+			<props>
+				<prop key="org.springframework.web.multipart.MaxUploadSizeExceededException">/error/attachFileOverSizeErr</prop>
+			</props>
+		</property>
+	</bean>
+
+</beans>

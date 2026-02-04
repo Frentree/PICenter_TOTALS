@@ -1,0 +1,680 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.detection.dao.piApprovalDAO">
+
+    <!-- 정탐/오탐 리스트 조회 -->
+     <select id="searchProcessList" parameterType="hashmap" resultType="hashmap">
+		SELECT D.* 
+		FROM (SELECT DPG.IDX,
+			T.NAME,
+			COUNT(DISTINCT DP.TARGET_ID)-1 AS NAME_CNT,
+		   T.PLATFORM,
+			DP.TARGET_ID,
+			DPG.data_processing_name AS FILENAME,
+			DATE_FORMAT(DP.REGDATE, '%Y-%m-%d %H:%i:%s') AS REGDATE,
+			DATE_FORMAT(DPU.REGDATE, '%Y-%m-%d %H:%i:%s') AS OKDATE,
+            CASE WHEN DPU.APPROVAL_STATUS = 'E' THEN '완료'
+             WHEN DPU.APPROVAL_STATUS = 'D' THEN '반려'
+             WHEN DPU.APPROVAL_STATUS = 'W' THEN '대기' ELSE '' END APPROVAL_STATUS,
+			DPU.APPROVAL_STATUS      AS      STATUS,
+			DPU.CHARGE_USER_FLAGE,
+			DPG.NOTE,
+			DPG.USER_NO, 
+			(SELECT USER_NAME FROM pi_user U WHERE U.USER_NO = DPG.USER_NO) AS USER_NAME, 
+			DPU.OK_USER_NO,
+			DP.AP_NO,
+			DP.NOTEPAD,
+			DP.ADD_CONTENT,
+			DP.APPROVAL_TYPE AS APPROVAL_FLAG,
+			DPG.PROCESSING_FLAG,
+			PDF.TYPE AS APPROVAL_GROUP_FLAG,
+			GROUP_CONCAT(DISTINCT T.name) AS NAMELIST,
+			CASE WHEN PDF.TYPE  = 0 THEN '오탐'
+				WHEN PDF.TYPE = 1 THEN '정탐'
+				WHEN PDF.TYPE = 2 THEN '경로 예외' ELSE ''  END AS APPROVAL_PIC_STATUS
+	    FROM  pi_data_processing_flag PDF, PI_DATA_PROCESSING_GROUP DPG
+	    	LEFT OUTER JOIN PI_DATA_PROCESSING DP ON DP.DATA_PROCESSING_GROUP_IDX = DPG.IDX
+	    	LEFT OUTER JOIN PI_TARGETS T ON DP.TARGET_ID = T.TARGET_ID AND DP.AP_NO = T.AP_NO
+			LEFT OUTER JOIN PI_AROCESSING_USER_VIEW DPU ON DPG.USER_NO = DPU.USER_NO AND DPG.DATA_PROCESSING_CHARGE_ID = DPU.CHARGE_ID
+			LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID  AND T.AP_NO = TU.AP_NO
+		WHERE 1=1
+			AND PDF.processing_flag = DPG.processing_flag
+			<if test="user_grade != 9">
+	           AND TU.USER_NO = (#{user_no})
+	         </if>
+	         <choose>
+	         	<when test='dayKey == "REGDATE"'>
+	         		<if test="fromDate != null and fromDate != '' ">
+	         			AND DATE_FORMAT(DPG.REGDATE, '%Y-%m-%d') BETWEEN DATE_FORMAT(#{fromDate}, '%Y-%m-%d') AND DATE_FORMAT(#{toDate}, '%Y-%m-%d')
+	         		</if>
+	         	</when>
+	         	<otherwise>
+	         		<if test="fromDate != null and fromDate != '' ">
+	         			AND DATE_FORMAT(DPU.REGDATE, '%Y-%m-%d') BETWEEN DATE_FORMAT(#{fromDate}, '%Y-%m-%d') AND DATE_FORMAT(#{toDate}, '%Y-%m-%d')
+	         		</if>
+	         	</otherwise>
+	         </choose>
+	         
+		 GROUP BY DPG.IDX	) D
+		WHERE 1=1  
+		<if test='nameList != null'>
+		    AND  
+		    <foreach item="item" index="index" collection="nameList" open="(" separator="AND" close=")">
+		        NAMELIST LIKE CONCAT('%', #{item}, '%') 
+		    </foreach>
+		</if> 
+<!--         <if test='owner != null and owner != ""'> -->
+<!--            AND D.NAME LIKE CONCAT('%',#{owner},'%') -->
+<!--        </if> -->
+<!--         <if test='filename != null and filename != ""'> -->
+<!--            AND D.FILENAME LIKE CONCAT('%',#{filename},'%') -->
+<!--        </if> -->
+
+<!-- 		<if test='processingFlag != null and processingFlag != ""'> -->
+<!-- 			AND D.PROCESSING_FLAG = #{processingFlag} -->
+<!-- 		</if> -->
+<!--         <choose> -->
+<!--             <when test='status != null and status != "" and status == "NR"'> -->
+<!--                 AND (D.APPROVAL_STATUS IS NULL OR D.APPROVAL_STATUS = '') -->
+<!--             </when> -->
+<!--             <otherwise> -->
+<!--                 <if test='status != null and status != ""'> -->
+<!--                     AND D.APPROVAL_STATUS = #{status} -->
+<!--                 </if> -->
+<!--             </otherwise> -->
+<!--         </choose> -->
+       
+         
+    </select>
+
+    <select id="selectTeamMember" parameterType="hashmap" resultType="hashmap">
+    	SELECT DISTINCT 
+			U.USER_NO, 
+			U.JIKWEE, 
+			U.JIKGUK, 
+			U.BOSS_NAME, 
+			U.USER_GRADE, 
+			U.USER_NAME,
+			U.USER_PHONE, 
+			U.INSA_CODE, 
+			G.TEAM_NAME, 
+			U.REGDATE,
+			G.TEAM_NAME AS OFFICE_NM
+		FROM PI_USER U, PI_GROUP G
+		WHERE U.INSA_CODE = G.INSA_CODE
+		  AND U.USER_NO != #{user_no}
+		  AND USER_GRADE IN (6,7)
+		ORDER BY 
+			U.INSA_CODE = #{insa_code} DESC,
+			U.JIKWEE
+		<!-- SELECT DISTINCT 
+			   U.USER_NO, 
+		       U.JIKWEE, 
+		       U.JIKGUK, 
+		       U.BOSS_NAME, 
+		       U.USER_GRADE, 
+		       U.USER_NAME, 
+		       U.INSA_CODE, 
+		       G.TEAM_NAME, 
+		       U.REGDATE,
+		       A.OFFICE_NM
+		  FROM PI_USER U, PI_GROUP G, PI_ACCOUNT_INFO A
+		 WHERE U.INSA_CODE = G.INSA_CODE 
+		   AND U.INSA_CODE = #{insa_code}
+		   AND U.USER_NO != #{user_no}
+		   AND USER_GRADE > 0
+		   AND U.USER_NO = A.USER_ID
+		   ORDER BY 
+		   A.OFFICE_NM = (SELECT DISTINCT ACC.OFFICE_NM FROM PI_ACCOUNT_INFO ACC WHERE ACC.USER_ID = #{user_no} AND ACC.OFFICE_NM IS NOT NULL) DESC,
+		   A.OFFICE_NM DESC,
+		   U.JIKWEE -->
+    </select>
+
+	<!-- 기안자 검색  -->
+    <select id="searchTeamMember" parameterType="hashmap" resultType="hashmap">
+    	SELECT DISTINCT 
+			U.USER_NO, 
+			U.JIKWEE, 
+			U.JIKGUK, 
+			U.BOSS_NAME, 
+			U.USER_GRADE, 
+			U.USER_NAME, 
+			U.INSA_CODE, 
+			G.TEAM_NAME, 
+			U.REGDATE,
+			U.USER_PHONE,
+			G.TEAM_NAME AS OFFICE_NM
+		FROM PI_USER U, PI_GROUP G
+		WHERE U.INSA_CODE = G.INSA_CODE
+		  <!-- AND U.USER_NO != #{user_no} -->
+		  AND USER_GRADE NOT IN (0)
+		 <if test="searchTeamName != null and searchTeamName != ''">
+			AND G.TEAM_NAME LIKE CONCAT('%', #{searchTeamName}, '%')
+		</if>
+		 <if test="searchName != null and searchName != ''">
+			AND U.USER_NAME LIKE CONCAT('%', #{searchName}, '%')
+		</if>
+		ORDER BY 
+			U.INSA_CODE = #{insa_code} DESC,
+			U.JIKWEE
+    </select>
+    <select id="selectDocuNum" parameterType="hashmap" resultType="hashmap">
+        SELECT IFNULL(COUNT(*), 0) + 1 AS SEQ
+          FROM pi_data_processing_charge_group
+         WHERE user_no = #{user_no}
+           AND DATE_FORMAT(REGDATE,'%Y%m%d') = #{today}
+    </select>
+
+    <select id="selectProcessPath" parameterType="hashmap" resultType="hashmap">
+       SELECT DP.hash_id,
+       		  DP.TARGET_ID,
+       		  TG.NAME, 
+       		  TG.CONNECTED_IP,
+              DPG.idx AS CHARGE_ID,
+              (SELECT processing_flag_name 
+                   FROM pi_data_processing_flag 
+                   WHERE processing_flag = DP.processing_flag) AS FLAG,
+              DP.user_no,
+              DPG.data_processing_name, 
+              F.PATH,
+              CASE IFNULL(F.FID,'X') != 'X' WHEN 0 THEN 1 ELSE 0 END AS FID,
+              DP.AP_NO	AS AP_NO
+         FROM PI_FIND AS F
+             ,pi_data_processing_group AS DPG
+             ,pi_data_processing AS DP
+             LEFT OUTER JOIN PI_TARGET_GROUP TG ON TG.TARGET_ID = DP.TARGET_ID AND TG.AP_NO = DP.AP_NO AND TG.TYPE = 1 AND TG.TARGET_USE = 'Y' 
+             LEFT OUTER JOIN PI_TARGET_USER TU ON TG.TARGET_ID = TU.TARGET_ID AND TG.AP_NO = TU.AP_NO
+        WHERE 1=1
+           <if test="user_grade != 9">
+          	AND TU.user_no = #{user_no}
+          </if>
+          AND DP.target_id = F.target_id
+          AND DP.hash_id = F.hash_id
+          AND DP.AP_NO = F.AP_NO
+          AND DPG.idx = DP.data_processing_group_idx 
+          AND DPG.idx = #{data_processing_group_idx}
+		GROUP BY DP.TARGET_ID ,DP.AP_NO, DP.HASH_ID
+		ORDER BY DP.TARGET_ID ASC, DP.AP_NO
+    </select>
+
+    <insert id="registProcessCharge" parameterType="hashmap">
+        INSERT INTO pi_data_processing_charge_group (
+            data_processing_charge_name, 
+            user_no,  
+            approval_status, 
+            REGDATE, 
+            reason, 
+            DOC_ID
+        )
+        values (
+            CONCAT(#{today}, "_" , #{user_no}, "_" , #{doc_seq}),
+            #{user_no},
+            #{apprType}, 
+            NOW(),
+            #{comment}, 
+            #{IFIDVALUE}
+        )
+        <selectKey resultType="int" keyProperty="DATA_PROCESSING_CHARGE_ID" order="AFTER">
+			SELECT LAST_INSERT_ID() AS DATA_PROCESSING_CHARGE_ID
+		</selectKey>
+    </insert>
+    
+    <update id="updateProcessCharge" parameterType="hashmap" >
+    	UPDATE pi_data_processing_charge_group
+    	   SET URL = #{url}
+    	WHERE DATA_PROCESSING_CHARGE_ID = #{DATA_PROCESSING_CHARGE_ID}
+    </update>
+    
+    <delete id="deleteProcessCharge" parameterType="hashmap">
+    	DELETE FROM pi_data_processing_charge_group WHERE DATA_PROCESSING_CHARGE_ID = #{DATA_PROCESSING_CHARGE_ID}
+    </delete>
+    
+    <select id="selectDataProcessingChargeId" parameterType="hashmap" resultType="String">
+    	SELECT data_processing_charge_id FROM pi_data_processing_charge_group
+    	WHERE data_processing_charge_name = CONCAT(#{today}, "_" , #{user_no}, "_" , #{doc_seq})
+    </select>
+    
+    <update id="updateProcessingGroupStatus">
+        UPDATE PI_DATA_PROCESSING_GROUP DPG
+           SET DPG.APPROVAL_STATUS = #{apprType},
+               DPG.data_processing_charge_id = #{data_processing_charge_id},
+               DPG.NOTE = #{comment}
+         WHERE DPG.USER_NO = #{user_no}
+           AND DPG.IDX = #{idx}
+    </update>
+
+    <update id="updateProcessingStatus">
+        UPDATE PI_DATA_PROCESSING DP
+           SET DP.APPROVAL_STATUS = #{apprType}
+         WHERE DP.USER_NO = #{user_no}
+           AND DP.DATA_PROCESSING_GROUP_IDX = #{idx}
+    </update>
+
+    <update id="approvalPlus" parameterType="hashmap">
+        UPDATE pi_account_info SET 
+               approval_id = approval_id + 1
+         WHERE user_id = (#{user_no})
+    </update>
+
+    <!-- 결재관리 - 정탐/오탐 결재 리스트 조회 -->
+    <select id="searchApprovalAllListData" parameterType="hashmap" resultType="hashmap">
+		SELECT DPG.idx AS GROUP_ID,
+		       DPCG.data_processing_charge_id AS CHARGE_ID,
+		       DPCG.data_processing_charge_name AS CHARGE_NAME, 
+		       DPG.user_no,
+		       DPG.data_processing_name,
+		       (SELECT processing_flag_name 
+		          FROM pi_data_processing_flag 
+		         WHERE processing_flag = DPG.processing_flag) AS FLAG,
+		        F.PATH,
+		        DP.APPROVAL_TYPE
+		  FROM PI_FIND AS F
+		      ,pi_data_processing AS DP
+		      ,pi_data_processing_group AS DPG
+		      ,PI_DATA_PROCESSING_CHARGE_GROUP AS DPCG
+		      ,PI_AROCESSING_USER_VIEW AS AUV
+		 WHERE 1=1
+		   AND DP.target_id = F.target_id
+		   AND DP.hash_id = F.hash_id
+		   AND DPG.idx = DP.data_processing_group_idx
+		   AND AUV.CHARGE_ID = DPG.IDX
+		   AND AUV.APPROVAL_STATUS = 'W'
+		 AND DPG.data_processing_charge_id = DPCG.data_processing_charge_id
+		 AND AUV.OK_USER_NO = #{user_no}
+		 ORDER BY DPCG.data_processing_charge_id DESC, DPG.idx 
+    </select>
+
+    <!-- 결재관리 - 정탐/오탐 결재 리스트 조회 -->
+     <select id="searchApprovalListData" parameterType="hashmap" resultType="hashmap">
+    	SELECT '0' CHK,
+			DPCG.data_processing_charge_id AS CHARGE_ID,
+			DPCG.data_processing_charge_name AS PATH,
+			DPCG.USER_NO,
+			PU.USER_NAME,
+			UV.OK_USER_NO AS OK_USER_NO,
+			(SELECT Z.USER_NAME FROM PI_USER Z WHERE Z.USER_NO = PU.USER_NAME) AS OK_USER_NAME,
+			<choose>
+				<when test='user_grade != 9'>
+					DPU.CHARGE_USER_FLAGE,
+					(SELECT Z.USER_NAME FROM PI_USER Z WHERE Z.USER_NO = UV.OK_USER_NO) AS ADMIN_USER_NAME,
+					DPU.APPROVAL_STATUS AS APPROVAL_STATUS,
+					DATE_FORMAT(UV.OKDATE, '%Y-%m-%d %H:%i:%s') AS OKDATE,
+				</when>
+            	<otherwise>
+            		UV.CHARGE_USER_FLAGE,
+					(SELECT Z.USER_NAME FROM PI_USER Z WHERE Z.USER_NO = UV.ok_user_no) AS ADMIN_USER_NAME,
+					UV.APPROVAL_STATUS AS APPROVAL_STATUS,
+					DATE_FORMAT(UV.OKDATE, '%Y-%m-%d %H:%i:%s') AS OKDATE,
+				</otherwise>
+			</choose>
+			DATE_FORMAT(UV.REGDATE, '%Y-%m-%d %H:%i:%s') AS REGDATE,
+			UV.APPROVAL_TYPE AS APPROVAL_TYPE,
+			DPG.NOTE,
+			CASE WHEN DPF.TYPE  = 0 THEN '오탐'
+				WHEN DPF.TYPE = 1 THEN '정탐'
+				WHEN DPF.TYPE = 2 THEN '경로 예외' ELSE ''  END AS APPROVAL_PIC_STATUS
+      	FROM PI_DATA_PROCESSING_FLAG DPF,PI_DATA_PROCESSING_CHARGE_GROUP DPCG
+			LEFT OUTER JOIN PI_USER PU ON PU.USER_NO = DPCG.USER_NO
+			LEFT OUTER JOIN PI_DATA_PROCESSING_GROUP DPG ON DPG.USER_NO = DPCG.USER_NO AND DPG.DATA_PROCESSING_CHARGE_ID = DPCG.DATA_PROCESSING_CHARGE_ID
+			LEFT OUTER JOIN PI_AROCESSING_USER_VIEW UV ON UV.CHARGE_ID = DPCG.DATA_PROCESSING_CHARGE_ID AND UV.USER_NO = PU.USER_NO
+			<if test='user_grade != 9'>
+				AND (UV.USER_NO = #{user_no} OR UV.OK_USER_NO  = #{user_no})
+				LEFT OUTER JOIN PI_DATA_PROCESSING_USER DPU ON DPU.CHARGE_ID = DPG.DATA_PROCESSING_CHARGE_ID
+			</if>
+		WHERE 1 = 1
+		   AND DPF.processing_flag = DPG.processing_flag
+        <if test='status != null and status != ""'>
+           AND UV.APPROVAL_STATUS = #{status}
+        </if>
+           AND DATE_FORMAT(DPCG.REGDATE, '%Y-%m-%d') BETWEEN DATE_FORMAT(#{fromDate}, '%Y-%m-%d') AND DATE_FORMAT(#{toDate}, '%Y-%m-%d')
+        <if test='user_nm != null and user_nm != ""'>
+           AND PU.USER_NAME LIKE CONCAT('%',#{user_nm},'%')
+       </if>
+        <if test='path != null and path != ""'>
+           AND DPCG.data_processing_charge_name LIKE CONCAT('%',#{path},'%')
+       </if>
+
+        <choose>
+            <when test='user_grade != 0'>
+                <if test='user_grade != 9'>
+               		AND (DPU.USER_NO = #{user_no} OR DPU.OK_USER_NO = #{user_no} )
+<!--                		AND UV.OK_USER_NO IS NOT NULL   -->
+                </if>
+            </when>
+            <otherwise>
+                AND DPU.USER_NO = #{user_no}
+            </otherwise>
+        </choose>
+         GROUP BY DPCG.DATA_PROCESSING_CHARGE_ID
+         ORDER BY DPCG.REGDATE DESC, UV.OKDATE DESC	  
+    </select>
+
+     <select id="selectProcessGroupPath" parameterType="hashmap" resultType="hashmap">
+        SELECT DPG.idx AS CHARGE_ID,
+        	   DP.TARGET_ID,
+		       DPG.user_no,
+		       DPG.data_processing_name,
+		       (SELECT processing_flag_name 
+		          FROM pi_data_processing_flag 
+		         WHERE processing_flag = DPG.processing_flag) AS FLAG,
+		        F.PATH,
+		        <!-- 20201120 추가 -->
+		        DPG.APPROVAL_STATUS AS STATUS,
+		        DPG.REASON AS REASON,
+		        DPG.REASON AS RETURN_REASON,
+		        CASE IFNULL(F.FID,'X') != 'X' WHEN 0 THEN 1 ELSE 0 END AS FID,
+		        F.HASH_ID AS ID,
+		        <!-- 20201120 추가 -->
+		        <!-- 20201120 추가 -->
+		        DP.AP_NO AS AP_NO,
+		        <!-- 20201120 추가 -->
+		        IFNULL(DPG.NOTEPAD,'') AS NOTEPAD
+          FROM PI_FIND AS F
+		      ,pi_data_processing AS DP
+		      ,pi_data_processing_group AS DPG
+         WHERE 1=1
+           AND DP.AP_NO = F.AP_NO
+		   AND DP.target_id = F.target_id
+		   AND DP.hash_id = F.hash_id
+		   AND DP.approval_type != 2 
+		   AND DPG.idx = DP.data_processing_group_idx
+           AND DPG.data_processing_charge_id IN
+        <foreach item="charge_id_list" index="index" collection="charge_id_list" open="(" separator="," close=")">
+                #{charge_id_list}
+        </foreach>
+         ORDER BY DPG.idx
+    </select>
+    
+     <select id="selectProcessGroupPath2" parameterType="hashmap" resultType="hashmap">
+     	SELECT DPG.idx AS CHARGE_ID,
+			'' AS TARGET_ID,
+			(SELECT NAME FROM pi_targets T WHERE T.TARGET_ID = DP.TARGET_ID) AS NAME,
+			DPG.USER_NO,
+			DPG.data_processing_name,
+			(SELECT processing_flag_name 
+				          FROM pi_data_processing_flag 
+				         WHERE processing_flag = DPG.processing_flag) AS FLAG,
+			GROUP_CONCAT(DISTINCT DP.hash_id SEPARATOR '\n') AS PATH,
+			DPG.approval_status AS STATUS,
+			DPG.reason AS REASON,
+			 DPG.REASON AS RETURN_REASON, 
+			 '' AS FID
+		FROM pi_data_processing DP, pi_data_processing_group DPG
+		WHERE DPG.idx = DP.data_processing_group_idx
+			AND DP.approval_type = 2
+			AND DPG.data_processing_charge_id IN
+		     <foreach item="charge_id_list" index="index" collection="charge_id_list" open="(" separator="," close=")">
+	                #{charge_id_list}
+	        </foreach>
+	       GROUP BY DPG.idx
+    </select>
+
+    <select id="selectDataProcessingGroupId" parameterType="hashmap" resultType="hashmap">
+        SELECT idx AS GROUP_ID
+          FROM PI_DATA_PROCESSING_GROUP
+         WHERE data_processing_charge_id = #{chargeIdList}
+    </select>
+
+    <update id="updateProcessApproval" parameterType="hashmap">
+        UPDATE PI_DATA_PROCESSING_CHARGE_GROUP DPC, PI_DATA_PROCESSING_GROUP DPG 
+           SET DPC.APPROVAL_STATUS = #{apprType},
+               DPG.APPROVAL_STATUS = #{apprType},
+            <if test='apprType == "D"'>
+               DPC.reason = #{reason},
+               DPG.reason = #{reason}
+            </if>
+            <!-- <if test='apprType == "E"'>
+               DPC.reason = #{reason},
+               DPG.reason = #{reason}
+            </if> -->
+            <if test='apprType == "E"'>
+               DPC.reason = #{reason},
+               DPG.reason = #{reason}
+            </if>
+         WHERE DPC.data_processing_charge_id = #{chargeIdList}
+           AND DPG.data_processing_charge_id = #{chargeIdList}
+    </update>
+    
+    <update id="updateProceesApprovalUser" parameterType="hashmap">
+        UPDATE PI_DATA_PROCESSING_USER SET
+			APPROVAL_STATUS = #{apprType},
+			COMMENT = #{reason},
+			OKDATE = NOW()
+		WHERE OK_USER_NO = #{user_no}
+			AND CHARGE_ID =#{chargeIdList}
+    </update>
+
+    <update id="updateDataProcessing" parameterType="hashmap">
+        UPDATE PI_DATA_PROCESSING 
+	       SET APPROVAL_STATUS = #{apprType}
+	     WHERE data_processing_group_idx = #{group_id}
+    </update>
+
+    <select id="selectScanPolicy" parameterType="hashmap" resultType="hashmap">
+		SELECT IDX,
+               POLICY_NAME,
+               POLICY_VERSION,
+               REGDATE,
+               COMMENT,
+               DATATYPE_ID,
+               SCHEDULE_LABEL,
+               SCHEDULE_PAUSE_DAYS,
+               SCHEDULE_PAUSE_MONTH,
+               SCHEDULE_PAUSE_FROM,
+               SCHEDULE_PAUSE_TO,
+               SCHEDULE_CPU,
+               SCHEDULE_DATA,
+               SCHEDULE_MEMORY,
+               SCHEDULE_TRACE,
+               DMZ,
+               MANAGE,
+               DEVELOP,
+               DEFAULT_CHECK
+		  FROM PI_SCAN_POLICY
+		 WHERE 1=1
+		   AND default_check = 1
+    </select>
+
+    <select id="selectReScanTarget" parameterType="hashmap" resultType="hashmap">
+        SELECT DPG.IDX, 
+               DPG.TARGET_ID,
+		       L.LOCATION_ID,
+               F.PATH
+          FROM PI_DATA_PROCESSING_GROUP AS DPG
+              ,PI_DATA_PROCESSING AS DP
+              ,PI_FIND F
+              ,PI_TARGETS T
+              ,PI_LOCATIONS L
+         WHERE 1=1
+           AND DP.DATA_PROCESSING_GROUP_IDX = DPG.IDX
+           AND F.GROUP_ID = DP.GROUP_ID
+           AND F.TARGET_ID = DP.TARGET_ID
+           AND F.HASH_ID = DP.HASH_ID
+           AND T.TARGET_ID = DPG.TARGET_ID
+           AND T.GROUP_ID = L.GROUP_ID
+           AND T.TARGET_ID = L.TARGET_ID
+           AND L.DESCRIPTION = 'All local files'
+           AND DPG.IDX IN
+        <foreach item="group_list" index="index" collection="group_list" open="(" separator="," close=")">
+                #{group_list}
+        </foreach>
+    </select>
+    
+    <delete id="deleteItem">
+    	DELETE DPG, DP
+		  FROM pi_data_processing_group AS DPG JOIN pi_data_processing AS DP
+			ON DPG.idx = DP.data_processing_group_idx
+		 WHERE DPG.idx = #{idx}
+    
+    </delete>
+    
+    <select id="selectProcessingSeq" resultType="hashmap">
+		SELECT DPS.ID AS ID, 
+			LPAD(IFNULL(DPS.ID,0)+1, 10,0) AS ID_LENGTH, 
+			DPS.USER_NO AS USER_NO, 
+			(SELECT U.USER_NAME FROM PI_USER U WHERE 1 = 1 AND U.USER_NO = #{user_no}) AS USER_NAME,
+			DATE_FORMAT(DPS.REGDATE, '%Y%m%d') AS REGDATE
+		FROM pi_data_processing_seq DPS 
+		WHERE DPS.REGDATE = DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00')
+		UNION ALL
+		SELECT 0, 
+			LPAD(1, 10,0) AS ID_LENGTH,  
+			'', 
+			(SELECT U.USER_NAME FROM PI_USER U WHERE 1 = 1 AND U.USER_NO = #{user_no}) AS USER_NAME,
+			DATE_FORMAT(NOW(), '%Y%m%d') 
+		ORDER BY ID DESC
+		LIMIT 1
+    </select>
+    
+   <insert id="insertProcessingSeq" parameterType="hashmap">
+    	INSERT INTO PI_DATA_PROCESSING_SEQ (ID, USER_NO, REGDATE)
+    	VALUES (#{index}, #{user_no}, DATE_FORMAT(NOW(),'%Y-%m-%d 00:00:00'))
+    </insert>
+    
+    <select id="selectApprovalCount" parameterType="hashmap" resultType="hashmap">
+    	SELECT 
+			D.TARGET_ID,
+			D.NAME,
+			COUNT(D.PROCESSING_FLAG) AS RESULT_CNT,
+			D.PROCESSING_FLAG_NAME,
+			D.HASH_ID,
+			D.AP_NO
+		FROM
+			(SELECT DP.TARGET_ID,
+			T.NAME,
+			DP.DATA_PROCESSING_GROUP_IDX,
+			DP.PROCESSING_FLAG,
+			DF.PROCESSING_FLAG_NAME,
+			DP.HASH_ID,
+			DP.AP_NO
+			FROM pi_data_processing AS DP, pi_targets T, pi_data_processing_flag DF
+			WHERE 1 = 1
+			  AND DP.data_processing_group_idx IN 
+			  <foreach collection="idxList" open="(" close=")" separator="," item="item">
+			  	#{item}
+			  </foreach>
+			  AND T.TARGET_ID = DP.TARGET_ID
+			  AND T.AP_NO = DP.AP_NO
+			  AND DF.PROCESSING_FLAG = DP.PROCESSING_FLAG) AS D
+		GROUP BY D.TARGET_ID, D.AP_NO, D.PROCESSING_FLAG, D.HASH_ID
+		ORDER BY D.TARGET_ID, D.AP_NO
+    </select> 
+    
+    <select id="selectApprovalData" parameterType="hashmap" resultType="hashmap">
+    	WITH RECURSIVE CTE AS(
+			SELECT F.TARGET_ID, F.FID, F.HASH_ID, F.PATH, F.AP_NO, 0 AS SUBPATH, F.hash_id AS P_ID
+			FROM PI_FIND F
+			WHERE F.TARGET_ID = #{target_id} 
+				AND F.HASH_ID = #{hash_id}
+				AND F.AP_NO = #{ap_no}
+			UNION ALL
+			SELECT S.TARGET_ID, S.INFO_ID ,S.NODE_ID, CTE.PATH, S.AP_NO, 1 AS SUBPATH, CTE.P_ID
+			FROM PI_SUBPATH S
+				INNER JOIN CTE ON S.TARGET_ID = CTE.TARGET_ID AND S.parent_id = CTE.HASH_ID
+		)
+		SELECT CTE.TARGET_ID, CTE.FID, CTE.HASH_ID, CTE.PATH, CTE.AP_NO, CTE.SUBPATH, CTE.P_ID,
+			OMITTES,  METAS, AES_DECRYPT(CHUNKS, 'FrenTree0119!@') AS CHUNKS,  AES_DECRYPT(MATCHS, 'FrenTree0119!@') AS MATCHS
+		FROM CTE
+			LEFT OUTER JOIN PI_FIND_DETAIL FD ON FD.TARGET_ID = CTE.TARGET_ID AND FD.AP_NO = CTE.AP_NO AND CTE.HASH_ID = FD.HASH_ID
+		WHERE CTE.FID IS NOT NULL
+		LIMIT 1
+    </select>
+    
+    <select id="selectAgentData" parameterType="String" resultType="hashmap">
+    	 SELECT IFNULL(TU.SERVICE_NM , '-') AS SERVICE_NM, T.NAME, IFNULL(A.AGENT_CONNECTED_IP, '-') AS AGENT_CONNECTED_IP
+		FROM PI_TARGETS T
+			LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+			LEFT OUTER JOIN PI_AGENTS A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+		WHERE T.TARGET_ID = #{target_id} 
+			AND T.AP_NO = #{ap_no}
+		LIMIT 1
+    </select>
+    
+    <select id="selectFindMatchDetail" parameterType="hashmap" resultType="hashmap">
+       SELECT TARGET_ID, HASH_ID AS ID, FID AS INFO_ID , PATH, OMITTES,  METAS,
+       		AES_DECRYPT(CHUNKS, 'FrenTree0119!@') AS CHUNKS,  AES_DECRYPT(MATCHS,'FrenTree0119!@') AS MATCHS
+       FROM PI_FIND_DETAIL FD 
+       WHERE FD.HASH_ID = (#{hash_id}) AND FD.AP_NO = #{ap_no}  AND FD.TARGET_ID = #{target_id}
+    </select>
+    
+    <select id="selectChargeId" parameterType="hashmap" resultType="int">
+    	select DATA_PROCESSING_CHARGE_ID from pi_data_processing_charge_group where DOC_ID = #{IFIDVALUE}
+    </select>
+    
+    <insert id="insertProcessUserList" parameterType="hashmap">
+    	INSERT INTO PI_DATA_PROCESSING_USER (CHARGE_ID, CHARGE_USER_CNT, CHARGE_USER_FLAGE, user_no, ok_user_no, regdate, IFIDVALUE, approval_type)
+    	VALUES (#{CHARGE_ID} ,#{CHARGE_USER_CNT}, #{CHARGE_USER_FLAGE}, #{user_no}, #{ok_user_no}, now(), #{IFIDVALUE}, #{approval_type}) 
+    </insert>
+    
+    <select id="selectApprovalUserList" parameterType="hashmap" resultType="hashmap">
+    	SELECT CHARGE_ID, CHARGE_USER_CNT, 
+			CU.NAME  AS CHARGE_USER_FLAGE,
+						DPU.USER_NO, OK_USER_NO, U.USER_NAME, COMMENT, APPROVAL_STATUS
+		FROM PI_DATA_PROCESSING_USER DPU
+			LEFT OUTER JOIN pi_custom_name CU ON DPU.CHARGE_USER_FLAGE = CONCAT(CU.flag, '_', CU.idx ) AND FLAG = 'approval'
+			LEFT OUTER JOIN PI_USER U ON U.USER_NO = DPU.OK_USER_NO
+		WHERE DPU.CHARGE_ID IN 
+    	 <foreach item="charge_id_list" index="index" collection="charge_id_list" open="(" separator="," close=")">
+                #{charge_id_list}
+        </foreach>
+			AND DPU.CHARGE_USER_CNT != 'Y'
+         ORDER BY DPU.CHARGE_USER_CNT
+    </select>
+    
+    <select id="selectMailUser" resultType="hashmap">
+		 SELECT COM, PWD 
+		 FROM PI_SETTING_DATA 
+		 WHERE NAME ='mail' 
+		 	AND STATUS != 'N'
+		 ORDER BY IDX DESC LIMIT 1
+	</select>
+	
+	<update id="insertGroupChageId" parameterType="hashmap">
+    	UPDATE pi_data_processing_group
+    	   SET data_processing_charge_id = #{CHARGE_ID},
+    	   NOTE = #{comment}
+    	WHERE idx = #{groupChargId}
+    </update>
+	
+	<select id="selectApprovalCount2" parameterType="hashmap" resultType="hashmap">
+    	SELECT DP.DATA_PROCESSING_GROUP_IDX,
+			DP.PROCESSING_FLAG,
+			DF.PROCESSING_FLAG_NAME,
+			DP.HASH_ID,
+			DP.AP_NO,
+			IFNULL(DP.NOTEPAD, '') AS NOTEPAD
+		FROM pi_data_processing_flag DF, pi_data_processing  DP
+		WHERE 1 = 1
+		  AND DP.data_processing_group_idx IN 
+		  <foreach collection="idxList" open="(" close=")" separator="," item="item">
+		  	#{item}
+		  </foreach>
+		  AND DP.approval_type  = '2'
+		  AND DF.PROCESSING_FLAG = DP.PROCESSING_FLAG
+		  GROUP BY DP.HASH_ID
+		ORDER BY DP.DATA_PROCESSING_GROUP_IDX, DP.TARGET_ID, DP.AP_NO
+    </select>
+    
+    <select id="selectApprovalHost" parameterType="String" resultType="hashmap">
+	    SELECT T.NAME,
+			IFNULL(A.AGENT_CONNECTED_IP, '-') AS AGENT_CONNECTED_IP,
+				IFNULL(TU.SERVICE_NM, '-') AS SERVICE_NM
+		FROM pi_data_processing DP
+			LEFT OUTER JOIN pi_targets T ON DP.target_id = T.TARGET_ID AND DP.AP_NO = T.AP_NO 
+			LEFT OUTER JOIN pi_agents A ON A.agent_name = T.NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN (SELECT DISTINCT TARGET_ID, AP_NO, TARGET_USE , SERVICE_NM FROM PI_TARGET_USER)TU 
+						ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO AND TU.TARGET_USE = 'Y'
+		WHERE DP.data_processing_group_idx = #{pathGroupId}
+		GROUP BY T.TARGET_ID, T.AP_NO
+    </select>
+     
+    <select id="customPatternList" resultType="com.org.iopts.detection.vo.patternVo">
+		SELECT CONCAT('TYPE', CP.PATTERN_IDX) AS pattern_idx, pattern_code, CP.pattern_kr_name, 0 as matchLimitCnt,
+		CP.mask_cnt, CP.mask_type, CP.mask_chk
+		FROM PI_CUSTOM_PATTERN CP
+		ORDER BY CP.PATTERN_IDX ASC
+	</select>
+	
+    
+</mapper>

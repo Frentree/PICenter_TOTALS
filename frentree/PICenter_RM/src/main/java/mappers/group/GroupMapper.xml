@@ -1,0 +1,1147 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.group.dao.GroupDAO">
+
+    <select id="selectUserGroupList" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTreeVo">
+		SELECT * FROM V_SKT_PC_GROUP
+	</select>	
+	
+	<select id="selectServerGroupList" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTreeServerVo">
+		WITH RECURSIVE CTE AS (
+			SELECT 
+				2           			AS LEVEL,
+				CAST(G.IDX AS VARCHAR(500)) AS IDX,
+				G.UP_IDX,
+				G.NAME AS NAME,
+				0 AS TYPE,
+				G.NAME AS FULLNAME,
+				CAST(G.IDX AS VARCHAR(500)) 	AS FULLID
+			FROM pi_target_group G
+			WHERE G.UP_IDX = '0'
+		UNION ALL
+			SELECT 
+				CTE.LEVEL + 1 AS LEVEL,
+				TG.IDX AS IDX,
+				TG.UP_IDX,
+				TG.NAME AS NAME,
+				0 AS TYPE,
+				CONCAT(CTE.FULLNAME, '>', TG.NAME) AS FULLNAME,
+				CONCAT(CTE.FULLID, '-', TG.IDX) AS FULLID
+			FROM pi_target_group TG, CTE
+			WHERE TG.UP_IDX != '0'
+			  AND TG.UP_IDX = CTE.IDX
+		UNION ALL
+			SELECT 
+				CTE.LEVEL + 1 AS LEVEL,
+				T.TARGET_ID AS IDX,
+				T.GROUP_IDX,
+				T.NAME AS NAME,
+				1 AS TYPE,
+				CONCAT(CTE.FULLNAME, '>', T.NAME) AS FULLNAME,
+				CONCAT(CTE.FULLID, '-', T.TARGET_ID) AS FULLID
+			FROM pi_targets T, CTE
+			WHERE T.GROUP_IDX = CTE.IDX
+			  AND T.GROUP_IDX IS NOT NULL
+			  AND T.AP_NO = 0
+		)
+		SELECT 
+			CTE.IDX, 
+			CTE.NAME, 
+			CTE.UP_IDX, 
+			CTE.LEVEL,
+			CTE.TYPE,
+			CTE.FULLNAME, 
+			CTE.FULLID AS FULLID,
+			A.AGENT_CONNECTED,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			A.AGENT_CORES
+		FROM CTE
+			LEFT OUTER JOIN PI_AGENTS A ON AP_NO = 0 AND A.AGENT_NAME = CTE.NAME
+		GROUP BY CTE.FULLID
+		ORDER BY CTE.FULLNAME
+	</select>
+	
+	<select id="selectPCTarget" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupPCTargetVo">
+		SELECT T.TARGET_ID,
+			T.AP_NO,
+			T.NAME,
+			T.TARGET_USE,
+			IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', -1), SUBSTRING_INDEX(T.NAME, '.', 1)) AS MAC_NAME,
+			IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', 1), null) AS MAC_SERIAL,
+			T.PLATFORM,
+			A.AGENT_CONNECTED,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			TU.USER_NO,
+			U.USER_NAME,
+			U.INSA_CODE
+		FROM pi_ap_server AP, pi_targets T
+			LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+			LEFT OUTER JOIN pi_user U ON TU.USER_NO = U.USER_NO
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+		WHERE AP.AP_NO = T.AP_NO
+		  AND AP.IS_SERVER = 0
+		  AND T.GROUP_IDX IS NULL
+		  <choose>
+		  	<when test="group == 'pc'">
+		  	AND U.INSA_CODE IS NULL
+		  	</when>
+		  	<otherwise>
+		  	AND U.INSA_CODE IS NOT NULL
+		  	</otherwise>
+		  </choose>
+		ORDER BY U.INSA_CODE, U.USER_NO
+	</select>
+	
+    <select id="selectNotGroup" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTargetVo">
+		SELECT T.TARGET_ID,
+			T.AP_NO,
+			T.NAME,
+			IF(SL.STATUS = 'completed' AND SL.UPDATED IS NOT NULL, SL.UPDATED, NULL) AS COMDATE,
+			T.TARGET_USE,
+			A.AGENT_CONNECTED,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP
+		FROM pi_ap_server AP, pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN skt_toms ST ON ST.HOSTNM = T.NAME
+			LEFT OUTER JOIN 
+			(SELECT DATE_FORMAT(MAX(FROM_UNIXTIME(UPDATED)), '%Y-%m-%d %H:%i:%s') AS UPDATED,
+					  TARGET_ID, AP_NO, STATUS
+			 FROM pi_scheduled_location
+			 GROUP BY TARGET_ID, AP_NO	) SL ON T.TARGET_ID = SL.TARGET_ID AND T.AP_NO = SL.AP_NO
+		WHERE 1 = 1
+		  AND T.AP_NO = AP.AP_NO
+          AND AP.IS_SERVER = 1
+		  AND ST.GROUPID IS NULL
+		ORDER BY T.NAME
+	</select>
+	
+	 <select id="selectUserTargets" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTargetVo">
+		SELECT T.TARGET_ID,
+			T.AP_NO,
+			T.NAME,
+			T.TARGET_USE,
+			A.AGENT_CONNECTED,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			IF (T.PLATFORM = 'Remote Access Only',
+				'1',
+				EXPORT_SET(A.AGENT_CONNECTED,'1','0','',1)
+			) AS AGENT_CONNECTED_CHK
+		FROM pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+		WHERE 1 = 1
+			AND T.TARGET_USE = 'Y'
+		GROUP BY T.TARGET_ID, T.AP_NO
+		ORDER BY T.NAME
+	</select>
+	
+	
+	<select id="selectScheduleServerList" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		<!-- WITH RECURSIVE CTE AS (
+			SELECT 
+				2           			AS LEVEL,
+				CAST(G.IDX AS VARCHAR(500)) AS IDX,
+				G.UP_IDX,
+				G.NAME AS NAME,
+				0 AS TYPE,
+				CAST('' AS VARCHAR(500)) 	AS PLATFORM,
+				G.NAME AS FULLNAME,
+				CAST('' AS VARCHAR(500)) 	AS TARGET_USE,
+				CAST(G.IDX AS VARCHAR(500)) 	AS FULLID
+			FROM pi_target_group G
+			WHERE G.UP_IDX = '0'
+		UNION ALL
+			SELECT 
+				CTE.LEVEL + 1 AS LEVEL,
+				TG.IDX AS IDX,
+				TG.UP_IDX,
+				TG.NAME AS NAME,
+				0 AS TYPE,
+				'' 	AS PLATFORM,
+				CONCAT(CTE.FULLNAME, '>', TG.NAME) AS FULLNAME,
+				'' 	AS TARGET_USE,
+				CONCAT(CTE.FULLID, '-', TG.IDX) AS FULLID
+			FROM pi_target_group TG, CTE
+			WHERE TG.UP_IDX != '0'
+			  AND TG.UP_IDX = CTE.IDX
+		UNION ALL
+			SELECT 
+				CTE.LEVEL + 1 AS LEVEL,
+				T.TARGET_ID AS IDX,
+				T.GROUP_IDX,
+				T.NAME AS NAME,
+				1 AS TYPE,
+				CAST(T.PLATFORM AS VARCHAR(500)) 	AS PLATFORM,
+				CONCAT(CTE.FULLNAME, '>', T.NAME) AS FULLNAME,
+				(CASE WHEN T.TARGET_USE = 'Y' THEN '' ELSE '(연결안됨)' END) AS TARGET_USE,
+				CONCAT(CTE.FULLID, '-', T.TARGET_ID) AS FULLID
+			FROM pi_targets T, CTE
+			WHERE T.GROUP_IDX = CTE.IDX
+			  AND T.GROUP_IDX IS NOT NULL
+			  AND T.AP_NO = 0
+		)
+		SELECT 
+			CTE.IDX, 
+			CTE.NAME, 
+			CTE.UP_IDX, 
+			CTE.LEVEL,
+			CTE.TYPE,
+			CTE.FULLNAME, 
+			CTE.FULLID AS FULLID,
+			A.AGENT_CONNECTED,
+			IF (CTE.PLATFORM = 'Remote Access Only',
+				'1',
+				'0'
+			) AS AGENT_CONNECTED_CHK,
+			CTE.TARGET_USE,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			L.LOCATION_ID	AS LOCATION_ID
+		FROM CTE
+			LEFT OUTER JOIN PI_AGENTS A ON AP_NO = 0 AND A.AGENT_NAME = CTE.NAME
+			LEFT OUTER JOIN PI_LOCATIONS L ON CTE.IDX = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+		GROUP BY CTE.FULLID
+		ORDER BY CTE.FULLNAME; -->
+		
+		
+		<!-- SELECT TG.IDX, 
+		   0 AS AP_NO,
+			TG.NAME,
+			TG.UP_IDX,
+			TG.TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_target_group TG
+		UNION ALL
+		SELECT 
+			T.TARGET_ID AS IDX,
+			T.AP_NO,
+			T.NAME,
+			(CASE WHEN ST.GROUPID IS NULL THEN 'noGroup' ELSE ST.GROUPID END) AS UP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IF(A.AGENT_CONNECTED_IP IS NOT NULL, A.AGENT_CONNECTED_IP, IFNULL(ST.MAINIPADDR, '')) AS AGENT_CONNECTED_IP
+		FROM pi_targets T
+			LEFT OUTER JOIN skt_toms ST ON T.NAME = ST.HOSTNM
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+		WHERE 1 = 1
+		  AND T.AP_NO = 0
+		  AND L.LOCATION_ID IS NOT NULL
+  		  AND (ST.ASSETSTATCD IS NULL OR ST.ASSETSTATCD IN (0, 1, 2, 5, 6)) -->
+  		  
+  		 <!--  SELECT TG.IDX, 
+		   0 AS AP_NO,
+			TG.NAME,
+			TG.UP_IDX,
+			TG.TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP, 
+			0  AS CORES 
+		FROM pi_target_group TG
+		UNION ALL
+		(SELECT 
+			T.TARGET_ID AS IDX,
+			T.AP_NO,
+			T.NAME,
+			(CASE WHEN ST.GROUPID IS NULL THEN 'noGroup' ELSE ST.GROUPID END) AS UP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IF(A.AGENT_CONNECTED_IP IS NOT NULL, A.AGENT_CONNECTED_IP, IFNULL(ST.MAINIPADDR, '')) AS AGENT_CONNECTED_IP,
+			IFNULL(A.AGENT_CORES, 3) AS CORES
+		FROM pi_targets T
+			LEFT OUTER JOIN skt_toms ST ON T.NAME = ST.HOSTNM
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+		WHERE 1 = 1
+		  AND T.AP_NO = 0
+		  AND L.LOCATION_ID IS NOT NULL
+  		  AND (ST.ASSETSTATCD IS NULL OR ST.ASSETSTATCD IN (0, 1, 2, 5, 6))
+  		GROUP BY T.NAME, T.TARGET_ID
+		)
+		UNION ALL
+		SELECT SG.IDX		AS IDX,
+		   0 AS AP_NO,		   
+			SG.NAME			AS NAME,
+			(CASE WHEN SG.UP_IDX = 0 THEN 'group' ELSE SG.UP_IDX END) AS UP_IDX,
+			SG.TARGET_ID	AS TARGET_ID,
+			SG.TARGET_ID	AS LOCATION_ID,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP, 
+			0  AS CORES
+		FROM pi_server_group SG
+		GROUP BY SG.NAME, SG.IDX
+		UNION ALL 
+ 		SELECT CONCAT(SGJ.GROUP_IDX,'_',T.TARGET_ID) AS IDX, 
+		SELECT CONCAT(T.TARGET_ID) AS IDX,
+			T.AP_NO,
+			T.NAME,
+			SGJ.GROUP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IF(A.AGENT_CONNECTED_IP IS NOT NULL, A.AGENT_CONNECTED_IP, IFNULL(ST.MAINIPADDR, '')) AS AGENT_CONNECTED_IP,
+			IFNULL(A.AGENT_CORES, 3) AS CORES
+		FROM pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+			,skt_toms ST, pi_server_group_join SGJ
+		WHERE 1 = 1
+		  AND ST.HOSTNM = T.NAME
+		  AND T.AP_NO = 0
+		  AND ST.ASSETNOSCH = SGJ.SERVER_IDX
+		GROUP BY T.NAME, CONCAT(SGJ.GROUP_IDX,'_',T.TARGET_ID) -->
+		SELECT TG.IDX, 
+		   0 AS AP_NO,
+			TG.NAME,
+			'' AS COMDATE,
+			TG.UP_IDX,
+			TG.TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP, 
+			0  AS CORES 
+		FROM pi_target_group TG
+		UNION ALL
+		(SELECT 
+			T.TARGET_ID AS IDX,
+			T.AP_NO,
+			T.NAME,
+			IF(SL.STATUS = 'completed' AND SL.UPDATED IS NOT NULL, SL.UPDATED, NULL) AS COMDATE,
+			(CASE WHEN ST.GROUPID IS NULL THEN 'noGroup' ELSE ST.GROUPID END) AS UP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IF(A.AGENT_CONNECTED_IP IS NOT NULL, A.AGENT_CONNECTED_IP, IFNULL(ST.MAINIPADDR, '')) AS AGENT_CONNECTED_IP,
+			IFNULL(A.AGENT_CORES, 3) AS CORES
+		FROM pi_ap_server AP, pi_targets T
+			LEFT OUTER JOIN skt_toms ST ON T.NAME = ST.HOSTNM
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+			LEFT OUTER JOIN 
+				(SELECT DATE_FORMAT(MAX(FROM_UNIXTIME(UPDATED)), '%Y-%m-%d %H:%i:%s') AS UPDATED,
+						  TARGET_ID, AP_NO, LOCATION_ID, STATUS
+				 FROM pi_scheduled_location
+				 GROUP BY TARGET_ID, AP_NO	) SL ON T.TARGET_ID = SL.TARGET_ID AND L.LOCATION_ID = SL.LOCATION_ID AND T.AP_NO = SL.AP_NO						
+		WHERE 1 = 1
+		  AND T.AP_NO = AP.AP_NO
+		  AND AP.IS_SERVER = 1
+		  AND L.LOCATION_ID IS NOT NULL
+		  AND (ST.ASSETSTATCD IS NULL OR ST.ASSETSTATCD IN (0, 1, 2, 5, 6))
+		GROUP BY T.NAME, T.TARGET_ID)
+		UNION ALL
+		SELECT SG.IDX		AS IDX,
+		   0 AS AP_NO,		   
+			SG.NAME			AS NAME,
+			'' AS COMDATE,
+			(CASE WHEN SG.UP_IDX = 0 THEN 'group' ELSE SG.UP_IDX END) AS UP_IDX,
+			SG.TARGET_ID	AS TARGET_ID,
+			SG.TARGET_ID	AS LOCATION_ID,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP, 
+			0  AS CORES
+		FROM pi_server_group SG
+		GROUP BY SG.NAME, SG.IDX
+		UNION ALL 
+ 		SELECT CONCAT(SGJ.GROUP_IDX,'_',T.TARGET_ID) AS IDX, 
+			T.AP_NO,
+			T.NAME,
+			IF(SL.STATUS = 'completed' AND SL.UPDATED IS NOT NULL, SL.UPDATED, '') AS COMDATE,
+			SGJ.GROUP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IF(A.AGENT_CONNECTED_IP IS NOT NULL, A.AGENT_CONNECTED_IP, IFNULL(ST.MAINIPADDR, '')) AS AGENT_CONNECTED_IP,
+			IFNULL(A.AGENT_CORES, 3) AS CORES
+		FROM pi_ap_server AP, pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN pi_locations L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+			LEFT OUTER JOIN 
+			(SELECT DATE_FORMAT(MAX(FROM_UNIXTIME(UPDATED)), '%Y-%m-%d %H:%i:%s') AS UPDATED,
+					  TARGET_ID, AP_NO, LOCATION_ID, STATUS
+			 FROM pi_scheduled_location
+			 GROUP BY TARGET_ID, AP_NO	) SL ON T.TARGET_ID = SL.TARGET_ID AND L.LOCATION_ID = SL.LOCATION_ID AND T.AP_NO = SL.AP_NO
+			,skt_toms ST, pi_server_group_join SGJ
+		WHERE 1 = 1
+		  AND ST.HOSTNM = T.NAME
+		  AND T.AP_NO = AP.AP_NO
+		  AND AP.IS_SERVER = 1
+		  AND ST.ASSETNOSCH = SGJ.SERVER_IDX
+		GROUP BY T.NAME, CONCAT(SGJ.GROUP_IDX,'_',T.TARGET_ID)
+	</select>
+	
+	<select id="selectScheduleServerNotGroup" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerNotTargetVo">
+		SELECT T.TARGET_ID,
+			T.AP_NO,
+			T.NAME,
+			(CASE WHEN A.AGENT_CONNECTED = 1 THEN '' ELSE '(연결안됨)' END) AS TARGET_USE,
+			A.AGENT_CONNECTED,
+			IF (T.PLATFORM = 'Remote Access Only',
+				'1',
+				'0'
+			) AS AGENT_CONNECTED_CHK,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			L.LOCATION_ID	AS LOCATION_ID
+		FROM pi_ap_server AP, pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files')
+		WHERE 1 = 1
+		  AND T.AP_NO = AP.AP_NO
+		  AND AP.IS_SERVER = 1
+		  AND T.GROUP_IDX IS NULL
+		ORDER BY T.NAME
+	</select>
+	
+	
+	<select id="selectPCList" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		SELECT G.INSA_CODE AS IDX,
+			0 AS AP_NO,
+			G.TEAM_NAME AS NAME,
+			'' AS MAC_NAME,
+			'' AS MAC_SERIAL,
+			'' AS PLATFORM,
+			CAST((CASE WHEN G.UP_IDX = '' AND G.TYPE = 0 THEN 'sktoa' WHEN (G.UP_IDX = '' AND G.TYPE != 0) THEN 'sktut' ELSE G.UP_IDX END) AS VARCHAR(500)) AS UP_IDX,
+			CAST('' AS VARCHAR(500)) AS TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS CONNECTED,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G
+		WHERE G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+		UNION ALL
+		SELECT U.USER_NO AS IDX,
+			0 AS AP_NO,
+			CONCAT(U.USER_NAME,' (',IFNULL(COUNT(TU.TARGET_ID),'0'),')') AS NAME,
+			'' AS MAC_NAME,
+			'' AS MAC_SERIAL,
+			'' AS PLATFORM,	
+			U.INSA_CODE AS UP_IDX,
+			'' AS TARGET_ID,
+			'' AS LOCATION_ID,
+			IFNULL(COUNT(TU.TARGET_ID), 0) AS CONNECTED,
+			2 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G, pi_user U
+		 LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0
+		WHERE U.INSA_CODE = G.INSA_CODE
+		  AND G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+		  AND DATE_FORMAT(U.ENDDATE, '%Y-%m-%d') >= DATE_FORMAT(NOW(), '%Y-%m-%d')
+		  AND U.ACC_YN = 'Y'
+		GROUP BY U.USER_NO
+		UNION ALL
+		SELECT T.TARGET_ID AS IDX,
+			T.AP_NO,
+			T.NAME AS NAME,
+			IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', -1), SUBSTRING_INDEX(T.NAME, '.', 1)) AS MAC_NAME,
+			IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', 1), null) AS MAC_SERIAL,
+			T.PLATFORM,
+			(CASE WHEN TU.USER_NO IS NOT NULL THEN TU.USER_NO WHEN L.PROTOCOL = 'onedrive' THEN 'onedirve' ELSE 'noGroupPC' END) AS UP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			0 AS CONNECTED,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IFNULL(A.AGENT_CONNECTED_IP,'') AS AGENT_CONNECTED_IP
+		FROM pi_ap_server AP, pi_targets T
+		 LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+		 LEFT OUTER JOIN PI_AGENTS A ON A.AP_NO = T.AP_NO AND A.AGENT_NAME = T.NAME
+		 LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files|OneDrive')
+		WHERE 1 = 1
+		  AND T.AP_NO = AP.AP_NO
+		  AND AP.IS_SERVER = 0
+		GROUP BY IDX
+	</select>
+	
+	<select id="selectRMTargetList" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		SELECT T.TARGET_ID AS IDX,
+			T.AP_NO,
+			T.NAME AS NAME,
+			T.PLATFORM,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			IFNULL(A.AGENT_CONNECTED, 0) AS AGENT_CONNECTED,
+			0 AS CONNECTED,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 OR A.AGENT_CONNECTED IS NULL THEN 1 ELSE 0 END) AS CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IFNULL(A.AGENT_CONNECTED_IP,'') AS AGENT_CONNECTED_IP
+		FROM pi_targets T
+		 LEFT OUTER JOIN PI_AGENTS A ON A.AGENT_NAME = T.NAME AND A.AP_NO = T.AP_NO
+		 LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND T.AP_NO = L.AP_NO AND (L.DESCRIPTION REGEXP 'Catalog|All local files|OneDrive')
+		WHERE 1 = 1
+			AND T.TARGET_USE = 'Y'
+		GROUP BY IDX
+		ORDER BY T.NAME
+	</select>
+	
+	
+	
+	
+	<select id="selectCenterAdminSchedule" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		WITH RECURSIVE CTE AS 
+			(SELECT
+					0 AS LEVEL,
+					0 AS AP_NO, 
+					G.INSA_CODE,
+					G.TEAM_NAME,
+					G.TEAM_NAME AS FULL_TEAM_NM,
+					CAST('pc' AS VARCHAR(50)) AS PARENT,
+					'' AS CONNECTED
+				FROM pi_group G
+				WHERE G.INSA_CODE IN (SELECT INSA_CODE FROM pi_target_service WHERE USER_NO = #{user_no} AND ENABLE = 'Y')
+				UNION ALL
+				SELECT 
+					CTE.LEVEL + 1 AS LEVEL,
+					0 AS AP_NO,
+					PG.INSA_CODE,
+					PG.TEAM_NAME,
+					CONCAT(CTE.FULL_TEAM_NM, '>', PG.TEAM_NAME) AS FULL_TEAM_NM,
+					PG.UP_IDX AS PARENT,
+					PG.UP_IDX AS CONNECTED
+				FROM pi_group PG, CTE
+				WHERE PG.UP_IDX = CTE.INSA_CODE
+			)
+			SELECT CTE.INSA_CODE AS IDX,
+				CTE.AP_NO,
+				CTE.TEAM_NAME AS NAME,
+				'' AS PLATFORM,
+				CTE.PARENT AS UP_IDX,
+				CAST('' AS VARCHAR(500)) AS TARGET_ID,
+				CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+				0 AS CONNECTED,
+				0 AS TYPE,
+				'' AS AGENT_CONNECTED,
+				0 AS AGENT_CONNECTED_CHK,
+				'' AS AGENT_CONNECTED_IP 
+			FROM CTE
+			GROUP BY CTE.INSA_CODE
+			UNION ALL
+			SELECT USERS.*
+				FROM (SELECT U.USER_NO AS IDX,
+					0 AS AP_NO,
+					CONCAT(U.USER_NAME,' (',IFNULL(COUNT(TU.TARGET_ID),'0'),')') AS NAME,
+					'' AS PLATFORM,
+					U.INSA_CODE AS UP_IDX,
+					CAST('' AS VARCHAR(500)) AS TARGET_ID,
+					CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+					IFNULL(COUNT(TU.TARGET_ID), 0) AS CONNECTED,
+					2 AS TYPE,
+					'' AS AGENT_CONNECTED,
+					0 AS AGENT_CONNECTED_CHK,
+					'' AS AGENT_CONNECTED_IP 
+				FROM CTE, pi_user U
+				 LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0
+				WHERE U.INSA_CODE = CTE.INSA_CODE
+				  AND ACC_YN ='Y'
+				GROUP BY U.USER_NAME, U.USER_NO
+			) USERS
+			UNION ALL
+			(SELECT D.IDX,
+						D.AP_NO,
+						CASE WHEN SUBSTRING(D.PLATFORM, 1, 5) = 'Apple' THEN D.MAC_NAME ELSE D.NAME END AS NAME,
+						D.PLATFORM,
+						D.UP_IDX,
+						D.TARGET_ID,
+						D.LOCATION_ID,
+						D.CONNECTED,
+						D.TYPE,
+						D.AGENT_CONNECTED,
+						D.AGENT_CONNECTED_CHK,
+						D.AGENT_CONNECTED_IP
+			 FROM
+			(SELECT T.TARGET_ID AS IDX,
+				T.AP_NO,
+				(CASE WHEN L.PROTOCOL = 'onedrive' THEN L.PATH ELSE T.NAME END) AS NAME,
+				IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', -1), SUBSTRING_INDEX(T.NAME, '.', 1)) AS MAC_NAME,
+				IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', 1), null) AS MAC_SERIAL,
+				T.PLATFORM,
+				(CASE WHEN L.PROTOCOL = 'onedrive' THEN L.PROTOCOL WHEN TU.USER_NO IS NOT NULL THEN TU.USER_NO ELSE 'noGroupPC' END) AS UP_IDX,
+				T.TARGET_ID,
+				L.LOCATION_ID,
+				0 AS CONNECTED,
+				1 AS TYPE,
+				(CASE WHEN A.AGENT_CONNECTED = 1 THEN 1 ELSE 0 END) AS AGENT_CONNECTED,
+				IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+				IFNULL(A.AGENT_CONNECTED_IP,'') AS AGENT_CONNECTED_IP
+			FROM CTE, pi_user U, pi_target_user TU, pi_ap_server AP, pi_targets T
+			 LEFT OUTER JOIN PI_AGENTS A ON A.AP_NO = T.AP_NO AND A.AGENT_NAME = T.NAME
+			 LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files|OneDrive')
+			WHERE 1 = 1
+			  AND T.TARGET_ID = TU.TARGET_ID 
+			  AND T.AP_NO = TU.AP_NO
+			  AND T.AP_NO = AP.AP_NO
+			  AND U.USER_NO = TU.USER_NO
+			  AND AP.IS_SERVER = 0
+			  AND U.INSA_CODE = CTE.INSA_CODE
+			  AND U.ACC_YN ='Y'
+			ORDER BY NAME) AS D
+			GROUP BY D.NAME, D.TARGET_ID, D.LOCATION_ID)
+	</select>
+	
+	<select id="selectSchedulePCList" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		(SELECT G.INSA_CODE AS IDX,
+				0 AS AP_NO,
+				G.TEAM_NAME AS NAME,
+				CAST((CASE WHEN G.UP_IDX = '' AND G.TYPE = 0 THEN 'sktoa' WHEN (G.UP_IDX = '' AND G.TYPE != 0) THEN 'sktut' ELSE G.UP_IDX END) AS VARCHAR(500)) AS UP_IDX,
+				CAST('' AS VARCHAR(500)) AS TARGET_ID,
+				'' AS MAC_NAME,
+				'' AS MAC_SERIAL,
+				'' AS PLATFORM,
+				CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+				0 AS CONNECTED,
+				0 AS TYPE,
+				'' AS AGENT_CONNECTED,
+				0 AS AGENT_CONNECTED_CHK,
+				'' AS AGENT_CONNECTED_IP 
+			FROM pi_group G
+			WHERE G.TEAM_NAME != ''
+			  AND G.UP_IDX IS NOT NULL
+			GROUP BY G.TEAM_NAME, G.INSA_CODE
+			ORDER BY G.TEAM_NAME)
+			UNION ALL
+			(SELECT U.USER_NO AS IDX,
+				0 AS AP_NO,
+				CONCAT(U.USER_NAME,' (',IFNULL(COUNT(TU.TARGET_ID),'0'),')') AS NAME,	
+				U.INSA_CODE AS UP_IDX,
+				'' AS TARGET_ID,
+				'' AS MAC_NAME,
+				'' AS MAC_SERIAL,
+				'' AS PLATFORM,
+				'' AS LOCATION_ID,
+				IFNULL(COUNT(TU.TARGET_ID), 0) AS CONNECTED,
+				2 AS TYPE,
+				'' AS AGENT_CONNECTED,
+				0 AS AGENT_CONNECTED_CHK,
+				'' AS AGENT_CONNECTED_IP 
+			FROM pi_group G, pi_user U
+			 LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0
+			WHERE U.INSA_CODE = G.INSA_CODE
+			  AND G.TEAM_NAME != ''
+			  AND G.UP_IDX IS NOT NULL
+			  AND U.ACC_YN = 'Y'
+			  AND DATE_FORMAT(U.ENDDATE, '%Y-%m-%d') >= DATE_FORMAT(NOW(), '%Y-%m-%d')
+			GROUP BY U.USER_NAME, U.USER_NO
+			ORDER BY U.USER_NAME)
+			UNION ALL
+			(SELECT D.* FROM
+			(SELECT T.TARGET_ID AS IDX,
+				T.AP_NO,
+				(CASE WHEN L.PROTOCOL = 'onedrive' THEN L.PATH ELSE T.NAME END) AS NAME,
+				(CASE WHEN L.PROTOCOL = 'onedrive' THEN L.PROTOCOL WHEN TU.USER_NO IS NOT NULL THEN TU.USER_NO ELSE 'noGroupPC' END) AS UP_IDX,
+				T.TARGET_ID,
+				IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', -1), SUBSTRING_INDEX(T.NAME, '.', 1)) AS MAC_NAME,
+				IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', 1), null) AS MAC_SERIAL,
+				T.PLATFORM,
+				L.LOCATION_ID,
+				0 AS CONNECTED,
+				1 AS TYPE,
+				(CASE WHEN A.AGENT_CONNECTED = 1 THEN 1 ELSE 0 END) AS AGENT_CONNECTED,
+				IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+				IFNULL(A.AGENT_CONNECTED_IP,'') AS AGENT_CONNECTED_IP
+			FROM pi_ap_server AP, pi_targets T
+			 LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+			 LEFT OUTER JOIN PI_AGENTS A ON A.AP_NO = T.AP_NO AND A.AGENT_NAME = T.NAME
+			 LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files|OneDrive')
+			WHERE 1 = 1
+			  AND T.AP_NO = AP.AP_NO
+			  AND AP.IS_SERVER = 0
+			ORDER BY NAME) AS D
+			GROUP BY D.NAME, D.TARGET_ID, D.LOCATION_ID)
+<!-- 		(SELECT G.INSA_CODE AS IDX,
+			0 AS AP_NO,
+			G.TEAM_NAME AS NAME,
+			CAST((CASE WHEN G.UP_IDX = '' AND G.TYPE = 0 THEN 'sktoa' WHEN (G.UP_IDX = '' AND G.TYPE != 0) THEN 'sktut' ELSE G.UP_IDX END) AS VARCHAR(500)) AS UP_IDX,
+			CAST('' AS VARCHAR(500)) AS TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS CONNECTED,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G
+		WHERE G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+		GROUP BY G.TEAM_NAME, G.INSA_CODE
+		ORDER BY G.TEAM_NAME)
+		UNION ALL
+		(SELECT U.USER_NO AS IDX,
+			0 AS AP_NO,
+			CONCAT(U.USER_NAME,' (',IFNULL(COUNT(TU.TARGET_ID),'0'),')') AS NAME,	
+			U.INSA_CODE AS UP_IDX,
+			'' AS TARGET_ID,
+			'' AS LOCATION_ID,
+			IFNULL(COUNT(TU.TARGET_ID), 0) AS CONNECTED,
+			2 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G, pi_user U
+		 LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0
+		WHERE U.INSA_CODE = G.INSA_CODE
+		  AND G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+		  AND U.ACC_YN = 'Y'
+		  AND DATE_FORMAT(U.ENDDATE, '%Y-%m-%d') >= DATE_FORMAT(NOW(), '%Y-%m-%d')
+		GROUP BY U.USER_NAME, U.USER_NO
+		ORDER BY U.USER_NAME)
+		UNION ALL
+		(SELECT D.* FROM
+		(SELECT T.TARGET_ID AS IDX,
+			T.AP_NO,
+			T.NAME AS NAME,
+			(CASE WHEN TU.USER_NO IS NOT NULL THEN TU.USER_NO ELSE 'noGroupPC' END) AS UP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			0 AS CONNECTED,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 THEN 1 ELSE 0 END) AS AGENT_CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IFNULL(A.AGENT_CONNECTED_IP,'') AS AGENT_CONNECTED_IP
+		FROM pi_targets T
+		 LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+		 LEFT OUTER JOIN PI_AGENTS A ON A.AP_NO = T.AP_NO AND A.AGENT_NAME = T.NAME
+		 LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files|OneDrive') AND L.PROTOCOL != 'onedrive'
+		WHERE 1 = 1
+		  AND T.AP_NO != 0
+		ORDER BY NAME) AS D
+		GROUP BY D.NAME, D.TARGET_ID, D.LOCATION_ID) -->
+	</select>
+	
+	<select id="selectScheduleOneDriveList" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		(SELECT G.INSA_CODE AS IDX,
+			0 AS AP_NO,
+			G.TEAM_NAME AS NAME,
+			CAST((CASE WHEN G.UP_IDX = '' AND G.TYPE = 0 THEN 'sktoa' WHEN (G.UP_IDX = '' AND G.TYPE != 0) THEN 'sktut' ELSE G.UP_IDX END) AS VARCHAR(500)) AS UP_IDX,
+			CAST('' AS VARCHAR(500)) AS TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS CONNECTED,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G
+		WHERE G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+		GROUP BY G.TEAM_NAME, G.INSA_CODE
+		ORDER BY G.TEAM_NAME)
+		UNION ALL
+		(SELECT U.USER_NO AS IDX,
+			0 AS AP_NO,
+			CONCAT(U.USER_NAME,' (',IFNULL(COUNT(L.TARGET_ID),'0'),')') AS NAME,	
+			U.INSA_CODE AS UP_IDX,
+			'' AS TARGET_ID,
+			'' AS LOCATION_ID,
+			IFNULL(COUNT(L.TARGET_ID), 0) AS CONNECTED,
+			2 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G, pi_user U
+		 LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0		 
+		 LEFT OUTER JOIN pi_locations L ON U.USER_NO = SUBSTRING_INDEX(SUBSTRING_INDEX(L.PATH, '@', 1),'/',-1)
+		WHERE U.INSA_CODE = G.INSA_CODE
+		  AND G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+		  AND U.ACC_YN = 'Y'
+		  AND DATE_FORMAT(U.ENDDATE, '%Y-%m-%d') >= DATE_FORMAT(NOW(), '%Y-%m-%d')
+		GROUP BY U.USER_NAME, U.USER_NO
+		ORDER BY U.USER_NAME)
+		UNION ALL
+		(SELECT D.* FROM
+		(SELECT T.TARGET_ID AS IDX,
+			T.AP_NO,
+			L.PATH AS NAME,
+			IF(L.PATH LIKE '%@%', SUBSTRING_INDEX(SUBSTRING_INDEX(L.PATH, '@', 1),'/',-1), 'noGroup') AS UP_IDX,
+			T.TARGET_ID,
+			L.LOCATION_ID,
+			0 AS CONNECTED,
+			1 AS TYPE,
+			(CASE WHEN A.AGENT_CONNECTED = 1 THEN 1 ELSE 0 END) AS AGENT_CONNECTED,
+			IF(T.PLATFORM = 'Remote Access Only', '1', '0') AS AGENT_CONNECTED_CHK,
+			IFNULL(A.AGENT_CONNECTED_IP,'') AS AGENT_CONNECTED_IP
+		FROM pi_ap_server AP, pi_targets T
+		 LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+		 LEFT OUTER JOIN PI_AGENTS A ON A.AP_NO = T.AP_NO AND A.AGENT_NAME = T.NAME
+		 LEFT OUTER JOIN PI_LOCATIONS L ON T.TARGET_ID = L.TARGET_ID AND (L.DESCRIPTION REGEXP 'Catalog|All local files|OneDrive') 
+		WHERE 1 = 1
+		  AND T.AP_NO = AP.AP_NO
+		  AND AP.IS_SERVER = 0
+		  AND L.PROTOCOL = 'onedrive'
+		ORDER BY NAME) AS D
+		GROUP BY D.NAME, D.TARGET_ID, D.LOCATION_ID)
+	</select>
+	
+	<select id="selectDashSeverDept" parameterType="hashmap"  resultType="com.org.iopts.group.vo.DashScheduleServerVo">
+		SELECT SG.SCHEDULE_GROUP_ID,
+			SG.USER_NO,
+			SG.STATUS,
+			ST.TARGET_ID,
+			ST.AP_NO,
+			SG.TYPE,
+			DATE_FORMAT(SG.REGDATE, '%Y%m') AS ID,
+			DATE_FORMAT(SG.REGDATE, '%Y년 %m월') AS REGDATE
+		FROM pi_ap_server AP, pi_schedule_group SG, pi_schedule_targets ST
+		WHERE SG.TYPE = AP.AP_NO
+		  AND SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+		  AND AP.IS_SERVER = 1
+		<if test="fromDate != null and toDate != null">
+			AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+		</if>
+		GROUP BY REGDATE, ST.TARGET_ID, ST.AP_NO
+	</select>
+	
+	<select id="selectPCGroup" parameterType="hashmap" resultType="com.org.iopts.group.vo.PCGroupVo">
+		SELECT G.INSA_CODE,
+			(CASE WHEN G.UP_IDX = '' AND G.TYPE = 0 THEN 'sktoa' WHEN G.UP_IDX = '' AND G.TYPE != 0 THEN 'sktut' ELSE G.UP_IDX END) AS UP_IDX,
+			0 AS TYPE,
+			G.TEAM_NAME AS NAME,
+			0 AS T_CNT
+		FROM pi_group G
+		WHERE G.TEAM_NAME IS NOT NULL
+		  AND G.TEAM_NAME != ''
+		  AND G.TYPE != '99'
+		UNION ALL
+		SELECT U.USER_NO,
+			U.INSA_CODE AS UP_IDX,
+			1 AS TYPE,
+			CONCAT(U.USER_NAME,'(',COUNT(TU.TARGET_ID),')') AS NAME,
+			COUNT(TU.TARGET_ID) AS T_CNT
+		FROM pi_user U
+			LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0
+			, pi_group G
+		WHERE U.USER_NAME != ''
+		  AND U.INSA_CODE = G.INSA_CODE
+		  AND U.ACC_YN = 'Y'
+		  AND G.TEAM_NAME IS NOT NULL
+		  AND G.TEAM_NAME != ''
+		  AND G.TYPE != '99'
+		GROUP BY U.USER_NO
+	</select>
+	<select id="selectExceptionNoGroupHostList" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTreeServerVo">
+		SELECT T.TARGET_ID,
+			T.AP_NO,
+			T.NAME,
+			T.TARGET_USE,
+			A.AGENT_CONNECTED,
+			IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			A.AGENT_NAME,
+			IFNULL(TU.SERVICE_NM, '') AS SERVICE_NM
+		FROM pi_targets T
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+			LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+		WHERE 1 = 1 
+		  AND T.AP_NO = 0
+		  AND T.GROUP_IDX IS NULL
+		ORDER BY T.NAME
+	</select>
+	
+	<select id="selectGroup" parameterType="hashmap" resultType="hashmap">
+		SELECT IDX, NAME
+		FROM PI_TARGET_GROUP
+	</select>
+   
+   <select id="selectReportTomsServerGroup" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTomsVo">
+	   	SELECT TG.IDX,
+			  TG.NAME,
+			  '' AS COMDATED,
+			  TG.TARGET_ID,
+			  0 AS AP_NO,
+			  0 AS UP_IDX,
+			  0 AS TYPE,
+			  TG.CREDATE,
+			  TG.PROCESS,
+			  '' AS PLATFORM
+		FROM PI_TARGET_GROUP TG
+			WHERE TG.TYPE = 0
+			GROUP BY TG.NAME, TG.IDX
+		UNION ALL
+		SELECT ST.ASSETNOSCH AS IDX,
+		  UPPER(ST.HOSTNM) AS NAME,
+		  IF(SL.STATUS = 'completed' AND SL.UPDATED IS NOT NULL, SL.UPDATED, NULL) AS COMDATE,
+		  T.TARGET_ID,
+		  T.AP_NO,
+		  ST.GROUPID AS UP_IDX,
+		  1 AS TYPE,
+		  ST.REGDATE AS CREDATE,
+		  0 AS PROCESS,
+		  IFNULL(T.PLATFORM, '') AS PLATFORM
+		FROM pi_ap_server AP, SKT_TOMS ST, pi_targets T
+		  LEFT OUTER JOIN PI_AGENTS A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+		  LEFT OUTER JOIN 
+					(SELECT DATE_FORMAT(MAX(FROM_UNIXTIME(UPDATED)), '%Y-%m-%d %H:%i:%s') AS UPDATED,
+							  TARGET_ID, AP_NO, STATUS
+					 FROM pi_scheduled_location
+					 GROUP BY TARGET_ID, AP_NO	) SL ON T.TARGET_ID = SL.TARGET_ID AND T.AP_NO = SL.AP_NO
+		  <!-- LEFT OUTER JOIN PI_TARGETS T ON ST.HOSTNM = T.NAME AND T.AP_NO = 0 -->
+		WHERE ST.HOSTNM = T.NAME
+		  AND T.AP_NO = AP.AP_NO
+          AND AP.IS_SERVER = 1
+		  <!-- AND ST.mainipaddr = A.AGENT_CONNECTED_IP -->
+		  AND ST.HOSTNM != ''
+		  <!-- AND ST.SRCTYPENM IN ('TOMS', 'TMAN') -->
+		  AND ST.ASSETSTATCD IN (0, 1, 2, 5, 6) # 0: 도입, 1: 사용중, 2:유휴, 5: 사용대기, 6:제각예정
+		  AND ST.GROUPID IS NOT NULL
+		GROUP BY T.TARGET_ID, T.AP_NO
+   </select>
+	
+	<select id="selectTomsNotGroup" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTomsVo">
+		SELECT ST.ASSETNOSCH AS IDX,
+		  ST.HOSTNM AS NAME,
+		  T.TARGET_ID,
+		  ST.GROUPID AS UP_IDX,
+		  1 AS TYPE,
+		  ST.REGDATE AS CREDATE,
+		  0 AS PROCESS
+		FROM SKT_TOMS ST
+			LEFT OUTER JOIN PI_TARGETS T ON ST.HOSTNM = T.NAME
+			LEFT OUTER JOIN pi_ap_server AP ON T.AP_NO = AP.AP_NO
+		WHERE ST.HOSTNM != ''
+		  <!-- AND ST.SRCTYPENM IN ('TOMS', 'TMAN') -->
+		  AND ST.ASSETSTATCD IN (0, 1, 2, 5, 6) # 0: 도입, 1: 사용중, 2:유휴, 5: 사용대기, 6:제각예정
+		  AND ST.GROUPID IS NULL
+		  AND AP.IS_SERVER = 1
+		
+		  <if test="hostNM != '' and hostNM != null">
+		  	AND ST.HOSTNM LIKE CONCAT('%', #{hostNM}, '%')
+		  </if>
+		ORDER BY ST.HOSTNM
+	</select>
+	
+	<insert id="insertServerGroup" parameterType="hashmap">
+		INSERT INTO PI_SERVER_GROUP (NAME, DEGREE, TYPE, TARGET_ID, UP_IDX, CREDATE)
+		VALUES (#{name}, 1, 1, '', #{up_idx}, NOW())
+	</insert>
+	
+	<update id="updateServerGroup" parameterType="hashmap">
+		UPDATE PI_SERVER_GROUP 
+		SET NAME = #{name}
+		WHERE 1 = 1
+		  AND IDX = #{idx}
+	</update>
+	
+	<select id="selectTomsUserGroup" resultType="com.org.iopts.group.vo.GroupTomsVo">
+		SELECT TG.IDX,
+		  TG.NAME,
+		  TG.TARGET_ID,
+		  TG.UP_IDX AS UP_IDX,
+		  0 AS TYPE,
+		  TG.CREDATE,
+		  TG.PROCESS
+		FROM PI_SERVER_GROUP TG
+		WHERE TG.TYPE = 1
+		GROUP BY TG.NAME, TG.IDX
+		UNION ALL
+		SELECT ST.ASSETNOSCH AS IDX,
+		  ST.HOSTNM,
+		  T.TARGET_ID,
+		  TOG.GROUP_IDX AS UP_IDX,
+		  1 AS TYPE,
+		  ST.REGDATE AS CREDATE,
+		  0 AS PROCESS
+		FROM SKT_TOMS ST
+			LEFT OUTER JOIN PI_TARGETS T ON ST.HOSTNM = T.NAME
+			LEFT OUTER JOIN pi_ap_server AP ON T.AP_NO = AP.AP_NO
+			,PI_SERVER_GROUP_JOIN TOG
+		WHERE ST.HOSTNM != ''
+		  <!-- AND ST.SRCTYPENM IN ('TOMS', 'TMAN') -->
+		  AND ST.ASSETSTATCD IN (0, 1, 2, 5, 6) # 0: 도입, 1: 사용중, 2:유휴, 5: 사용대기, 6:제각예정
+		  AND ST.ASSETNOSCH = TOG.SERVER_IDX
+		  AND AP.IS_SERVER = 1
+		GROUP BY ST.HOSTNM, ST.ASSETNOSCH, TOG.GROUP_IDX
+	</select>
+	
+	<insert id="insertUserTargets" parameterType="hashmap">
+		INSERT INTO pi_server_group_join VALUES (#{group_id}, #{toms_id}, NOW())
+		ON DUPLICATE KEY UPDATE
+		REGDATE = NOW();
+	</insert>
+	
+	<delete id="deleteUserServer" parameterType="hashmap">
+		DELETE FROM PI_SERVER_GROUP_JOIN WHERE GROUP_IDX = #{groupID} AND SERVER_IDX = #{serverID} 
+	</delete>
+	
+	<delete id="deleteUserServerGroup" parameterType="hashmap">
+		DELETE FROM PI_SERVER_GROUP_JOIN 
+		WHERE GROUP_IDX IN 
+		<foreach collection="groupList" open="(" close=")" separator="," item="item">
+		 #{item}
+		</foreach>
+	</delete>
+	
+	<!-- 검출 결과 하위 경로 시작 -->
+    <select id="selectSubPath" parameterType="hashmap" resultType="com.org.iopts.group.vo.SubPathVo">
+		WITH RECURSIVE CTE AS (
+            SELECT C.HASH_ID 	AS IDX,
+              CAST('#' AS VARCHAR(50)) AS PARENT_ID,
+              C.TARGET_ID 		AS TARGET_ID,
+              C.AP_NO,
+              C.PATH				AS NAME,
+              C.PATH				AS FULL_NAME,
+              C.FID
+              FROM PI_FIND C 
+            WHERE 1 = 1
+              AND C.TARGET_ID = #{tid}
+			  AND C.HASH_ID = #{hash_id}
+			  AND C.AP_NO = #{ap_no}
+            UNION ALL
+            SELECT S.NODE_ID AS IDX,
+              CTE.IDX,
+              S.TARGET_ID,
+              S.AP_NO,
+              S.PATH AS NAME,
+              CONCAT(CTE.NAME , '>' , S.PATH) AS FULL_NAME,
+              S.INFO_ID AS FID
+              FROM PI_SUBPATH S, CTE
+             WHERE 1 = 1
+               AND S.PARENT_ID = CTE.IDX
+               AND S.AP_NO = CTE.AP_NO
+               AND S.TARGET_ID = CTE.TARGET_ID
+        )
+        SELECT CTE.IDX,
+          CTE.PARENT_ID,
+          CTE.TARGET_ID,
+          CTE.AP_NO,
+          CTE.NAME,
+          CTE.FID
+         FROM CTE 
+         WHERE 1 = 1 
+        GROUP BY CTE.TARGET_ID, CTE.IDX
+        ORDER BY CTE.FULL_NAME
+    </select>
+    <!-- 검출 결과 하위 경로 종료 -->
+    
+    <select id="selectUserManagerGroupList" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupPCManagerVO">
+		WITH RECURSIVE CTE AS 
+			(SELECT
+					0 AS LEVEL,
+					0 AS AP_NO, 
+					G.INSA_CODE,
+					G.TEAM_NAME,
+					G.TEAM_NAME AS FULL_TEAM_NM,
+					CAST('pc' AS VARCHAR(50)) AS PARENT,
+					'' AS CONNECTED
+				FROM pi_group G
+				WHERE G.INSA_CODE IN (SELECT INSA_CODE FROM pi_target_service WHERE USER_NO = '#{user_no}' AND ENABLE = 'Y')
+				UNION ALL 
+				SELECT 
+					CTE.LEVEL + 1 AS LEVEL,
+					0 AS AP_NO,
+					PG.INSA_CODE,
+					PG.TEAM_NAME,
+					CONCAT(CTE.FULL_TEAM_NM, '>', PG.TEAM_NAME) AS FULL_TEAM_NM,
+					PG.UP_IDX AS PARENT,
+					PG.UP_IDX AS CONNECTED
+				FROM pi_group PG, CTE
+				WHERE PG.UP_IDX = CTE.INSA_CODE
+			)
+			SELECT CTE.*
+			FROM CTE
+			GROUP BY CTE.INSA_CODE
+			UNION ALL
+			SELECT 99 AS LEVEL,
+				D.AP_NO,
+				D.IDX,
+				D.NAME,
+				'',
+				D.UP_IDX AS PARENT,
+				D.CONNECTED
+				FROM (SELECT U.USER_NO AS IDX,
+					TU.AP_NO,
+					CONCAT(U.USER_NAME,' (',IFNULL(COUNT(TU.TARGET_ID),'0'),')') AS NAME,
+					U.INSA_CODE AS UP_IDX,
+					1 AS TYPE,
+					IFNULL(TU.TARGET_ID, '') AS CONNECTED
+				FROM CTE, pi_user U
+				 LEFT OUTER JOIN pi_target_user TU ON U.USER_NO = TU.USER_NO AND TU.AP_NO != 0
+				WHERE U.INSA_CODE = CTE.INSA_CODE
+				  AND DATE_FORMAT(U.ENDDATE, '%Y-%m-%d') >= DATE_FORMAT(NOW(), '%Y-%m-%d')
+				  AND ACC_YN ='Y'
+				  <if test="user_grade == 2 || user_grade == 3">
+					  AND U.USER_NO != #{user_no}
+				  </if>
+				GROUP BY U.USER_NAME, U.USER_NO
+			) D
+	</select>	
+	
+	<select id="selectReportGroupPCList" parameterType="hashmap" resultType="com.org.iopts.group.vo.ScheduleServerVo">
+		SELECT G.INSA_CODE AS IDX,
+			1 AS AP_NO,
+			G.TEAM_NAME AS NAME,
+			CAST((CASE WHEN G.UP_IDX = '' AND G.TYPE = 0 THEN 'sktoa' WHEN (G.UP_IDX = '' AND G.TYPE != 0) THEN 'sktut' ELSE G.UP_IDX END) AS VARCHAR(500)) AS UP_IDX,
+			CAST('' AS VARCHAR(500)) AS TARGET_ID,
+			CAST('' AS VARCHAR(500)) AS LOCATION_ID,
+			0 AS CONNECTED,
+			0 AS TYPE,
+			'' AS AGENT_CONNECTED,
+			0 AS AGENT_CONNECTED_CHK,
+			'' AS AGENT_CONNECTED_IP 
+		FROM pi_group G
+		WHERE G.TEAM_NAME != ''
+		  AND G.UP_IDX IS NOT NULL
+	</select>
+	
+	<select id="selectReportTomsGroup" parameterType="hashmap" resultType="com.org.iopts.group.vo.GroupTomsVo">
+		SELECT TG.IDX,
+		  TG.NAME,
+		  TG.TARGET_ID,
+		  0 AS AP_NO,
+		  0 AS UP_IDX,
+		  0 AS TYPE,
+		  TG.CREDATE,
+		  TG.PROCESS,
+		  '' AS PLATFORM
+		FROM PI_TARGET_GROUP TG
+		WHERE TG.TYPE = 0
+		GROUP BY TG.NAME, TG.IDX
+	</select>
+	
+	<select id="selectMyPcList" resultType="com.org.iopts.group.vo.GroupPCManagerVO">
+		SELECT TU.TARGET_ID,
+			   T.NAME,
+			   IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', -1), SUBSTRING_INDEX(T.NAME, '.', 1)) AS MAC_NAME,
+    			IF(SUBSTRING(T.PLATFORM, 1, 5) = 'Apple', SUBSTRING_INDEX(T.NAME, '.', 1), null) AS MAC_SERIAL,
+				T.PLATFORM,
+			   IF(FROM_UNIXTIME(T.SEARCH_TIME, '%Y-%m-%d %H:%i') >= DATE_FORMAT('2000-01-01 00:00', '%Y-%m-%d %H:%i'), FROM_UNIXTIME(T.SEARCH_TIME, '%Y-%m-%d %H:%i'), '') AS SEARCHENDTIME,
+			   IFNULL(A.AGENT_CONNECTED_IP, '') AS AGENT_CONNECTED_IP,
+			   IFNULL(A.AGENT_CONNECTED, 0) AS CONNECTED,
+			   IFNULL(A.AGENT_PLATFORM, '') AS AGENT_PLATFORM
+		FROM pi_ap_server AP, pi_targets T
+			LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+			LEFT OUTER JOIN pi_agents A ON T.NAME = A.AGENT_NAME AND T.AP_NO = A.AP_NO
+		WHERE 1=1
+			AND TU.USER_NO = #{user_no}
+			AND TU.AP_NO = AP.AP_NO
+			AND AP.IS_SERVER = 0
+	</select>	
+	
+</mapper>

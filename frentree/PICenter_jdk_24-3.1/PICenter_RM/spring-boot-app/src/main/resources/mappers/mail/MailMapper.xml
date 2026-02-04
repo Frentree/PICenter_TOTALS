@@ -1,0 +1,300 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.mail.dao.MailDAO">
+
+    <select id="serverGroupMail" parameterType="hashmap" resultType="hashmap">
+    	SELECT U.USER_EMAIL , GROUP_CONCAT(TU.TARGET_ID) AS target_id, GROUP_CONCAT(ap_no) AS ap_no,
+			U.USER_NO AS service_user,  U.USER_NAME, (SELECT TEAM_NAME FROM PI_GROUP G WHERE G.INSA_CODE=U.INSA_CODE) AS USER_GROUP
+		FROM PI_TARGET_USER TU
+			LEFT OUTER JOIN PI_USER U ON U.USER_EMAIL != ' ' AND U.USER_NO = TU.USER_NO
+		WHERE U.USER_EMAIL IS NOT NULL
+			AND U.USER_NO IS NOT NULL
+			AND TU.TARGET_ID IN
+			<foreach collection="assetnosch" open="(" close=")" separator="," item="item">
+				#{item}
+			</foreach>
+		GROUP BY U.USER_NO
+    </select>
+
+    <select id="selectTargetDetail"  parameterType="hashmap" resultType="hashmap">
+     	SELECT T.NAME, IFNULL(A.AGENT_CONNECTED_IP, '-') AS AGENT_CONNECTED_IP, IFNULL(TU.SERVICE_NM, '-') AS SERVICE_NM
+		FROM PI_TARGETS T
+			LEFT OUTER JOIN PI_TARGET_USER TU ON T.TARGET_ID = TU.TARGET_ID  AND T.AP_NO = TU.AP_NO
+			LEFT OUTER JOIN PI_AGENTS A ON A.AGENT_NAME = T.NAME AND A.AP_NO = T.AP_NO AND A.AGENT_USE = 'Y'
+		WHERE T.TARGET_USE = 'Y'
+			AND T.TARGET_ID = #{target_id}
+			AND T.AP_NO = #{ap_no}
+		LIMIT 1
+	</select>
+
+    <select id="selectUserList" parameterType="hashmap" resultType="com.org.iopts.mail.vo.UserVo">
+     	SELECT U.USER_NO, U.USER_EMAIL,
+			IFNULL(U.SOSOK, '') AS SOSOK, U.USER_NAME
+		FROM
+		pi_user U
+		WHERE USER_NO = #{user_no}
+	</select>
+
+    <select id="selectSendUserList" parameterType="hashmap" resultType="com.org.iopts.mail.vo.UserVo">
+     	SELECT U.USER_NO, U.USER_EMAIL, IFNULL(U.SOSOK, '') AS SOSOK, DPG.NOTEPAD,
+     			U.USER_NAME, CONCAT(T.NAME, ' : ', DPG.DATA_PROCESSING_NAME) AS DETAIL_CON, #{comment} AS COMMENT
+		FROM PI_USER U, PI_DATA_PROCESSING DP, PI_TARGETS T, PI_DATA_PROCESSING_GROUP DPG
+		WHERE U.USER_NO = #{ok_user_no}
+			AND T.TARGET_ID = DP.TARGET_ID
+			AND T.TARGET_ID = DPG.TARGET_ID
+			AND T.AP_NO = DP.AP_NO
+			AND DPG.IDX IN
+			<foreach collection="idxList" open="(" close=")" separator="," item="item">
+				#{item}
+			</foreach>
+			GROUP BY DETAIL_CON
+	</select>
+
+    <select id="selectDate" parameterType="hashmap" resultType="com.org.iopts.mail.vo.MailVo">
+      SELECT DATE_FORMAT(NOW(), '%Y년 %m월 %d일') AS DATE
+    </select>
+
+	<insert id="templateInsert" parameterType="hashmap">
+		INSERT INTO PI_TEMPLATE
+		(NAME, CON, FLAG)
+		VALUES
+		(#{name}, #{template_con}, 'Y')
+	</insert>
+
+	<!-- 메일 템플릿 등록 (sendmail_N 형식) -->
+	<insert id="insertSendmailTemplate" parameterType="hashmap">
+		INSERT INTO PI_TEMPLATE
+		(NAME, CON, FLAG, FLAG_CON)
+		VALUES
+		(#{name}, #{template_con}, 'Y',
+		CONCAT('sendmail_', (SELECT IFNULL(MAX(CAST(SUBSTRING(FLAG_CON, 10) AS UNSIGNED)), 0) + 1 FROM PI_TEMPLATE T WHERE FLAG_CON LIKE 'sendmail_%')))
+	</insert>
+
+    <select id="selectTemplate" parameterType="String" resultType="String">
+    	SELECT T.CON
+		FROM PI_TEMPLATE T
+		WHERE T.NAME = #{mailFlag}
+		AND T.FLAG = 'Y'
+    </select>
+
+    <update id="templateUpdate" parameterType="hashmap">
+    	UPDATE PI_TEMPLATE
+		SET FLAG = 'N'
+		WHERE FLAG = 'Y'
+		AND NAME = #{name}
+    </update>
+
+    <select id="selectMailUser" resultType="hashmap">
+		 SELECT COM, PWD
+		 FROM PI_SETTING_DATA
+		 WHERE NAME ='mail'
+		 	AND STATUS != 'N'
+		 ORDER BY IDX DESC LIMIT 1
+	</select>
+
+	<!-- 메일 템플릿 목록 조회 -->
+	<select id="selectTemplateList" resultType="hashmap">
+		SELECT IDX, NAME, CON, FLAG, FLAG_CON
+		FROM PI_TEMPLATE
+		WHERE FLAG = 'Y'
+		AND FLAG_CON LIKE 'sendmail_%'
+		ORDER BY IDX DESC
+	</select>
+
+	<!-- 메일 템플릿 상세 조회 -->
+	<select id="selectTemplateDetail" parameterType="int" resultType="hashmap">
+		SELECT IDX, NAME, CON, FLAG, FLAG_CON
+		FROM PI_TEMPLATE
+		WHERE IDX = #{idx}
+		AND FLAG = 'Y'
+		AND FLAG_CON LIKE 'sendmail_%'
+	</select>
+
+	<!-- 메일 템플릿 삭제 (FLAG를 N으로) -->
+	<update id="deleteTemplate" parameterType="int">
+		UPDATE PI_TEMPLATE
+		SET FLAG = 'N'
+		WHERE IDX = #{idx}
+		AND FLAG_CON LIKE 'sendmail_%'
+	</update>
+
+	<!-- 메일 템플릿 수정 (IDX로 NAME, CON 수정) -->
+	<update id="updateTemplateById" parameterType="hashmap">
+		UPDATE PI_TEMPLATE
+		SET NAME = #{name}, CON = #{template_con}
+		WHERE IDX = #{idx}
+		AND FLAG = 'Y'
+		AND FLAG_CON LIKE 'sendmail_%'
+	</update>
+
+	<!-- LG생건 메일용: 서버별 검출건수 조회 (이미지 표 형식) -->
+	<!-- 개인정보: 휴대폰번호, 이메일, 계좌번호, 카드번호 -->
+	<!-- 고유식별정보: 주민등록번호, 외국인번호, 운전면허번호, 여권번호 -->
+	<select id="selectTargetSummaryLg" parameterType="hashmap" resultType="hashmap">
+		SELECT D.target_id,
+			D.ap_no,
+			D.name AS SERVER_NAME,
+			D.service_nm AS SERVICE_NM,
+			SUM(D.TOTAL_CNT) AS TOTAL_CNT,
+			SUM(D.PHONE) AS PHONE,
+			SUM(D.EMAIL) AS EMAIL,
+			SUM(D.ACCOUNT) AS ACCOUNT,
+			SUM(D.CARD) AS CARD,
+			SUM(D.SSN) AS SSN,
+			SUM(D.FOREIGNER) AS FOREIGNER,
+			SUM(D.DRIVER) AS DRIVER,
+			SUM(D.PASSPORT) AS PASSPORT
+		FROM (
+			SELECT T.TARGET_ID,
+				T.AP_NO,
+				T.NAME,
+				IFNULL(TU.SERVICE_NM, '-') AS SERVICE_NM,
+				SUM(S.MATCH_COUNT) AS TOTAL_CNT,
+				SUM(CASE WHEN CP.PATTERN_IDX = 1 THEN S.MATCH_COUNT ELSE 0 END) AS PHONE,
+				SUM(CASE WHEN CP.PATTERN_IDX = 2 THEN S.MATCH_COUNT ELSE 0 END) AS EMAIL,
+				SUM(CASE WHEN CP.PATTERN_IDX = 3 THEN S.MATCH_COUNT ELSE 0 END) AS ACCOUNT,
+				SUM(CASE WHEN CP.PATTERN_IDX = 4 THEN S.MATCH_COUNT ELSE 0 END) AS CARD,
+				SUM(CASE WHEN CP.PATTERN_IDX = 5 THEN S.MATCH_COUNT ELSE 0 END) AS SSN,
+				SUM(CASE WHEN CP.PATTERN_IDX = 6 THEN S.MATCH_COUNT ELSE 0 END) AS FOREIGNER,
+				SUM(CASE WHEN CP.PATTERN_IDX = 7 THEN S.MATCH_COUNT ELSE 0 END) AS DRIVER,
+				SUM(CASE WHEN CP.PATTERN_IDX = 8 THEN S.MATCH_COUNT ELSE 0 END) AS PASSPORT
+			FROM PI_TARGETS T
+				LEFT OUTER JOIN PI_TARGET_USER TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+				, PI_CUSTOM_PATTERN CP, PI_SUMMARY S, PI_FIND F
+				LEFT OUTER JOIN PI_DATA_PROCESSING PRC ON F.TARGET_ID = PRC.TARGET_ID AND F.AP_NO = PRC.AP_NO AND F.HASH_ID = PRC.HASH_ID
+					AND PRC.DATA_PROCESSING_GROUP_IDX IN (SELECT MAX(DATA_PROCESSING_IDX) FROM PI_DATA_PROCESSING GROUP BY HASH_ID)
+			WHERE T.TARGET_ID = #{target_id}
+				AND T.AP_NO = #{ap_no}
+				AND T.TARGET_ID = F.TARGET_ID
+				AND F.HASH_ID = S.OBJECT_ID
+				AND F.DELDATE IS NULL
+				AND F.TARGET_ID = S.TARGET_ID
+				AND T.AP_NO = S.AP_NO
+				AND T.AP_NO = F.AP_NO
+				AND INSTR(UPPER(S.DATA_TYPE), CP.PATTERN_CODE) > 0
+				AND PRC.APPROVAL_STATUS IS NULL
+			GROUP BY F.HASH_ID
+			HAVING TOTAL_CNT > 0
+		) D
+		GROUP BY D.TARGET_ID, D.AP_NO
+	</select>
+
+	<!-- 서버별 담당자(정/부) 조회 -->
+	<select id="selectTargetManagerLg" parameterType="hashmap" resultType="hashmap">
+		SELECT D.TARGET_ID,
+			D.AP_NO,
+			D.NAME AS SERVER_NAME,
+			D.SERVICE_NM,
+			IFNULL((SELECT USER_NAME FROM PI_USER WHERE USER_NO = D.SERVER1), '-') AS MANAGER1,
+			IFNULL((SELECT USER_NAME FROM PI_USER WHERE USER_NO = D.SERVER2), '-') AS MANAGER2
+		FROM (
+			SELECT T.TARGET_ID,
+				T.AP_NO,
+				T.NAME,
+				IFNULL(TU.SERVICE_NM, '-') AS SERVICE_NM,
+				MAX(CASE WHEN TU.USERFLAG = 'server1' THEN TU.USER_NO ELSE '' END) AS SERVER1,
+				MAX(CASE WHEN TU.USERFLAG = 'server2' THEN TU.USER_NO ELSE '' END) AS SERVER2
+			FROM PI_TARGETS T
+				LEFT OUTER JOIN PI_TARGET_USER TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+			WHERE T.TARGET_USE = 'Y'
+				AND T.TARGET_ID = #{target_id}
+				AND T.AP_NO = #{ap_no}
+			GROUP BY T.TARGET_ID, T.AP_NO
+		) D
+	</select>
+
+	<!-- user_no로 이메일 조회 -->
+	<select id="selectUserEmailByUserNo" parameterType="String" resultType="String">
+		SELECT USER_EMAIL
+		FROM PI_USER
+		WHERE USER_NO = #{userNo}
+		AND USER_EMAIL IS NOT NULL
+		AND USER_EMAIL != ''
+	</select>
+
+	<!-- user_no 목록으로 이메일 목록 조회 -->
+	<select id="selectUserEmailsByUserNos" parameterType="list" resultType="hashmap">
+		SELECT USER_NO, USER_EMAIL, USER_NAME
+		FROM PI_USER
+		WHERE USER_NO IN
+		<foreach collection="list" open="(" close=")" separator="," item="item">
+			#{item}
+		</foreach>
+		AND USER_EMAIL IS NOT NULL
+		AND USER_EMAIL != ''
+	</select>
+
+	<!-- 메일 발송 이력 저장 -->
+	<insert id="insertMailHistory" parameterType="hashmap" useGeneratedKeys="true" keyProperty="mail_idx">
+		INSERT INTO PI_MAIL_HISTORY
+		(MAIL_TITLE, MAIL_CONTENT, SENDER_ID, SENDER_NAME, RECEIVERS, CC_RECEIVERS, SEND_RESULT, ERROR_MSG, SEND_DATE)
+		VALUES
+		(#{mail_title}, #{mail_content}, #{sender_id}, #{sender_name}, #{receivers}, #{cc_receivers}, #{send_result}, #{error_msg}, NOW())
+	</insert>
+
+	<!-- 메일 대상 서버 저장 -->
+	<insert id="insertMailTarget" parameterType="hashmap">
+		INSERT INTO PI_MAIL_TARGET
+		(MAIL_IDX, TARGET_ID, AP_NO)
+		VALUES
+		(#{mail_idx}, #{target_id}, #{ap_no})
+	</insert>
+
+	<!-- 메일 대상 서버 일괄 저장 -->
+	<insert id="insertMailTargetBatch" parameterType="hashmap">
+		INSERT INTO PI_MAIL_TARGET (MAIL_IDX, TARGET_ID, AP_NO)
+		VALUES
+		<foreach collection="targetList" separator="," item="item">
+			(#{mail_idx}, #{item.target_id}, #{item.ap_no})
+		</foreach>
+	</insert>
+
+	<!-- 메일 발송 이력 목록 조회 -->
+	<select id="selectMailHistoryList" parameterType="hashmap" resultType="hashmap">
+		SELECT H.MAIL_IDX, H.MAIL_TITLE, H.SENDER_NAME, H.RECEIVERS, H.CC_RECEIVERS,
+			H.SEND_RESULT, DATE_FORMAT(H.SEND_DATE, '%Y-%m-%d %H:%i:%s') AS SEND_DATE,
+			(SELECT COUNT(*) FROM PI_MAIL_TARGET T WHERE T.MAIL_IDX = H.MAIL_IDX) AS TARGET_CNT
+		FROM PI_MAIL_HISTORY H
+		ORDER BY H.MAIL_IDX DESC
+		<if test="limit != null">
+			LIMIT #{limit}
+		</if>
+	</select>
+
+	<!-- 메일 발송 이력 상세 조회 -->
+	<select id="selectMailHistoryDetail" parameterType="int" resultType="hashmap">
+		SELECT H.MAIL_IDX, H.MAIL_TITLE, H.MAIL_CONTENT, H.SENDER_ID, H.SENDER_NAME,
+			H.RECEIVERS, H.CC_RECEIVERS, H.SEND_RESULT, H.ERROR_MSG,
+			DATE_FORMAT(H.SEND_DATE, '%Y-%m-%d %H:%i:%s') AS SEND_DATE
+		FROM PI_MAIL_HISTORY H
+		WHERE H.MAIL_IDX = #{mail_idx}
+	</select>
+
+	<!-- 메일 대상 서버 목록 조회 -->
+	<select id="selectMailTargetList" parameterType="int" resultType="hashmap">
+		SELECT T.SEQ, T.TARGET_ID, T.AP_NO,
+			(SELECT NAME FROM PI_TARGETS WHERE TARGET_ID = T.TARGET_ID AND AP_NO = T.AP_NO LIMIT 1) AS SERVER_NAME
+		FROM PI_MAIL_TARGET T
+		WHERE T.MAIL_IDX = #{mail_idx}
+	</select>
+
+	<!-- LG생건 메일용: 수신자별 담당 서버 목록 조회 -->
+	<select id="selectMailUserTargetLg" parameterType="hashmap" resultType="hashmap">
+		SELECT U.USER_EMAIL,
+			U.USER_NO AS SERVICE_USER,
+			U.USER_NAME,
+			(SELECT TEAM_NAME FROM PI_GROUP G WHERE G.INSA_CODE = U.INSA_CODE) AS USER_GROUP,
+			GROUP_CONCAT(TU.TARGET_ID) AS TARGET_ID,
+			GROUP_CONCAT(TU.AP_NO) AS AP_NO
+		FROM PI_TARGET_USER TU
+			LEFT OUTER JOIN PI_USER U ON U.USER_EMAIL != ' ' AND U.USER_NO = TU.USER_NO
+		WHERE U.USER_EMAIL IS NOT NULL
+			AND U.USER_NO IS NOT NULL
+			AND TU.TARGET_ID IN
+			<foreach collection="assetnoschList" open="(" close=")" separator="," item="item">
+				#{item}
+			</foreach>
+		GROUP BY U.USER_NO
+	</select>
+</mapper>

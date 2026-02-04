@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.exception.dao.piDetectionListDAO">
+
+    <select id="selectFindSubpath" parameterType="hashmap" resultType="hashmap">
+        WITH RECURSIVE CTE AS (
+            SELECT C.GROUP_ID  AS GID,
+                     C.TARGET_ID AS PID,
+                     C.HASH_ID   AS ID,
+                     C.HASH_ID   AS CID,
+                     C.TARGET_ID AS TID,
+                     #C.PATH      AS NAME,
+                     CONCAT((CASE WHEN IFNULL(PRC_FLAG.PROCESSING_FLAG,'') = '' THEN '0' ELSE 'Z' END), C.PATH) AS NAME,
+                     C.PATH      AS SHORTNAME,
+                     C.PATH      AS PATH,
+                     1           AS LEVEL,
+                     T.NAME      AS HOST,
+                     C.OWNER     AS OWNER,
+                     PRC.APPROVAL_STATUS           AS APPROVAL_STATUS,
+                     PRC.APPROVAL_STATUS           AS LINK_APPROVAL_STATUS,
+                     PRC_FLAG.PROCESSING_FLAG      AS PROCESSING_FLAG,
+                     PRC_FLAG.PROCESSING_FLAG      AS LINK_PROCESSING_FLAG,
+                     PRC_FLAG.PROCESSING_FLAG_NAME AS PROCESSING_FLAG_NAME,
+                     (CASE WHEN PRC_FLAG.PROCESSING_FLAG IS NULL THEN ''
+                           ELSE CONCAT((CASE WHEN PRC.APPROVAL_STATUS = 'W' THEN '처리 등록'
+                                                     WHEN PRC.APPROVAL_STATUS = 'E' THEN '처리 완료' 
+                                                     WHEN PRC.APPROVAL_STATUS = 'D' THEN '처리 반려' 
+                                                     ELSE '처리 대기' END ), '_', PRC_FLAG.PROCESSING_FLAG_NAME) END) AS APPROVAL_STATUS_PRINT_NAME
+              FROM PI_TARGETS T, PI_FIND C 
+                   LEFT OUTER JOIN PI_DATA_PROCESSING PRC           ON PRC.TARGET_ID = #{target_id} AND C.HASH_ID = PRC.HASH_ID
+                   LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON PRC.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG
+             WHERE T.TARGET_ID = #{target_id}
+             AND C.TARGET_ID = T.TARGET_ID
+             	<if test="location != null and location != ''">
+				   AND C.PATH LIKE CONCAT('%', #{location}, '%')
+				</if>
+            UNION ALL
+            SELECT C.GROUP_ID    AS GID,
+                     C.PARENT_ID   AS PID,
+                     C.NODE_ID     AS ID,
+                     CTE.CID       AS CID,
+                     C.TARGET_ID   AS TID,
+                     #CONCAT(CTE.NAME , '>' , C.PATH) AS NAME,
+                     CONCAT(CTE.NAME , '>' , C.PATH) AS NAME,
+                     C.PATH        AS SHORTNAME,
+                     CONCAT(CTE.PATH , '>' , C.NODE_ID) AS PATH,
+                     CTE.LEVEL + 1 AS LEVEL,
+                     T.NAME        AS HOST,
+                     C.OWNER       AS OWNER,
+                     '' AS APPROVAL_STATUS,
+                     CTE.LINK_APPROVAL_STATUS AS LINK_APPROVAL_STATUS,
+                     '' AS PROCESSING_FLAG,
+                     CTE.LINK_PROCESSING_FLAG AS LINK_PROCESSING_FLAG,
+                     '' AS PROCESSING_FLAG_NAME,
+                     '' AS APPROVAL_STATUS_PRINT_NAME
+              FROM PI_SUBPATH C, CTE, PI_TARGETS T 
+             WHERE C.TARGET_ID = #{target_id}
+               AND C.PARENT_ID = CTE.ID 
+               AND C.TARGET_ID = CTE.TID
+                AND C.GROUP_ID  = CTE.GID 
+               AND C.GROUP_ID  = T.GROUP_ID
+               AND C.TARGET_ID = T.TARGET_ID
+        )
+        SELECT CTE.PID       AS PID,
+               CTE.ID        AS ID,
+               CTE.HOST      AS HOST,
+               CTE.SHORTNAME AS SHORTNAME,
+               CTE.PATH      AS PATH,
+               CTE.HOST      AS HOST,
+               CTE.LEVEL     AS LEVEL,
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN RRN') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)						AS TYPE1,
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN FOREIGNER NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)		AS TYPE2,
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN PASSPORT') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)				AS TYPE3,
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN DRIVER LICENSE NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)	AS TYPE4,
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'ACCOUNT NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)						AS TYPE5,	-- 계좌번호
+               (SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'VISA') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'MAESTRO') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'PRIVATE LABEL CARD') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'DINERS CLUB') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'JCB') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'LASER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'MASTERCARD') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'AMERICAN EXPRESS') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) )					AS TYPE6,	-- 카드번호
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN PHONE NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)			AS TYPE7,
+               SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'EMAIL') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)								AS TYPE8,
+               ( SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN DRIVER LICENSE NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN FOREIGNER NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN PASSPORT') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN RRN') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'ACCOUNT NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                (SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'VISA') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'MAESTRO') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'PRIVATE LABEL CARD') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'DINERS CLUB') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'JCB') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'LASER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'MASTERCARD') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'AMERICAN EXPRESS') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN PHONE NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) +
+                 SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'EMAIL') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END)))							AS TYPE,
+               CTE.OWNER,
+               CTE.APPROVAL_STATUS,
+               CTE.LINK_APPROVAL_STATUS,
+               CTE.PROCESSING_FLAG,
+               CTE.LINK_PROCESSING_FLAG,
+               CTE.PROCESSING_FLAG_NAME,
+               CTE.APPROVAL_STATUS_PRINT_NAME,
+               CASE (SELECT IFNULL(COUNT(*),0) FROM CTE AS CTES WHERE CTES.PID = CTE.ID) WHEN 0 THEN 'true' ELSE 'false' END AS LEAF,
+               'true' AS EXPAND,
+               ''    AS CHK
+          FROM CTE LEFT OUTER JOIN PI_SUMMARY SUMM USE INDEX (PRIMARY) ON SUMM.TARGET_ID = #{target_id} AND SUMM.OBJECT_ID = CTE.ID AND SUMM.GROUP_ID = CTE.GID
+         WHERE 1 = 1
+           AND (CASE WHEN IFNULL(CTE.LINK_PROCESSING_FLAG,999) = 5 AND IFNULL(CTE.LINK_APPROVAL_STATUS,'D') = 'E' THEN 'X' ELSE 'O' END) = 'O'      # 오탐(예외처리)로 승인된 자료는 제외
+        GROUP BY CTE.PID, CTE.ID, CTE.NAME, CTE.SHORTNAME, CTE.PATH, CTE.HOST, CTE.LEVEL
+        ORDER BY CTE.NAME
+<!-- 
+        WITH RECURSIVE
+            CTE AS (
+                SELECT C.GROUP_ID AS GID, C.TARGET_ID AS PID, C.HASH_ID AS ID, C.HASH_ID AS CID, C.TARGET_ID AS TID, C.PATH AS NAME, C.PATH AS SHORTNAME, C.PATH AS PATH, 1 LEVEL, T.NAME AS HOST, C.OWNER AS OWNER_BY_FIND
+                  FROM PI_TARGETS AS T, PI_FIND C LEFT OUTER JOIN PI_EXCEPTION E ON C.TARGET_ID = #{target_id}
+                                                                #AND C.TARGET_ID = E.TARGET_ID
+                                                                AND C.GROUP_ID  = E.GROUP_ID
+                                                                AND C.HASH_ID   = E.HASH_ID 
+                                                                AND E.REGDATE   = (SELECT MAX(EXS.REGDATE) 
+                                                                                     FROM PI_EXCEPTION EXS 
+                                                                                    WHERE EXS.HASH_ID = C.HASH_ID AND EXS.GROUP_ID = C.GROUP_ID AND EXS.TARGET_ID = C.TARGET_ID )
+                 WHERE C.TARGET_ID = #{target_id}
+                <if test="location != null and location != ''">
+                   AND C.PATH LIKE CONCAT('%', #{location}, '%')
+                </if>
+                   AND T.GROUP_ID = C.GROUP_ID
+                   AND T.TARGET_ID = C.TARGET_ID
+                   AND IFNULL(E.APPROVAL_STATUS,'') != 'E'
+                 UNION ALL
+                SELECT C.GROUP_ID AS GID, C.PARENT_ID AS PID, C.NODE_ID AS ID, CTE.CID AS CID, C.TARGET_ID AS TID, CONCAT(CTE.NAME , '>' , C.PATH) AS NAME, C.PATH AS SHORTNAME, 
+                        CONCAT(CTE.PATH , '>' , C.NODE_ID) AS PATH, CTE.LEVEL + 1 AS LEVEL, T.NAME AS HOST, ' ' AS OWNER_BY_FIND
+                  FROM PI_SUBPATH C, CTE, PI_TARGETS AS T 
+                 WHERE C.PARENT_ID = CTE.ID 
+                   AND C.GROUP_ID = CTE.GID 
+                   AND C.TARGET_ID = CTE.TID
+                   AND T.GROUP_ID = C.GROUP_ID
+                   AND T.TARGET_ID = C.TARGET_ID
+            )
+            SELECT CTE.PID, CTE.ID, CTE.NAME, CTE.SHORTNAME AS SHORTNAME, CTE.PATH, CTE.HOST, CTE.LEVEL, 
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN DRIVER LICENSE NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) AS TYPE4,
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN FOREIGNER NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) AS TYPE2,
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN PASSPORT') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) AS TYPE3,
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN RRN') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) AS TYPE1,
+    
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN DRIVER LICENSE NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN FOREIGNER NUMBER') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN PASSPORT') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) + 
+                    SUM(CASE WHEN INSTR(UPPER(SUMM.DATA_TYPE), 'SOUTH KOREAN RRN') > 0 THEN SUMM.MATCH_COUNT ELSE 0 END) AS TYPE,
+                    /*(SELECT APPROVAL_STATUS FROM pi_charge_update EX
+                            WHERE EX.HASH_ID = CTE.ID AND EX.TARGET_ID = CTE.TID 
+                              AND EX.REGDATE = (SELECT MAX(EXS.REGDATE) FROM PI_EXCEPTION EXS WHERE EXS.HASH_ID = CTE.ID AND EX.TARGET_ID = CTE.TID )) AS STATUS,*/
+                    /*(SELECT APPROVAL_STATUS FROM pi_data_processing DE
+                            WHERE DE.HASH_ID = CTE.ID AND DE.GROUP_ID = CTE.GID AND DE.TARGET_ID = CTE.TID) AS DEL_STATUS,*/
+                    PRC.APPROVAL_STATUS,
+                    PRC_FLAG.PROCESSING_FLAG,
+                    PRC_FLAG.PROCESSING_FLAG_NAME,
+                    (CASE WHEN PRC_FLAG.PROCESSING_FLAG IS NULL THEN ''
+                          ELSE CONCAT((CASE WHEN PRC.APPROVAL_STATUS = 'W' THEN '처리 등록'
+                                            WHEN PRC.APPROVAL_STATUS = 'E' THEN '처리 완료' 
+                                            WHEN PRC.APPROVAL_STATUS = 'D' THEN '처리 반려' 
+                                            ELSE '처리 대기' END ), '_', PRC_FLAG.PROCESSING_FLAG_NAME) END) AS APPROVAL_STATUS_PRINT_NAME,
+                    CTE.OWNER_BY_FIND,
+                    CASE (SELECT IFNULL(COUNT(*),0) FROM CTE AS CTES WHERE CTES.PID = CTE.ID) WHEN 0 THEN 'true' ELSE 'false' END AS LEAF,
+                    'true' AS EXPAND,
+                    '0' AS CHK
+           FROM CTE LEFT OUTER JOIN PI_SUMMARY AS SUMM USE INDEX (PRIMARY) ON SUMM.OBJECT_ID = CTE.ID AND SUMM.GROUP_ID = CTE.GID AND SUMM.TARGET_ID = CTE.TID
+                    LEFT OUTER JOIN PI_DATA_PROCESSING AS PRC ON CTE.TID = PRC.TARGET_ID AND CTE.ID = PRC.HASH_ID AND CTE.GID = PRC.GROUP_ID
+                    LEFT OUTER JOIN PI_DATA_PROCESSING_FLAG PRC_FLAG ON PRC.PROCESSING_FLAG = PRC_FLAG.PROCESSING_FLAG
+          WHERE 1 = 1
+            AND IFNULL(PRC_FLAG.PROCESSING_FLAG,'') <![CDATA[<>]]> '5'
+          GROUP BY CTE.PID, CTE.ID, CTE.NAME, CTE.SHORTNAME, CTE.PATH, CTE.HOST, CTE.LEVEL
+          ORDER BY PRC_FLAG.PROCESSING_FLAG IS NULL DESC, CTE.NAME, PRC.APPROVAL_STATUS
+ -->
+    </select>
+    
+    <select id="selectFindSubpath2" parameterType="hashmap" resultType="hashmap">
+		SELECT 	CASE IFNULL(F.FID,'X') != 'X' WHEN 0 THEN 1 ELSE 0 END AS CHK,
+   				CASE IFNULL(F.FID,'X') != 'X' WHEN 0 THEN 1 ELSE 0 END AS CHK_C,
+   				1  AS CHKOLD,
+   				'' AS SUBFILE,
+   				F.TARGET_ID AS PID,
+                F.HASH_ID   AS ID,
+                F.HASH_ID   AS CID,
+                F.TARGET_ID AS TID,
+                F.PATH  AS SHORTNAME,
+                F.PATH      AS PATH,
+                F.DELDATE 	 AS DELDATE,
+                1           AS LEVEL,
+                F.ACCOUNT AS OWNER,                    
+                <foreach collection="patternList" item="cnt">
+                	SUM(CASE WHEN CP.PATTERN_IDX = #{cnt} THEN S.MATCH_COUNT ELSE 0 END) AS TYPE#{cnt},
+                </foreach>
+                SUM(S.MATCH_COUNT) AS TYPE,
+                F.FID,
+                CASE IFNULL(F.FID,'X') != 'X' WHEN 0 THEN 'true' ELSE 'false' END AS LEAF,
+                DATE_FORMAT(F.CREDATE, '%Y-%m-%d %h:%i:%s')	AS CREATE_DT
+		FROM pi_Summary S, pi_find F, PI_CUSTOM_PATTERN CP
+		WHERE 1 = 1
+		  AND F.TARGET_ID = #{target_id}
+		  AND F.AP_NO = #{ap_no}
+		  AND F.HASH_ID = S.OBJECT_ID
+		  AND F.TARGET_ID = S.TARGET_ID
+		  AND F.AP_NO = S.AP_NO
+		  AND F.DELDATE IS NULL
+		  AND INSTR(UPPER(S.DATA_TYPE), CP.PATTERN_CODE) > 0 AND S.DELDATE IS NULL
+
+		  <if test="location != null and location != ''">
+			AND F.PATH LIKE CONCAT('%', #{location}, '%')
+		  </if>
+		  <if test="status != null and status != ''">
+		     AND PRC.APPROVAL_STATUS LIKE CONCAT('%', #{status}, '%')
+   		  </if>
+		GROUP BY F.TARGET_ID, F.AP_NO, F.HASH_ID
+		HAVING TYPE != 0
+		
+    </select>
+    
+    
+    
+    <select id="subpathSelect" parameterType="hashmap" resultType="hashmap">
+    	WITH RECURSIVE CTE AS (
+            SELECT 	C.FID 	   AS OID,
+                     C.TARGET_ID AS PID,
+                     C.TARGET_ID AS CID,
+                     C.PATH      AS NAME,
+                     C.HASH_ID   AS ID,
+                     C.TARGET_ID AS TID,
+                     C.PATH 		AS PATH,
+                     1           AS LEVEL
+              FROM PI_FIND C 
+            WHERE 1 = 1
+				AND C.hash_id = #{hash_id}
+            UNION ALL
+            SELECT   S.INFO_ID 	  AS OID,
+                     S.PARENT_ID   AS PID,
+                     CTE.CID       AS CID,
+                     CONCAT(CTE.NAME , '>' , S.PATH) AS NAME,
+                     S.NODE_ID     AS ID,
+                     S.TARGET_ID   AS TID,
+                     S.PATH AS PATH,
+                     CTE.LEVEL + 1 AS LEVEL
+              FROM PI_SUBPATH S, CTE
+             WHERE 1 = 1
+               AND S.PARENT_ID = CTE.ID 
+               AND S.TARGET_ID = CTE.TID
+        )
+        SELECT CTE.OID		  AS OID,
+		  	   CTE.PID       AS PID,
+               CTE.ID        AS ID,
+               CTE.NAME      AS NAME,
+               CTE.PATH      AS PATH,
+               CTE.LEVEL     AS LEVEL
+         FROM CTE 
+         WHERE 1 = 1 
+        GROUP BY CTE.PID, CTE.ID, CTE.PATH, CTE.LEVEL
+        ORDER BY CTE.NAME
+    </select>
+    <select id="selectUserTargetList" parameterType="hashmap" resultType="hashmap">
+		SELECT DISTINCT H.*,
+			   (CASE WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NOT NULL AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (DMZ)', ' (검출)')	# 예1. DMZ인 대상이 검출 결과가 있는 경우  -  호스트명 (IP) (DMZ) (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NOT NULL AND H.FIND_CNT <![CDATA[<=]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (DMZ)')			# 예2. DMZ인 대상이 검출 결과가 없는 경우  -  호스트명 (IP) (DMZ)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NULL     AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (검출)')				# 예3. DMZ가 아닌 대상이 검출 결과가 있는 경우  -  호스트명 (IP) (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NULL     AND H.FIND_CNT <![CDATA[<=]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')')						# 예4. DMZ가 아닌 대상이 검출 결과가 없는 경우  -  호스트명 (IP)
+					 WHEN H.AGENT_CONNECTED_IP IS NULL                              AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (검출)')												# 예5. IP가 나오지 않는 대상이 검출 결과가 있는 경우  -  호스트명 (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NULL                              AND H.FIND_CNT <![CDATA[<=]]> 0 THEN H.AGENT_NAME																# 예6. IP가 나오지 않는 대상이 검출 결과가 없는 경우  -  호스트명
+					 ELSE H.AGENT_NAME END) AS COMBO_AGENT_NAME		# 조회조건 COMBO 표기용 호스트명
+		  FROM (
+				SELECT '0' AS CHK, 
+						T.TARGET_ID,
+						T.NAME AS AGENT_NAME,
+						<!-- EXPORT_SET(A.AGENT_CONNECTED,'1','0','',1) AS AGENT_CONNECTED, -->
+						IF (
+							PLATFORM = 'Remote Access Only',
+							'1',
+							EXPORT_SET(A.AGENT_CONNECTED,'1','0','',1)
+						) AS AGENT_CONNECTED,
+						#A.AGENT_CONNECTED,
+						A.AGENT_VERSION,
+						A.AGENT_PLATFORM,
+						A.AGENT_PLATFORM_COMPATIBILITY,
+						EXPORT_SET(A.AGENT_VERIFIED,'1','0','',1) AS AGENT_VERIFIED,
+						A.AGENT_USER,
+						A.AGENT_CPU,
+						A.AGENT_CORES,
+						A.AGENT_BOOT,
+						A.AGENT_RAM,
+						A.AGENT_STARTED,
+						A.AGENT_CONNECTED_IP, 
+						T.SEARCH_TIME, 
+						DATE_FORMAT(FROM_UNIXTIME(t.search_time), '%Y-%m-%d %h:%i:%s' ) as SEARCH_DATETIME, 
+						DATE_FORMAT(t.regdate, '%Y-%m-%d %h:%i:%s' ) as REGDATE,
+						<!-- IFNULL((SELECT SUM(S.MATCH_COUNT) FROM PI_SUMMARY S WHERE S.TARGET_ID = T.TARGET_ID),0) AS MATCH_CNT, -->
+						<if test='user_grade == "9"'>
+							IFNULL((SELECT COUNT(*) FROM PI_FIND F WHERE F.GROUP_ID = T.GROUP_ID AND F.TARGET_ID = T.TARGET_ID),0) AS FIND_CNT,
+						</if>
+						<if test='user_grade != "9"'>
+							IFNULL((SELECT COUNT(*) FROM PI_FIND F WHERE F.GROUP_ID = T.GROUP_ID AND F.TARGET_ID = T.TARGET_ID),0) AS FIND_CNT,
+						</if>
+						D.DMZ_IP
+						,#{user_grade}
+				  FROM PI_TARGETS T
+				       LEFT OUTER JOIN PI_AGENTS A ON T.NAME = A.AGENT_NAME
+				       LEFT OUTER JOIN PI_DMZ D ON A.AGENT_CONNECTED_IP = D.DMZ_IP
+				 WHERE 1 = 1
+				 	AND T.TARGET_USE = 'Y'
+				   <if test="host != null and host != ''">
+				   	AND A.AGENT_NAME LIKE CONCAT('%',#{host},'%')
+				   </if>
+			) H
+		ORDER BY H.AGENT_NAME
+		
+		<!-- SELECT DISTINCT H.*,
+			   (CASE WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NOT NULL AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (DMZ)', ' (검출)')	# 예1. DMZ인 대상이 검출 결과가 있는 경우  -  호스트명 (IP) (DMZ) (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NOT NULL AND H.FIND_CNT <![CDATA[<=]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (DMZ)')			# 예2. DMZ인 대상이 검출 결과가 없는 경우  -  호스트명 (IP) (DMZ)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NULL     AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (검출)')				# 예3. DMZ가 아닌 대상이 검출 결과가 있는 경우  -  호스트명 (IP) (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NULL     AND H.FIND_CNT <![CDATA[<=]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')')						# 예4. DMZ가 아닌 대상이 검출 결과가 없는 경우  -  호스트명 (IP)
+					 WHEN H.AGENT_CONNECTED_IP IS NULL                              AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (검출)')												# 예5. IP가 나오지 않는 대상이 검출 결과가 있는 경우  -  호스트명 (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NULL                              AND H.FIND_CNT <![CDATA[<=]]> 0 THEN H.AGENT_NAME																# 예6. IP가 나오지 않는 대상이 검출 결과가 없는 경우  -  호스트명
+					 ELSE H.AGENT_NAME END) AS COMBO_AGENT_NAME		# 조회조건 COMBO 표기용 호스트명
+		  FROM (
+				SELECT '0' AS CHK, 
+						T.TARGET_ID,
+						T.NAME AS AGENT_NAME,
+						EXPORT_SET(A.AGENT_CONNECTED,'1','0','',1) AS AGENT_CONNECTED,
+						#A.AGENT_CONNECTED,
+						A.AGENT_VERSION,
+						A.AGENT_PLATFORM,
+						A.AGENT_PLATFORM_COMPATIBILITY,
+						EXPORT_SET(A.AGENT_VERIFIED,'1','0','',1) AS AGENT_VERIFIED,
+						A.AGENT_USER,
+						A.AGENT_CPU,
+						A.AGENT_CORES,
+						A.AGENT_BOOT,
+						A.AGENT_RAM,
+						A.AGENT_STARTED,
+						A.AGENT_CONNECTED_IP, 
+						T.SEARCH_TIME, 
+						DATE_FORMAT(FROM_UNIXTIME(t.search_time), '%Y-%m-%d %h:%i:%s' ) as SEARCH_DATETIME, 
+						DATE_FORMAT(t.regdate, '%Y-%m-%d %h:%i:%s' ) as REGDATE,
+						IFNULL((SELECT SUM(S.MATCH_COUNT) FROM PI_SUMMARY S WHERE S.TARGET_ID = T.TARGET_ID),0) AS MATCH_CNT,
+						<if test='user_grade == "9"'>
+							IFNULL((SELECT COUNT(*) FROM PI_FIND F WHERE F.GROUP_ID = T.GROUP_ID AND F.TARGET_ID = T.TARGET_ID),0) AS FIND_CNT,
+						</if>
+						<if test='user_grade != "9"'>
+							IFNULL((SELECT COUNT(*) FROM PI_FIND F WHERE F.GROUP_ID = T.GROUP_ID AND F.TARGET_ID = T.TARGET_ID),0) AS FIND_CNT,
+						</if>
+						D.DMZ_IP
+						,#{user_grade}
+				  FROM PI_TARGETS T
+				       LEFT OUTER JOIN PI_AGENTS A ON T.NAME = A.AGENT_NAME
+				       LEFT OUTER JOIN PI_DMZ D ON A.AGENT_CONNECTED_IP = D.DMZ_IP
+				 WHERE 1 = 1
+				   <if test="host != null and host != ''">
+				   	AND A.AGENT_NAME LIKE CONCAT('%',#{host},'%')
+				   </if>
+			) H
+		ORDER BY H.FIND_CNT DESC, H.AGENT_CONNECTED_IP, H.AGENT_NAME
+		 -->
+		<!-- SELECT H.*,
+			   (CASE WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NOT NULL AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (DMZ)', ' (검출)')	# 예1. DMZ인 대상이 검출 결과가 있는 경우  -  호스트명 (IP) (DMZ) (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NOT NULL AND H.FIND_CNT <![CDATA[<=]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (DMZ)')			# 예2. DMZ인 대상이 검출 결과가 없는 경우  -  호스트명 (IP) (DMZ)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NULL     AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')', ' (검출)')				# 예3. DMZ가 아닌 대상이 검출 결과가 있는 경우  -  호스트명 (IP) (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NOT NULL AND H.DMZ_IP IS NULL     AND H.FIND_CNT <![CDATA[<=]]> 0 THEN CONCAT(H.AGENT_NAME, ' (', H.AGENT_CONNECTED_IP, ')')						# 예4. DMZ가 아닌 대상이 검출 결과가 없는 경우  -  호스트명 (IP)
+					 WHEN H.AGENT_CONNECTED_IP IS NULL                              AND H.FIND_CNT <![CDATA[> ]]> 0 THEN CONCAT(H.AGENT_NAME, ' (검출)')												# 예5. IP가 나오지 않는 대상이 검출 결과가 있는 경우  -  호스트명 (검출)
+					 WHEN H.AGENT_CONNECTED_IP IS NULL                              AND H.FIND_CNT <![CDATA[<=]]> 0 THEN H.AGENT_NAME																# 예6. IP가 나오지 않는 대상이 검출 결과가 없는 경우  -  호스트명
+					 ELSE H.AGENT_NAME END) AS COMBO_AGENT_NAME		# 조회조건 COMBO 표기용 호스트명
+		  FROM (
+				SELECT '0' AS CHK, 
+						T.TARGET_ID,
+						A.AGENT_NAME AS AGENT_NAME,
+						EXPORT_SET(A.AGENT_CONNECTED,'1','0','',1) AS AGENT_CONNECTED,
+						#A.AGENT_CONNECTED,
+						A.AGENT_VERSION,
+						A.AGENT_PLATFORM,
+						A.AGENT_PLATFORM_COMPATIBILITY,
+						EXPORT_SET(A.AGENT_VERIFIED,'1','0','',1) AS AGENT_VERIFIED,
+						A.AGENT_USER,
+						A.AGENT_CPU,
+						A.AGENT_CORES,
+						A.AGENT_BOOT,
+						A.AGENT_RAM,
+						A.AGENT_STARTED,
+						A.AGENT_CONNECTED_IP, 
+						T.SEARCH_TIME, 
+						DATE_FORMAT(FROM_UNIXTIME(t.search_time), '%Y-%m-%d %h:%i:%s' ) as SEARCH_DATETIME, 
+						DATE_FORMAT(t.regdate, '%Y-%m-%d %h:%i:%s' ) as REGDATE,
+						IFNULL((SELECT SUM(S.MATCH_COUNT) FROM PI_SUMMARY S WHERE S.TARGET_ID = T.TARGET_ID),0) AS MATCH_CNT,
+						<if test='user_grade == "9"'>
+							IFNULL((SELECT COUNT(*) FROM PI_FIND F WHERE F.GROUP_ID = T.GROUP_ID AND F.TARGET_ID = T.TARGET_ID),0) AS FIND_CNT,
+						</if>
+						<if test='user_grade != "9"'>
+							IFNULL((SELECT COUNT(*) FROM PI_FIND F WHERE F.GROUP_ID = T.GROUP_ID AND F.TARGET_ID = T.TARGET_ID AND F.OWNER = #{user_no}),0) AS FIND_CNT,
+						</if>
+						D.DMZ_IP
+						,#{user_grade}
+				  FROM PI_TARGETS T,
+				       PI_AGENTS A LEFT OUTER JOIN PI_DMZ D ON A.AGENT_CONNECTED_IP = D.DMZ_IP,
+				       PI_TARGET_USER U
+				 WHERE T.NAME = A.AGENT_NAME
+				   AND U.TARGET_ID = T.TARGET_ID
+				   AND U.USER_NO = #{user_no}
+				   <if test="host != null and host != ''">
+				   	AND A.AGENT_NAME LIKE CONCAT('%',#{host},'%')
+				   </if>
+			) H
+		ORDER BY H.FIND_CNT DESC, H.MATCH_CNT DESC, H.AGENT_CONNECTED_IP, H.AGENT_NAME
+
+		SELECT '0' AS CHK, 
+				T.TARGET_ID,
+				A.AGENT_NAME AS AGENT_NAME,
+				EXPORT_SET(A.AGENT_CONNECTED,'1','0','',1) AS AGENT_CONNECTED,
+				A.AGENT_VERSION,
+				A.AGENT_PLATFORM,
+				A.AGENT_PLATFORM_COMPATIBILITY,
+				EXPORT_SET(A.AGENT_VERIFIED,'1','0','',1) AS AGENT_VERIFIED,
+				A.AGENT_CONNECTED,
+				A.AGENT_USER,
+				A.AGENT_CPU,
+				A.AGENT_CORES,
+				A.AGENT_BOOT,
+				A.AGENT_RAM,
+				A.AGENT_STARTED,
+				A.AGENT_CONNECTED_IP, 
+				T.SEARCH_TIME, 
+   				DATE_FORMAT(FROM_UNIXTIME(t.search_time), '%Y-%m-%d %h:%i:%s' ) as SEARCH_DATETIME, 
+   				DATE_FORMAT(t.regdate, '%Y-%m-%d %h:%i:%s' ) as REGDATE,
+   				IFNULL((SELECT SUM(S.MATCH_COUNT) FROM PI_SUMMARY S WHERE S.TARGET_ID = T.TARGET_ID),0) AS MATCH_CNT
+		  FROM PI_TARGETS T, PI_AGENTS A, PI_TARGET_USER U 
+		 WHERE T.NAME = A.AGENT_NAME
+       	   AND U.TARGET_ID = T.TARGET_ID
+       	   AND U.USER_NO = #{user_no}
+   		   <if test="host != null and host != ''">
+   		   AND A.AGENT_NAME LIKE CONCAT('%',#{host},'%')
+   		   </if>
+   		  ORDER BY MATCH_CNT DESC, A.AGENT_CONNECTED_IP, A.AGENT_NAME
+  		-->
+	</select>
+	
+    
+    
+    <insert id="registProcess" parameterType="hashmap">
+        INSERT INTO PI_DATA_PROCESSING (
+            GROUP_ID
+           ,TARGET_ID
+           ,HASH_ID
+           ,APPROVAL_STATUS
+           ,REGDATE
+           ,OKDATE
+           ,USER_NO
+           ,OKUSER_NO
+           ,PROCESSING_FLAG
+           ,DATA_PROCESSING_GROUP_IDX
+        )
+        SELECT GROUP_ID
+              ,TARGET_ID
+              ,HASH_ID
+              ,'E'
+              ,NOW()
+              ,NOW()
+              ,#{user_no}
+              ,#{user_no}
+              ,#{processing_flag}
+              ,#{data_processing_group_idx}
+          FROM PI_FIND WHERE HASH_ID = #{hash_id}
+        ON DUPLICATE KEY
+            UPDATE APPROVAL_STATUS = 'E',
+            REGDATE = NOW()
+    </insert>
+    
+    <delete id="deleteDataProcessingGroup" parameterType="hashmap">
+        DELETE FROM pi_data_processing_group
+		WHERE target_id = #{target_id}
+		AND idx = #{key}
+    </delete>
+    
+    <select id="queryCustomDataTypesCnt" resultType="Int">
+	    SELECT CP.PATTERN_IDX
+		FROM pi_custom_pattern CP 
+		GROUP BY CP.PATTERN_IDX
+    </select>
+    
+    <select id="queryCustomDataTypes" resultType="hashmap">
+	    SELECT CONCAT('TYPE', CP.PATTERN_IDX) AS ID, 
+		  CP.PATTERN_KR_NAME AS PATTERN_NAME,
+		  CP.COLOR_CODE
+		FROM pi_custom_pattern CP 
+		GROUP BY CP.PATTERN_IDX
+    </select>
+    
+    <select id="queryCustomDataTypes2" resultType="hashmap">
+    	SELECT CP.PATTERN_IDX AS ID,
+		  CP.PATTERN_KR_NAME AS PATTERN_NAME,
+		  CP.PATTERN_CODE AS PATTERN_CODE,
+		  CP.COLOR_CODE 
+		FROM pi_custom_pattern CP 
+		GROUP BY CP.PATTERN_IDX 
+		ORDER BY CP.PATTERN_CNT
+    </select>
+    
+    <select id="queryMatchDetail" resultType="hashmap">
+	    SELECT CP.PATTERN_IDX AS ID, 
+		  CP.PATTERN_KR_NAME AS PATTERN_NAME,
+		  CP.COLOR_CODE,
+		  GROUP_CONCAT(CP.PATTERN_CODE) AS PATTERN_CODE,
+		  CP.MASK_CNT
+		FROM pi_custom_pattern CP 
+		GROUP BY CP.PATTERN_IDX
+    </select>
+    
+</mapper>

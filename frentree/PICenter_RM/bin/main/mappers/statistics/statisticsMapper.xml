@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.statistics.dao.StatisticsDAO">
+
+<!-- 	<select id="statisticsList" parameterType="hashmap" resultType="hashmap"> -->
+<!-- 	    SELECT D.HOST_NAME, D.TARGET_ID, D.PATH_CNT, D.TOTAL, D.DATA_TYPES -->
+<!-- 	    FROM ( -->
+<!-- 	        SELECT T.NAME AS HOST_NAME,  -->
+<!-- 	               RI.TARGET_ID, -->
+<!-- 	               SUM(RI.MATCH_LOCATIONS) AS PATH_CNT, -->
+<!-- 	               SUM(RI.MATCH) AS TOTAL, -->
+<!-- 	               GROUP_CONCAT(RI.DATA_TYPES SEPARATOR '|||') AS DATA_TYPES -->
+<!-- 	        FROM pi_rawisolated RI -->
+<!-- 	        LEFT OUTER JOIN pi_targets T ON T.TARGET_ID = RI.TARGET_ID AND T.AP_NO = RI.AP_NO -->
+<!-- 	        LEFT OUTER JOIN ( -->
+<!-- 	            SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!-- 	            FROM pi_isolated I1 -->
+<!-- 	        ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO -->
+<!-- 	        WHERE NOT EXISTS ( -->
+<!-- 	            SELECT 1 -->
+<!-- 	            FROM pi_rawisolated RI3 -->
+<!-- 	            WHERE RI3.TARGET_ID = RI.TARGET_ID -->
+<!-- 	            AND RI3.AP_NO = RI3.AP_NO -->
+<!-- 	            AND RI3.TIMESTAMP &gt; RI.TIMESTAMP -->
+<!-- 	        ) -->
+<!-- 	        GROUP BY RI.TARGET_ID -->
+<!-- 	        ORDER BY PATH_CNT DESC -->
+<!-- 	        LIMIT 5 -->
+<!-- 	    ) D -->
+<!-- 	</select> -->
+	<select id="statisticsList" parameterType="hashmap" resultType="hashmap">
+	    SELECT D.HOST_NAME, D.TARGET_ID, D.PATH_CNT, D.TOTAL, D.DATA_TYPES
+	    FROM (
+	        SELECT T.NAME AS HOST_NAME,
+	               RI.TARGET_ID,
+	               SUM(RI.MATCH_LOCATIONS) AS PATH_CNT,
+	               SUM(RI.MATCH) AS TOTAL,
+	               GROUP_CONCAT(RI.DATA_TYPES SEPARATOR '|||') AS DATA_TYPES
+	        FROM (
+	            SELECT RI.TARGET_ID,
+	                   RI.AP_NO,
+	                   RI.MATCH_LOCATIONS,
+	                   RI.MATCH,
+	                   RI.DATA_TYPES,
+	                   ROW_NUMBER() OVER (PARTITION BY RI.TARGET_ID, RI.AP_NO ORDER BY RI.TIMESTAMP DESC) AS rn
+	            FROM pi_rawisolated RI
+	        ) RI
+	        LEFT OUTER JOIN pi_targets T ON T.TARGET_ID = RI.TARGET_ID AND T.AP_NO = RI.AP_NO
+	        WHERE RI.rn = 1
+	        GROUP BY RI.TARGET_ID
+	        ORDER BY PATH_CNT DESC
+	        LIMIT 5
+	    ) D
+	</select>
+
+	    
+<!-- 	<select id="manageList" parameterType="hashmap" resultType="hashmap"> -->
+<!-- 	    SELECT SUM(PATH_CNT) AS PATH_CNT, -->
+<!-- 	           SUM(SUCCEED) AS SUCCEED, -->
+<!-- 	           GROUP_CONCAT(DATA_TYPES SEPARATOR '|||') AS DATA_TYPES, -->
+<!-- 	           SUM(TOTAL) AS TOTAL, -->
+<!-- 	           REGDATE AS MONTH, -->
+<!-- 	           COUNT(*) AS SEARCH -->
+<!-- 	    FROM -->
+<!-- 	    (SELECT -->
+<!-- 	        RI.DATA_TYPES, -->
+<!-- 	        DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y년 %m월') AS REGDATE, -->
+<!-- 	        RI.MATCH_LOCATIONS AS PATH_CNT, -->
+<!-- 	        RI.MATCH AS TOTAL, -->
+<!-- 	        IF(RI.MATCH != 0, 1, 0) AS SUCCEED -->
+<!-- 	    FROM pi_rawisolated RI -->
+<!-- 	    LEFT OUTER JOIN ( -->
+<!-- 	        SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!-- 	        FROM pi_isolated I1 -->
+<!-- 	        WHERE I1.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	    ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO -->
+<!-- 	    WHERE 1 = 1 -->
+<!-- 	      AND I.REPORT_ID = RI.REPORT_TIMESTAMP -->
+<!-- 	      AND FROM_UNIXTIME(RI.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	      AND (RI.TARGET_ID, RI.AP_NO, RI.TIMESTAMP) IN ( -->
+<!-- 	          SELECT RI1.TARGET_ID, RI1.AP_NO, MAX(RI1.TIMESTAMP) -->
+<!-- 	          FROM pi_rawisolated RI1 -->
+<!-- 	          LEFT OUTER JOIN ( -->
+<!-- 	              SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!-- 	              FROM pi_isolated I3 -->
+<!-- 	              WHERE I3.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	          ) I2 ON I2.TARGET_ID = RI1.TARGET_ID AND I2.AP_NO = RI1.AP_NO -->
+<!-- 	          WHERE I2.REPORT_ID = RI1.REPORT_TIMESTAMP -->
+<!-- 	            AND FROM_UNIXTIME(RI1.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	          GROUP BY DATE_FORMAT(FROM_UNIXTIME(RI1.TIMESTAMP), '%Y-%m'), RI1.TARGET_ID, RI1.AP_NO -->
+<!-- 	      ) -->
+<!-- 	    ) S -->
+<!-- 	    GROUP BY S.REGDATE -->
+<!-- 	    ORDER BY S.REGDATE DESC -->
+<!-- 	    LIMIT 12 -->
+<!-- 	</select> -->
+	<select id="manageList" parameterType="hashmap" resultType="hashmap">
+	    SELECT SUM(PATH_CNT) AS PATH_CNT,
+	           SUM(SUCCEED) AS SUCCEED,
+	           GROUP_CONCAT(DATA_TYPES SEPARATOR '|||') AS DATA_TYPES,
+	           SUM(TOTAL) AS TOTAL,
+	           REGDATE AS MONTH,
+	           COUNT(*) AS SEARCH
+	    FROM
+	    (SELECT
+	        RI.DATA_TYPES,
+	        DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y년 %m월') AS REGDATE,
+	        RI.MATCH_LOCATIONS AS PATH_CNT,
+	        RI.MATCH AS TOTAL,
+	        IF(RI.MATCH != 0, 1, 0) AS SUCCEED
+	    FROM (
+	        SELECT RI.TARGET_ID,
+	               RI.AP_NO,
+	               RI.DATA_TYPES,
+	               RI.TIMESTAMP,
+	               RI.MATCH_LOCATIONS,
+	               RI.MATCH,
+	               RI.REPORT_TIMESTAMP,
+	               ROW_NUMBER() OVER (
+	                   PARTITION BY RI.TARGET_ID, RI.AP_NO, DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y-%m')
+	                   ORDER BY RI.TIMESTAMP DESC
+	               ) AS rn
+	        FROM pi_rawisolated RI
+	        WHERE FROM_UNIXTIME(RI.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+	    ) RI
+	    LEFT OUTER JOIN (
+	        SELECT TARGET_ID, AP_NO, REPORT_ID
+	        FROM pi_isolated I1
+	        WHERE I1.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+	    ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO
+	    WHERE RI.rn = 1
+	      AND I.REPORT_ID = RI.REPORT_TIMESTAMP
+	    ) S
+	    GROUP BY S.REGDATE
+	    ORDER BY S.REGDATE DESC
+	    LIMIT 12
+	</select>
+	
+<!-- 	<select id="manageBarList" parameterType="hashmap" resultType="hashmap"> -->
+<!-- 	    SELECT SUM(PATH_CNT) AS PATH_CNT, -->
+<!-- 	           SUM(SUCCEED) AS SUCCEED, -->
+<!-- 	           GROUP_CONCAT(DATA_TYPES SEPARATOR '|||') AS DATA_TYPES, -->
+<!-- 	           SUM(TOTAL) AS TOTAL, -->
+<!-- 	           REGDATE AS MONTH, -->
+<!-- 	           COUNT(*) AS SEARCH -->
+<!-- 	    FROM -->
+<!-- 	    (SELECT -->
+<!-- 	        RI.DATA_TYPES, -->
+<!-- 	        DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y년 %m월') AS REGDATE, -->
+<!-- 	        RI.MATCH_LOCATIONS AS PATH_CNT, -->
+<!-- 	        RI.MATCH AS TOTAL, -->
+<!-- 	        IF(RI.MATCH != 0, 1, 0) AS SUCCEED -->
+<!-- 	    FROM pi_rawisolated RI -->
+<!-- 	    LEFT OUTER JOIN ( -->
+<!-- 	        SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!-- 	        FROM pi_isolated I1 -->
+<!-- 	        WHERE I1.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	    ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO -->
+<!-- 	    WHERE 1 = 1 -->
+<!-- 	      AND I.REPORT_ID = RI.REPORT_TIMESTAMP -->
+<!-- 	      AND FROM_UNIXTIME(RI.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	      AND NOT EXISTS ( -->
+<!-- 	          SELECT 1 FROM pi_rawisolated RI2 -->
+<!-- 	          LEFT OUTER JOIN ( -->
+<!-- 	              SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!-- 	              FROM pi_isolated I3 -->
+<!-- 	              WHERE I3.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	          ) I2 ON I2.TARGET_ID = RI2.TARGET_ID AND I2.AP_NO = RI2.AP_NO -->
+<!-- 	          WHERE RI2.TARGET_ID = RI.TARGET_ID -->
+<!-- 	            AND RI2.AP_NO = RI.AP_NO -->
+<!-- 	            AND I2.REPORT_ID = RI2.REPORT_TIMESTAMP -->
+<!-- 	            AND FROM_UNIXTIME(RI2.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59') -->
+<!-- 	            AND DATE_FORMAT(FROM_UNIXTIME(RI2.TIMESTAMP), '%Y-%m') = DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y-%m') -->
+<!-- 	            AND RI2.TIMESTAMP &gt; RI.TIMESTAMP -->
+<!-- 	      ) -->
+<!-- 	    ) S -->
+<!-- 	    GROUP BY S.REGDATE -->
+<!-- 	    ORDER BY S.REGDATE -->
+<!-- 	</select> -->
+	<select id="manageBarList" parameterType="hashmap" resultType="hashmap">
+	    SELECT SUM(PATH_CNT) AS PATH_CNT,
+	           SUM(SUCCEED) AS SUCCEED,
+	           GROUP_CONCAT(DATA_TYPES SEPARATOR '|||') AS DATA_TYPES,
+	           SUM(TOTAL) AS TOTAL,
+	           REGDATE AS MONTH,
+	           COUNT(*) AS SEARCH
+	    FROM
+	    (SELECT
+	        RI.DATA_TYPES,
+	        DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y년 %m월') AS REGDATE,
+	        RI.MATCH_LOCATIONS AS PATH_CNT,
+	        RI.MATCH AS TOTAL,
+	        IF(RI.MATCH != 0, 1, 0) AS SUCCEED
+	    FROM (
+	        SELECT RI.TARGET_ID,
+	               RI.AP_NO,
+	               RI.DATA_TYPES,
+	               RI.TIMESTAMP,
+	               RI.MATCH_LOCATIONS,
+	               RI.MATCH,
+	               RI.REPORT_TIMESTAMP,
+	               ROW_NUMBER() OVER (
+	                   PARTITION BY RI.TARGET_ID, RI.AP_NO, DATE_FORMAT(FROM_UNIXTIME(RI.TIMESTAMP), '%Y-%m')
+	                   ORDER BY RI.TIMESTAMP DESC
+	               ) AS rn
+	        FROM pi_rawisolated RI
+	        WHERE FROM_UNIXTIME(RI.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+	    ) RI
+	    LEFT OUTER JOIN (
+	        SELECT TARGET_ID, AP_NO, REPORT_ID
+	        FROM pi_isolated I1
+	        WHERE I1.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+	    ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO
+	    WHERE RI.rn = 1
+	      AND I.REPORT_ID = RI.REPORT_TIMESTAMP
+	    ) S
+	    GROUP BY S.REGDATE
+	    ORDER BY S.REGDATE
+	</select>
+    
+    
+    <select id="mainChartStatistics" parameterType="hashmap" resultType="hashmap">
+        WITH MEASUREMENT AS
+            (SELECT T.TARGET_ID,
+                     T.NAME,
+                     T.AP_NO,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN RRN') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE1,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN FOREIGNER NUMBER') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE2,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN PASSPORT') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE3,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN DRIVER LICENSE NUMBER') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE4,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'ACCOUNT NUMBER') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE5,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'VISA') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'MAESTRO') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'PRIVATE LABEL CARD') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'DINERS CLUB') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'JCB') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'LASER') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'CHINA UNION PAY') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'DISCOVER') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'TROY') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'MASTERCARD') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) +
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'AMERICAN EXPRESS') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE6,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'EMAIL') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE7,
+                     SUM(CASE WHEN INSTR(UPPER(S.DATA_TYPE), 'SOUTH KOREAN MOBILE PHONE NUMBER') &gt; 0 THEN S.MATCH_COUNT ELSE 0 END) AS TYPE8
+            FROM pi_ap_server AP, pi_summary S, pi_targets T
+                LEFT OUTER JOIN pi_data_processing DP ON T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO
+            WHERE 1=1
+              AND T.TARGET_ID = S.TARGET_ID
+              AND T.AP_NO = S.AP_NO
+              AND S.AP_NO = AP.AP_NO
+              AND AP.IS_SERVER = 1
+              AND DP.PROCESSING_FLAG IN (1, 2, 3)
+              AND DP.APPROVAL_STATUS = 'E'
+              AND S.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+            GROUP BY T.TARGET_ID, T.AP_NO)
+            
+        SELECT TARGET_ID, IFNULL(NAME, '합계') AS NAME, 
+                 SUM(TYPE1) AS TYPE1,
+                 SUM(TYPE2) AS TYPE2,
+                 SUM(TYPE3) AS TYPE3,
+                 SUM(TYPE4) AS TYPE4,
+                 SUM(TYPE5) AS TYPE5,
+                 SUM(TYPE6) AS TYPE6,
+                 SUM(TYPE7) AS TYPE7,
+                 SUM(TYPE8) AS TYPE8
+        FROM MEASUREMENT
+        GROUP BY NAME WITH ROLLUP
+    </select>
+    
+<!--     <select id="totalStatistics" parameterType="hashmap" resultType="hashmap"> -->
+<!--         SELECT  -->
+<!--                IFNULL(SUM(RI.MATCH_LOCATIONS), 0) AS PATH_CNT, -->
+<!--                COUNT(DISTINCT RI.TARGET_ID) AS COUNT_TARGET_ID, -->
+<!--                GROUP_CONCAT(RI.DATA_TYPES SEPARATOR '|||') AS DATA_TYPES, -->
+<!--                IFNULL(SUM(RI.MATCH), 0) AS TOTAL -->
+<!--         FROM pi_rawisolated RI -->
+<!--         LEFT OUTER JOIN ( -->
+<!--             SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!--             FROM pi_isolated I1 -->
+<!--         ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO -->
+<!--         WHERE I.REPORT_ID = RI.REPORT_TIMESTAMP -->
+<!--           AND NOT EXISTS ( -->
+<!--               SELECT 1  -->
+<!--               FROM pi_rawisolated RI3 -->
+<!--               WHERE RI3.TARGET_ID = RI.TARGET_ID -->
+<!--                 AND RI3.AP_NO = RI.AP_NO -->
+<!--                 AND RI3.TIMESTAMP &gt; RI.TIMESTAMP -->
+<!--           ) -->
+<!--     </select> -->
+	<select id="totalStatistics" parameterType="hashmap" resultType="hashmap">
+	    SELECT
+	        IFNULL(SUM(RI.MATCH_LOCATIONS), 0) AS PATH_CNT,
+	        COUNT(DISTINCT RI.TARGET_ID) AS COUNT_TARGET_ID,
+	        GROUP_CONCAT(RI.DATA_TYPES SEPARATOR '|||') AS DATA_TYPES,
+	        IFNULL(SUM(RI.MATCH), 0) AS TOTAL
+	    FROM (
+	        SELECT RI.TARGET_ID,
+	               RI.AP_NO,
+	               RI.MATCH_LOCATIONS,
+	               RI.MATCH,
+	               RI.DATA_TYPES,
+	               RI.REPORT_TIMESTAMP,
+	               ROW_NUMBER() OVER (PARTITION BY RI.TARGET_ID, RI.AP_NO ORDER BY RI.TIMESTAMP DESC) AS rn
+	        FROM pi_rawisolated RI
+	    ) RI
+	    LEFT OUTER JOIN (
+	        SELECT TARGET_ID, AP_NO, REPORT_ID
+	        FROM pi_isolated I1
+	    ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO
+	    WHERE RI.rn = 1
+	      AND I.REPORT_ID = RI.REPORT_TIMESTAMP
+	</select>
+    
+	<select id="statisticsPolicyList" parameterType="hashmap" resultType="hashmap">
+<!-- 	    SELECT GROUP_CONCAT(RI.DATA_TYPES SEPARATOR '|||') AS DATA_TYPES -->
+<!-- 	    FROM pi_rawisolated RI -->
+<!-- 	    LEFT OUTER JOIN ( -->
+<!-- 	        SELECT TARGET_ID, AP_NO, REPORT_ID -->
+<!-- 	        FROM pi_isolated I1 -->
+<!-- 	    ) I ON I.TARGET_ID = RI.TARGET_ID AND I.AP_NO = RI.AP_NO -->
+<!-- 	    WHERE NOT EXISTS ( -->
+<!-- 	          SELECT 1 -->
+<!-- 	          FROM pi_rawisolated RI3 -->
+<!-- 	          WHERE RI3.TARGET_ID = RI.TARGET_ID -->
+<!-- 	            AND RI3.AP_NO = RI3.AP_NO -->
+<!-- 	            AND RI3.TIMESTAMP &gt; RI.TIMESTAMP -->
+<!-- 	      ) -->
+		SELECT GROUP_CONCAT(DATA_TYPES SEPARATOR '|||') AS DATA_TYPES
+		FROM (
+		    SELECT RI.DATA_TYPES,
+		           ROW_NUMBER() OVER (PARTITION BY RI.TARGET_ID, RI.AP_NO ORDER BY RI.TIMESTAMP DESC) AS rn
+		    FROM pi_rawisolated RI
+		) AS RankedData
+		WHERE rn = 1
+
+	</select>
+	    
+    <select id="excelDown" parameterType="hashmap" resultType="hashmap">
+           SELECT T.TARGET_ID, 
+              T.AP_NO,
+              T.NAME,
+            DATE_FORMAT(MAX(TC.REGDATE), '%Y년 %m월') AS REGDATE,
+           IFNULL(TC.PATH_CNT, 0) AS FILE,
+           IFNULL(TC.RRN, 0) AS TYPE1,
+           SUM(TC.MOBILE_PHONE + TC.PHONE) AS TYPE2,
+           IFNULL(TC.ACCOUNT_NUM, 0) AS TYPE3,
+           IFNULL(TC.CARD_NUM, 0) AS TYPE4,
+           IFNULL(TC.FOREIGNER, 0) AS TYPE5,
+           IFNULL(TC.DRIVER, 0) AS TYPE6,
+           IFNULL(TC.EMAIL, 0) AS TYPE7,
+           IFNULL(TC.PASSPORT, 0) AS TYPE8,
+           IFNULL(TC.TOTAL, 0) AS TOTALS,
+           IFNULL(TC.RRN + TC.MOBILE_PHONE + TC.PHONE + TC.ACCOUNT_NUM + TC.CARD_NUM + TC.FOREIGNER + TC.DRIVER + TC.EMAIL + TC.PASSPORT, 0) AS COUNT
+            FROM  pi_targets T
+                LEFT JOIN pi_topcomp TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+            WHERE 1=1
+               AND TC.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+            GROUP BY T.TARGET_ID, T.AP_NO
+            ORDER BY FILE DESC
+        </select>
+</mapper>

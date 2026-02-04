@@ -1,0 +1,1443 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper  PUBLIC "-//mybatis.org//DTD Config 3.0//EN"   "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="dashmapper">
+
+	<select id="selectDashInfo" resultType="hashmap">
+		SELECT A.TARGET_ID, A.NAME AS AGENT_NAME, B.AGENT_CONNECTED,
+		B.AGENT_CONNECTED_IP,
+		DATE_FORMAT(FROM_UNIXTIME(A.SEARCH_TIME),'%Y-%m-%d %H:%i:%d') as
+		AGENT_STARTED,
+		B.AGENT_RAM, B.AGENT_CORES,
+		B.AGENT_PLATFORM_COMPATIBILITY
+		FROM PI_TARGETS A 
+		 	LEFT OUTER JOIN PI_AGENTS B ON A.NAME = B.AGENT_NAME AND A.AP_NO = B.AP_NO
+		WHERE 1=1
+		AND A.TARGET_ID = #{target_id}
+		AND A.AP_NO = #{ap_no}
+		ORDER BY AGENT_NAME
+	</select>
+
+	<select id="selectlastScanDate" resultType="hashmap">
+		SELECT TARGET_ID, DATE_FORMAT(REGDATE, '%Y-%m-%d %H:%i:%S' ) AS REGDATE
+		FROM PI_TOTAL
+		WHERE TARGET_ID = #{target_id}
+		ORDER BY REGDATE DESC LIMIT 1,1
+	</select>
+
+	<!-- mybatis-config.xml의 typeAlias에 등록해두지 않았다면 <select id="selectMember" 
+		resultType="com.org.iopts.dto.MemberVO" > SELECT ID, PW ,NAME FROM TEST </select> 
+		이렇게 해야 한다. -->
+	<select id="selectDashMenu"
+		resultType="com.org.iopts.dto.Pi_AgentVO">
+		<!-- LOWER(A.NAME) -->
+		<!-- SELECT DISTINCT A.TARGET_ID, A.NAME AS AGENT_NAME, B.AGENT_CONNECTED_IP, 
+			B.AGENT_CONNECTED, A.COMMENTS FROM PI_TARGETS A LEFT OUTER JOIN PI_AGENTS 
+			B ON A.NAME = B.AGENT_NAME ORDER BY A.NAME -->
+		<!-- SELECT DISTINCT A.TARGET_ID, A.NAME AS AGENT_NAME, B.AGENT_CONNECTED_IP, 
+			B.AGENT_CONNECTED, A.COMMENTS FROM PI_TARGETS A LEFT OUTER JOIN PI_AGENTS 
+			B ON A.NAME = B.AGENT_NAME WHERE 1=1 AND A.TARGET_USE = 'Y' ORDER BY A.NAME -->
+		SELECT
+		DISTINCT
+		A.TARGET_ID,
+		A.NAME AS AGENT_NAME,
+		B.AGENT_CONNECTED_IP,
+		(CASE WHEN A.platform = 'Remote Access Only'
+		THEN 1
+		ELSE B.AGENT_CONNECTED
+		END ) AS AGENT_CONNECTED,
+		A.COMMENTS,
+		A.PLATFORM
+		FROM PI_TARGETS A
+		LEFT OUTER JOIN PI_AGENTS B ON A.NAME = B.AGENT_NAME
+		WHERE 1=1
+		AND A.TARGET_USE = 'Y'
+		ORDER BY A.NAME
+	</select>
+
+	<!-- 대시보드 메인차트 6개월 전, 1년 전 표기 -->
+	<select id="selectDatatypeAll" resultType="hashmap">
+		SELECT B.DAYS, SUM(IFNULL(A.RRN,0)) AS TYPE1,
+		SUM(IFNULL(A.FOREIGNER,0)) AS TYPE2, SUM(IFNULL(A.DRIVER,0)) AS TYPE3,
+		SUM(IFNULL(A.PASSPORT,0)) AS TYPE4,
+		SUM(IFNULL(A.account_num,0)) AS TYPE5, SUM(IFNULL(A.card_num,0)) AS TYPE6,
+		SUM(IFNULL(A.email,0)) AS TYPE7, SUM(IFNULL(A.mobile_phone,0)) AS
+		TYPE8, SUM(total) AS TOTALS
+		FROM (
+		SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX MONTH) , '%Y-%m')
+		DAYS
+		FROM
+		(
+		SELECT IDX FROM PI_DUMMY
+		WHERE IDX &lt; #{date}
+		) DUMMY
+		) B LEFT OUTER JOIN PI_TOTAL A ON DATE_FORMAT(A.REGDATE, '%Y-%m') =
+		B.DAYS
+		GROUP BY B.DAYS
+	</select>
+
+
+	<!-- 대시보드 메인차트 7일 전, 1개월 전, 3개월 전 표기 -->
+	<select id="selectDatatypeAll_day" resultType="hashmap">
+		SELECT B.DAYS, SUM(IFNULL(A.RRN,0)) AS TYPE1,
+		SUM(IFNULL(A.FOREIGNER,0)) AS TYPE2, SUM(IFNULL(A.PASSPORT,0)) AS
+		TYPE3, SUM(IFNULL(A.DRIVER,0)) AS TYPE4,
+		SUM(IFNULL(A.account_num,0)) AS TYPE5, SUM(IFNULL(A.card_num,0)) AS TYPE6,
+		SUM(IFNULL(A.email,0)) AS TYPE7, SUM(IFNULL(A.mobile_phone,0)) AS
+		TYPE8, SUM(total) AS TOTALS
+		FROM (
+		SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX DAY) , '%Y-%m-%d')
+		DAYS
+		FROM
+		(
+		SELECT IDX FROM PI_DUMMY
+		WHERE IDX &lt; #{date}
+		) DUMMY
+		) B LEFT OUTER JOIN PI_TOTAL A ON DATE_FORMAT(A.REGDATE, '%Y-%m-%d')
+		= B.DAYS
+		GROUP BY B.DAYS
+	</select>
+	
+	<select id="selectDatatypeAll_manager" resultType="hashmap">
+		SELECT B.DAYS,
+		<foreach collection="datatypesList" item="datatypesList">
+			SUM(IFNULL(JSON_EXTRACT(A.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')), 0)) TYPE#{datatypesList.type},
+		</foreach>
+			SUM(A.TOTAL) AS TOTALS
+		FROM (
+			SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX MONTH) , '%Y-%m') DAYS
+			FROM
+			(
+				SELECT IDX FROM PI_DUMMY
+				WHERE IDX &lt; #{date}
+				) DUMMY
+			) B 
+			LEFT OUTER JOIN PI_TOTAL A 
+			ON DATE_FORMAT(A.REGDATE, '%Y-%m') = B.DAYS 
+			<choose>
+				<when test="targetList != null and !targetList.isEmpty()">
+					AND A.TARGET_ID IN (
+					<foreach collection="targetList" item="item" separator=",">
+				        #{item}
+				    </foreach>
+				    )
+				</when>
+				<otherwise>
+	                AND A.TARGET_ID = ''
+	            </otherwise>
+			</choose>
+		WHERE 1=1
+		GROUP BY B.DAYS
+	</select>
+	
+	<select id="selectDatatypeAll_day_manager" resultType="hashmap">
+		SELECT B.DAYS, 
+		 <foreach collection="datatypesList" item="datatypesList">
+			SUM(IFNULL(JSON_EXTRACT(A.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')), 0)) TYPE#{datatypesList.type},
+		</foreach>
+			SUM(A.TOTAL) AS TOTALS
+		FROM (
+			SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX DAY) , '%Y-%m-%d')	DAYS
+			FROM
+			(
+				SELECT IDX FROM PI_DUMMY
+				WHERE IDX &lt; #{date}
+				) DUMMY
+			) B 
+			LEFT OUTER JOIN PI_TOTAL A 
+			ON DATE_FORMAT(A.REGDATE, '%Y-%m-%d') = B.DAYS
+			<choose>
+				<when test="targetList != null and !targetList.isEmpty()">
+					AND A.TARGET_ID IN (
+					<foreach collection="targetList" item="item" separator=",">
+				        #{item}
+				    </foreach>
+				    )
+				</when>
+				<otherwise>
+	                AND A.TARGET_ID = ''
+	            </otherwise>
+			</choose>
+		WHERE 1=1
+		GROUP BY B.DAYS
+	</select>
+
+	<select id="selectDatatype_days" resultType="hashmap">
+		SELECT #{target_id}, B.DAYS, 
+		<foreach collection="datatypesList" item="datatypesList">
+			SUM(IFNULL(JSON_EXTRACT(A.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')), 0)) TYPE#{datatypesList.type},
+		</foreach>
+			SUM(A.TOTAL) AS TOTALS
+		FROM (
+		SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX MONTH) , '%Y-%m')
+		DAYS
+		FROM
+		(
+		SELECT IDX FROM PI_DUMMY
+		WHERE IDX &lt; #{date}
+		) DUMMY
+		) B
+		LEFT OUTER JOIN pi_target_user TU ON TU.USER_NO = #{user_no}
+		LEFT OUTER JOIN PI_TOTAL A ON DATE_FORMAT(A.REGDATE, '%Y-%m') = B.DAYS AND A.TARGET_ID = TU.TARGET_ID AND A.AP_NO = TU.AP_NO
+		WHERE 1=1
+		AND A.TARGET_ID = #{target_id}
+		GROUP BY B.DAYS
+	</select>
+
+	<select id="selectDatatype" resultType="hashmap">
+		SELECT #{target_id}, B.DAYS,
+		<foreach collection="datatypesList" item="datatypesList">
+			SUM(IFNULL(JSON_EXTRACT(A.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')), 0)) TYPE#{datatypesList.type},
+		</foreach>
+			SUM(A.TOTAL) AS TOTALS
+		FROM (
+		SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX MONTH) , '%Y-%m')
+		DAYS
+		FROM
+		(
+		SELECT IDX FROM PI_DUMMY
+		WHERE IDX &lt; #{date}
+		) DUMMY
+		) B
+			 LEFT OUTER JOIN pi_target_user TU ON TU.target_id = #{target_id} AND TU.USER_NO = #{user_no}
+			 LEFT OUTER JOIN pi_total A ON DATE_FORMAT(A.REGDATE, '%Y-%m') = B.DAYS AND A.TARGET_ID = TU.TARGET_ID AND A.AP_NO = TU.AP_NO
+		GROUP BY B.DAYS
+	</select>
+	
+	<select id="selectDatatype_days_manager" resultType="hashmap">
+		SELECT #{target_id}, B.DAYS, 
+			<foreach collection="datatypesList" item="datatypesList">
+				SUM(IFNULL(JSON_EXTRACT(A.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')), 0)) TYPE#{datatypesList.type},
+			</foreach>
+			SUM(A.TOTAL) AS TOTALS
+		FROM (
+			SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX DAY) , '%Y-%m-%d')	DAYS
+			FROM
+			(
+				SELECT IDX FROM PI_DUMMY
+				WHERE IDX &lt; #{date}
+				) DUMMY
+			) B 
+			LEFT OUTER JOIN PI_TOTAL A 
+			ON DATE_FORMAT(A.REGDATE, '%Y-%m-%d') = B.DAYS 
+			AND A.TARGET_ID = #{target_id}
+	 	WHERE 1=1
+		GROUP BY B.DAYS
+	</select>
+	
+	<select id="selectDatatype_manager" resultType="hashmap">
+			SELECT #{target_id},
+			B.DAYS, 
+			<foreach collection="datatypesList" item="datatypesList">
+				SUM(IFNULL(JSON_EXTRACT(A.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')), 0)) TYPE#{datatypesList.type},
+			</foreach>
+			SUM(A.TOTAL) AS TOTALS
+		FROM (
+			SELECT DATE_FORMAT(DATE_ADD(NOW(), INTERVAL - DUMMY.IDX MONTH) , '%Y-%m')	DAYS
+			FROM
+			(
+				SELECT IDX FROM PI_DUMMY
+				WHERE IDX &lt; #{date}
+				) DUMMY
+			) B 
+			LEFT OUTER JOIN PI_TOTAL A 
+			ON DATE_FORMAT(A.REGDATE, '%Y-%m') = B.DAYS 
+			AND A.TARGET_ID = #{target_id}
+	 	WHERE 1=1
+		GROUP BY B.DAYS
+	</select>
+
+	<select id="selectDatatypes" resultType="hashmap">
+		SELECT topcomp.TARGET_ID, topcomp.REGDATE, target.NAME,
+		agent.AGENT_CONNECTED_IP AS IP, IFNULL(TYPE1, 0) as TYPE1
+		FROM
+		PI_TARGETS target
+		LEFT OUTER JOIN pi_agents agent ON target.NAME =
+		agent.AGENT_NAME
+		LEFT OUTER JOIN (
+		SELECT TARGET_ID, REGDATE, ${datatype} AS TYPE1
+		FROM pi_total
+		WHERE REGDATE = (SELECT MAX(pi_total.REGDATE) FROM pi_total)
+		)topcomp ON
+		target.TARGET_ID = topcomp.TARGET_ID
+		WHERE target.target_use = 'Y'
+		GROUP BY target.TARGET_ID
+		ORDER BY TYPE1 DESC, NAME ASC
+		LIMIT 50
+	</select>
+
+	<select id="selectSystemCurrent" resultType="hashmap">
+		SELECT   S.AP_NO,		 
+				 S.TOTAL, 
+				 S.COMPLETE, 
+				 S.ERROR, 
+				 S.SEARCHED, 
+				 S.WAIT, 
+				 S.PAUSE, 
+				 S.SCANCOMP, 
+				 SUM(S.COMPLETE + S.SCANCOMP) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(SUM(S.COMPLETE + S.SCANCOMP) / S.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(SUM(S.COMPLETE + S.SCANCOMP) / S.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM (
+		SELECT 	A.AP_NO AS AP_NO,
+				COUNT(A.NAME) AS TOTAL,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'ERROR' THEN 1 END) AS ERROR,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'SEARCHING' THEN 1 END) AS SEARCHED,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME = 0 THEN 1
+				END) AS WAIT,
+				COUNT(
+				CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME != 0 AND A.MATCHCNT =
+				0
+				OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT = 0 AND A.SEARCH_TIME !=
+				0
+				THEN 1 END ) AS COMPLETE,
+				COUNT(CASE WHEN INSTR(UPPER(A.SEARCH_STATUS), 'PAUSED') > 0 THEN 1 END) AS
+				PAUSE,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.MATCHCNT != 0 AND A.SEARCH_TIME
+				!= 0
+				OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT != 0 AND A.SEARCH_TIME !=
+				0 THEN 1 END) AS SCANCOMP,
+				(SELECT COUNT(*) FROM PI_AGENTS B WHERE B.AGENT_CONNECTED = 0) AS NOTCONNECT
+				 FROM (SELECT T.AP_NO, T.NAME, T.SEARCH_STATUS, T.SEARCH_TIME, T.MATCHCNT
+						FROM pi_ap_server AP, pi_targets T
+							LEFT OUTER JOIN pi_schedule_targets ST ON T.TARGET_ID = ST.TARGET_ID
+							LEFT OUTER JOIN pi_schedule_group SG ON SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+							<if test="fromDate != null and toDate != null">  
+							   AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+							</if> 
+						WHERE 1=1
+							AND T.AP_NO = AP.AP_NO
+							AND AP.IS_SERVER = 1
+							AND T.TARGET_USE = 'Y'
+							
+						 	# AND SG.TYPE = 0
+						GROUP BY T.TARGET_ID) A
+		) S
+		UNION ALL
+		SELECT   S.AP_NO,	
+				 S.TOTAL, 
+				 S.COMPLETE, 
+				 S.ERROR, 
+				 S.SEARCHED, 
+				 S.WAIT, 
+				 S.PAUSE, 
+				 S.SCANCOMP, 
+				 SUM(S.COMPLETE + S.SCANCOMP) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(SUM(S.COMPLETE + S.SCANCOMP) / S.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(SUM(S.COMPLETE + S.SCANCOMP) / S.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM (
+		SELECT  A.AP_NO AS AP_NO,
+				COUNT(A.NAME) AS TOTAL,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'ERROR' THEN 1 END) AS ERROR,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'SEARCHING' THEN 1 END) AS SEARCHED,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME = 0 THEN 1
+				END) AS WAIT,
+				COUNT(
+				CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME != 0 AND A.MATCHCNT =
+				0
+				OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT = 0 AND A.SEARCH_TIME !=
+				0
+				THEN 1 END ) AS COMPLETE,
+				COUNT(CASE WHEN INSTR(UPPER(A.SEARCH_STATUS), 'PAUSED') > 0 THEN 1 END) AS
+				PAUSE,
+				COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.MATCHCNT != 0 AND A.SEARCH_TIME
+				!= 0
+				OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT != 0 AND A.SEARCH_TIME !=
+				0 THEN 1 END) AS SCANCOMP,
+				(SELECT COUNT(*) FROM PI_AGENTS B WHERE B.AGENT_CONNECTED = 0) AS NOTCONNECT
+				FROM (SELECT T.AP_NO, T.NAME, T.SEARCH_STATUS, T.SEARCH_TIME, T.MATCHCNT
+						FROM pi_ap_server AP, pi_targets T
+							LEFT OUTER JOIN pi_schedule_targets ST ON T.TARGET_ID = ST.TARGET_ID
+							LEFT OUTER JOIN pi_schedule_group SG ON SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID 
+								<if test="fromDate != null and toDate != null">  
+							   AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+							</if> 
+						WHERE 1=1
+							AND T.AP_NO = AP.AP_NO
+							AND AP.IS_SERVER = 1
+							AND T.TARGET_USE = 'Y'
+						 
+						 	# AND SG.TYPE = 0
+						 	AND T.PLATFORM = 'Remote Access Only'
+						GROUP BY T.TARGET_ID) A
+
+				#AND A.TARGET_USE = 'Y' 
+		) S
+
+	</select>
+	
+	<select id="selectSystemCurrentManager" resultType="hashmap">
+		SELECT T.NAME, 
+			T.AP_NO, 
+			T.TARGET_ID, 
+			IFNULL(SL.STATUS , 'notscanned') AS SEARCH_STATUS
+			FROM pi_targets T
+			LEFT OUTER JOIN 
+				(SELECT TARGET_ID, AP_NO, STATUS, UPDATED
+				FROM
+				   (SELECT TARGET_ID, AP_NO, STATUS, FROM_UNIXTIME(UPDATED, '%Y-%m-%d %H:%i:%s') AS UPDATED,
+				        RANK() OVER (PARTITION BY TARGET_ID, AP_NO ORDER BY UPDATED DESC) as rank
+				    FROM pi_scheduled_location
+				   ) AS SL
+				WHERE RANK = 1) SL ON T.TARGET_ID = SL.TARGET_ID AND T.AP_NO = SL.AP_NO
+			WHERE 1=1
+				<choose>
+					<when test="targetList != null and !targetList.isEmpty()">
+						AND T.TARGET_ID IN (
+						<foreach collection="targetList" item="item" separator=",">
+					        #{item}
+					    </foreach>
+					    )
+					</when>
+					<otherwise>
+		                AND T.TARGET_ID = ''
+		            </otherwise>
+				</choose>
+			GROUP BY T.TARGET_ID, T.AP_NO
+	</select>
+	
+	<select id="selectSystemCurrentService" resultType="hashmap">
+		SELECT 
+		COUNT(T.TARGET_ID) AS TOTAL,
+		COUNT(CASE WHEN T.SEARCH_STATUS = 'ERROR' THEN 1 END) AS ERROR,
+		COUNT(CASE WHEN T.SEARCH_STATUS = 'SEARCHING' THEN 1 END) AS SEARCHED,
+		COUNT(CASE WHEN T.SEARCH_STATUS = 'NONE' AND T.SEARCH_TIME = 0 THEN 1
+		END) AS WAIT,
+		COUNT(
+		CASE WHEN T.SEARCH_STATUS = 'NONE' AND T.SEARCH_TIME != 0 AND T.MATCHCNT =
+		0
+		OR T.SEARCH_STATUS = 'SEARCHED' AND T.MATCHCNT = 0 AND T.SEARCH_TIME !=
+		0
+		THEN 1 END ) AS COMPLETE,
+		COUNT(CASE WHEN INSTR(UPPER(T.SEARCH_STATUS), 'PAUSED') > 0 THEN 1 END) AS
+		PAUSE,
+		COUNT(CASE WHEN T.SEARCH_STATUS = 'NONE' AND T.MATCHCNT != 0 AND T.SEARCH_TIME
+		!= 0
+		OR T.SEARCH_STATUS = 'SEARCHED' AND T.MATCHCNT != 0 AND T.SEARCH_TIME !=
+		0 THEN 1 END) AS SCANCOMP
+		FROM (
+			SELECT PT.TARGET_ID, PT.SEARCH_STATUS, PT.MATCHCNT, PT.SEARCH_TIME
+			FROM PI_TARGETS PT
+					LEFT OUTER JOIN pi_agents A ON PT.NAME = A.AGENT_NAME AND PT.AP_NO = A.AP_NO
+					LEFT OUTER JOIN pi_target_user TU ON PT.TARGET_ID = TU.TARGET_ID AND PT.AP_NO = TU.AP_NO
+			WHERE 1=1
+		<if test="user_grade != 9">
+			AND TU.USER_NO = #{user_no}
+	    </if>
+	    	AND PT.TARGET_USE = 'Y'
+	    GROUP BY PT.TARGET_ID
+			  ) T
+	</select>
+	
+	<select id="selectServerExcelDownload" resultType="hashmap">
+		SELECT T.TARGET_ID, 
+		  T.AP_NO,
+		  DATE_FORMAT(SG.REGDATE, '%Y년 %m월') AS REGDATE,
+		  T.NAME AS SERVER,
+		  (CASE WHEN T.SEARCH_STATUS = 'ERROR' THEN '오류' 
+		 		 WHEN T.SEARCH_STATUS = 'SEARCHING' THEN '검색중'
+		 		 WHEN T.SEARCH_STATUS = 'NONE' AND T.SEARCH_TIME = 0 THEN '미검색'
+		 		 WHEN T.SEARCH_STATUS = 'NONE' AND T.SEARCH_TIME != 0 AND T.MATCHCNT = 0 OR T.SEARCH_STATUS = 'SEARCHED' AND T.MATCHCNT = 0 AND T.SEARCH_TIME != 0	THEN '결과없음'
+		 		 WHEN INSTR(UPPER(T.SEARCH_STATUS), 'PAUSED') > 0 THEN '일시정지'
+		 		 WHEN T.SEARCH_STATUS = 'NONE' AND T.MATCHCNT != 0 AND T.SEARCH_TIME != 0 OR T.SEARCH_STATUS = 'SEARCHED' AND T.MATCHCNT != 0 AND T.SEARCH_TIME != 0 THEN '검출' END) AS STATUS,
+	       IFNULL(TC.PATH_CNT, 0) AS FILE,
+	       <foreach collection="datatypesList" item="datatypesList">
+				SUM(CASE WHEN CP.PATTERN_IDX = #{datatypesList.type} THEN JSON_EXTRACT(TC.PATTERN_DATA, CONCAT('$[', #{datatypesList.type_cnt}, '].MATCH_CNT')) ELSE 0 END) AS TYPE#{datatypesList.type},
+			</foreach>
+<!-- 	       IFNULL(TC.RRN, 0) AS TYPE1, -->
+<!-- 	       IFNULL(TC.MOBILE_PHONE, 0) AS TYPE2, -->
+<!-- 	       IFNULL(TC.ACCOUNT_NUM, 0) AS TYPE3, -->
+<!-- 	       IFNULL(TC.CARD_NUM, 0) AS TYPE4, -->
+<!-- 	       IFNULL(TC.FOREIGNER, 0) AS TYPE5, -->
+<!-- 	       IFNULL(TC.DRIVER, 0) AS TYPE6, -->
+<!-- 	       IFNULL(TC.EMAIL, 0) AS TYPE7, -->
+<!-- 	       IFNULL(TC.PASSPORT, 0) AS TYPE8, -->
+<!-- 	       IFNULL(TC.RRN + TC.MOBILE_PHONE + TC.ACCOUNT_NUM + TC.CARD_NUM + TC.FOREIGNER + TC.DRIVER + TC.EMAIL + TC.PASSPORT, 0) AS COUNT, -->
+	       (SELECT COUNT(DP.HASH_ID) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS OWN,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG NOT IN (1,2) THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS FAL,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG = 3 THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS LEGAL,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG = 5 THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS SYS,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG = 1 THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS DEL
+		FROM pi_ap_server AP,  PI_CUSTOM_PATTERN CP, pi_targets T
+			LEFT JOIN pi_total TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO 
+			<if test="fromDate != null and toDate != null">  
+				AND TC.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+			</if> 
+			LEFT OUTER JOIN pi_schedule_targets ST ON T.TARGET_ID = ST.TARGET_ID
+			LEFT OUTER JOIN pi_schedule_group SG ON SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID 
+		WHERE 1=1
+		AND T.AP_NO = AP.AP_NO
+		AND AP.IS_SERVER = 1
+		AND T.TARGET_USE = 'Y'
+		<if test="fromDate != null and toDate != null">  
+		   AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+		</if> 
+		GROUP BY T.TARGET_ID, T.AP_NO
+		ORDER BY FILE DESC
+	</select>
+	
+	<select id="selectServerExcelDownloadList" resultType="hashmap">
+		SELECT T.TARGET_ID, 
+		  T.AP_NO, 
+		  DATE_FORMAT(SG.REGDATE, '%Y년 %m월') AS REGDATE,
+		  T.NAME AS SERVER,
+		  (CASE WHEN T.SEARCH_STATUS = 'ERROR' THEN '오류' 
+		 		 WHEN T.SEARCH_STATUS = 'SEARCHING' THEN '검색중'
+		 		 WHEN T.SEARCH_STATUS = 'NONE' AND T.SEARCH_TIME = 0 THEN '미검색'
+		 		 WHEN T.SEARCH_STATUS = 'NONE' AND T.SEARCH_TIME != 0 AND T.MATCHCNT = 0 OR T.SEARCH_STATUS = 'SEARCHED' AND T.MATCHCNT = 0 AND T.SEARCH_TIME != 0	THEN '결과없음'
+		 		 WHEN INSTR(UPPER(T.SEARCH_STATUS), 'PAUSED') > 0 THEN '일시정지'
+		 		 WHEN T.SEARCH_STATUS = 'NONE' AND T.MATCHCNT != 0 AND T.SEARCH_TIME != 0 OR T.SEARCH_STATUS = 'SEARCHED' AND T.MATCHCNT != 0 AND T.SEARCH_TIME != 0 THEN '검출' END) AS STATUS,
+	       IFNULL(TC.PATH_CNT, 0) AS FILE,
+	       IFNULL(TC.RRN, 0) AS TYPE1,
+	       IFNULL(TC.MOBILE_PHONE, 0) AS TYPE2,
+	       IFNULL(TC.ACCOUNT_NUM, 0) AS TYPE3,
+	       IFNULL(TC.CARD_NUM, 0) AS TYPE4,
+	       IFNULL(TC.FOREIGNER, 0) AS TYPE5,
+	       IFNULL(TC.DRIVER, 0) AS TYPE6,
+	       IFNULL(TC.EMAIL, 0) AS TYPE7,
+	       IFNULL(TC.PASSPORT, 0) AS TYPE8,
+	       IFNULL(TC.RRN + TC.MOBILE_PHONE + TC.ACCOUNT_NUM + TC.CARD_NUM + TC.FOREIGNER + TC.DRIVER + TC.EMAIL + TC.PASSPORT, 0) AS COUNT,
+	       (SELECT COUNT(DP.HASH_ID) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS OWN,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG NOT IN (1,2) THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS FAL,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG = 3 THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS LEGAL,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG = 5 THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS SYS,
+	       (SELECT ((CASE WHEN DP.PROCESSING_FLAG = 1 THEN COUNT(DP.HASH_ID) ELSE 0 END)) FROM pi_data_processing DP WHERE T.TARGET_ID = DP.TARGET_ID AND T.AP_NO = DP.AP_NO) AS DEL
+		FROM pi_ap_server AP, pi_targets T
+			LEFT JOIN pi_total TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+			LEFT OUTER JOIN pi_schedule_targets ST ON T.TARGET_ID = ST.TARGET_ID
+			LEFT OUTER JOIN pi_schedule_group SG ON SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID AND T.AP_NO = SG.TYPE
+		WHERE 1=1
+		AND T.AP_NO = AP.AP_NO
+		AND AP.IS_SERVER = 1
+			<if test="targetList != null">
+			  	AND T.TARGET_ID IN (
+				<foreach collection="targetList" item="item" separator=",">
+			        #{item}
+			    </foreach>
+			    )
+		    </if>
+	    <if test="fromDate != null and toDate != null">  
+		   AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+		</if> 
+		GROUP BY T.TARGET_ID, T.AP_NO
+		ORDER BY FILE DESC
+	</select>
+
+	<select id="selectPathCurrent" resultType="hashmap">
+		SELECT COUNT(F.PATH) -
+		COUNT(DP.HASH_ID) AS NONEPATH,
+		COUNT(CASE WHEN F.DELDATE != '' THEN 1 END) AS DELPATH,
+		COUNT(CASE WHEN F.OWNER LIKE 'ex_%' THEN 1 END) +
+		COUNT(CASE WHEN DP.PROCESSING_FLAG='5' THEN 1 END) AS EXCEPTION
+		FROM pi_find F
+		LEFT OUTER JOIN pi_data_processing DP ON F.HASH_ID = DP.HASH_ID AND
+		DP.APPROVAL_STATUS='E'
+		WHERE 1 = 1
+	</select>
+	
+	<select id="selectDashDataDetectionServerList" resultType="hashmap">
+		SELECT D.TARGET_ID, D.AP_NO, 
+			FORMAT(SUM(D.PATH_CNT), '##,##0') AS PATH_CNT, 
+			FORMAT(SUM(D.COMPLETE), '##,##0') AS COMPLETE,
+			FORMAT(SUM(D.PATH_CNT) - SUM(D.COMPLETE), '##,##0') AS INCOMPLETE,
+			FORMAT(SUM(D.INACCES_CNT), '##,##0') AS INACCES_CNT
+		FROM (SELECT MAX(TC.REGDATE) AS REGDATE,
+						 T.TARGET_ID,
+						 T.AP_NO,
+						 T.NAME,
+						 IFNULL(TC.PATH_CNT, 0) AS PATH_CNT,
+						 (SELECT COUNT(*) FROM pi_data_processing DP WHERE TC.TARGET_ID = DP.TARGET_ID AND TC.AP_NO = DP.AP_NO AND DP.APPROVAL_STATUS = 'E') AS COMPLETE,
+						  COUNT(I.PATH) AS INACCES_CNT
+				FROM pi_ap_server AP, pi_targets T
+					LEFT OUTER JOIN pi_total TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+						LEFT OUTER JOIN pi_inaccess I ON I.target_id = T.TARGET_ID AND I.AP_NO = T.AP_NO 
+						<if test="fromDate != null and toDate != null">  
+							AND FROM_UNIXTIME(I.TIMESTAMP) BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+						</if>
+				WHERE 1=1
+
+						AND AP.AP_NO = T.AP_NO
+						AND AP.IS_SERVER = 1
+						AND T.TARGET_USE = 'Y'
+						
+						AND T.TARGET_ID IN (
+							SELECT ST.TARGET_ID 
+							FROM pi_ap_server AP, pi_schedule_group SG, pi_schedule_targets ST
+							WHERE SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+
+									AND SG.TYPE = 0
+									<if test="fromDate != null and toDate != null">  
+										AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+									</if>
+									GROUP BY ST.TARGET_ID, ST.AP_NO
+												)
+
+						GROUP BY T.TARGET_ID, T.AP_NO
+						)D
+			LEFT OUTER JOIN pi_total TC ON TC.TARGET_ID = D.TARGET_ID AND TC.AP_NO = D.AP_NO AND TC.REGDATE = D.REGDATE
+		WHERE 1=1
+		ORDER BY D.PATH_CNT DESC
+	</select>
+	
+	<select id="selectDashDataCompleteList" resultType="hashmap">
+		SELECT
+			IFNULL(FORMAT(SUM(COUNT_OWN), '##,##0'), 0) AS OWN,
+			IFNULL(FORMAT(SUM(COUNT_FAL), '##,##0'), 0) AS FAL,
+			IFNULL(FORMAT(SUM(COUNT_LEGAL), '##,##0'), 0) AS LEGAL,
+			IFNULL(FORMAT(SUM(COUNT_SYS), '##,##0'), 0) AS SYS,
+			IFNULL(FORMAT(SUM(COUNT_DEL), '##,##0'), 0) AS DEL
+		FROM
+		(SELECT 
+			PR.TARGET_ID,
+			PR.AP_NO,
+			COUNT(PR.HASH_ID) AS 'COUNT_OWN',
+			(CASE WHEN PR.PROCESSING_FLAG NOT IN (1,2) THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_FAL',
+			(CASE WHEN PR.PROCESSING_FLAG = 3 THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_LEGAL',
+			(CASE WHEN PR.PROCESSING_FLAG = 5 THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_SYS',
+			(CASE WHEN PR.PROCESSING_FLAG = 1 THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_DEL'
+		FROM pi_ap_server AP, pi_data_processing PR
+			LEFT OUTER JOIN pi_targets T ON PR.TARGET_ID = T.TARGET_ID AND PR.AP_NO = T.AP_NO
+		WHERE T.AP_NO = AP.AP_NO
+		AND AP.IS_SERVER = 1
+		AND T.TARGET_USE = 'Y'
+			<if test='target_id != "" and target_id != null'>
+				AND T.TARGET_ID = #{target_id}
+ 			</if>
+		GROUP BY PR.TARGET_ID, PR.AP_NO
+		) D
+	</select>
+	
+	<select id="selectDashDataDetectionItemList" resultType="hashmap">
+		SELECT D.TARGET_ID, D.AP_NO, 
+		FORMAT(SUM(D.PATH_CNT), '##,##0') AS PATH_CNT, 
+		FORMAT(SUM(D.COMPLETE), '##,##0') AS COMPLETE,
+		FORMAT(SUM(D.PATH_CNT) - SUM(D.COMPLETE), '##,##0') AS INCOMPLETE
+		FROM (SELECT MAX(TC.REGDATE) AS REGDATE,
+						 T.TARGET_ID,
+						 T.AP_NO,
+						 T.NAME,
+						 IFNULL(TC.PATH_CNT, 0) AS PATH_CNT,
+						 (SELECT COUNT(*) FROM pi_data_processing DP WHERE TC.TARGET_ID = DP.TARGET_ID AND TC.AP_NO = DP.AP_NO AND DP.APPROVAL_STATUS = 'E') AS COMPLETE
+				FROM pi_targets T
+					LEFT OUTER JOIN pi_total TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+				WHERE 1=1
+					<if test='target_id != "" and target_id != null'>
+						AND T.TARGET_ID = #{target_id}
+		 			</if>
+		 		GROUP BY T.TARGET_ID, T.AP_NO
+				)D
+			LEFT OUTER JOIN pi_total TC ON TC.TARGET_ID = D.TARGET_ID AND TC.AP_NO = D.AP_NO AND TC.REGDATE = D.REGDATE
+		WHERE 1=1
+		ORDER BY D.PATH_CNT DESC	
+	</select>
+	
+	<select id="selectDashPersonalServerDetectionItemList" resultType="hashmap">
+		SELECT D.TARGET_ID, D.AP_NO, 
+		FORMAT(SUM(D.PATH_CNT), '##,##0') AS PATH_CNT, 
+		FORMAT(SUM(D.COMPLETE), '##,##0') AS COMPLETE,
+		FORMAT(SUM(D.PATH_CNT) - SUM(D.COMPLETE), '##,##0') AS INCOMPLETE
+		FROM (SELECT MAX(TC.REGDATE) AS REGDATE,
+						 T.TARGET_ID,
+						 T.AP_NO,
+						 T.NAME,
+						 IFNULL(TC.PATH_CNT, 0) AS PATH_CNT,
+						 (SELECT COUNT(*) FROM pi_data_processing DP WHERE TC.TARGET_ID = DP.TARGET_ID AND TC.AP_NO = DP.AP_NO AND DP.APPROVAL_STATUS = 'E') AS COMPLETE
+				FROM pi_targets T
+					LEFT OUTER JOIN pi_total TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+				WHERE 1=1
+					<if test="targetList != null">
+					  	AND T.TARGET_ID IN (
+						<foreach collection="targetList" item="item" separator=",">
+					        #{item}
+					    </foreach>
+					    )
+				    </if>
+		 		GROUP BY T.TARGET_ID, T.AP_NO
+				)D
+			LEFT OUTER JOIN pi_total TC ON TC.TARGET_ID = D.TARGET_ID AND TC.AP_NO = D.AP_NO AND TC.REGDATE = D.REGDATE
+		WHERE 1=1
+		ORDER BY D.PATH_CNT DESC	
+	</select>
+	
+	<select id="selectDashPersonalServerComplete" resultType="hashmap">
+		SELECT
+			IFNULL(FORMAT(SUM(COUNT_OWN), '##,##0'), 0) AS OWN,
+			IFNULL(FORMAT(SUM(COUNT_FAL), '##,##0'), 0) AS FAL,
+			IFNULL(FORMAT(SUM(COUNT_LEGAL), '##,##0'), 0) AS LEGAL,
+			IFNULL(FORMAT(SUM(COUNT_SYS), '##,##0'), 0) AS SYS,
+			IFNULL(FORMAT(SUM(COUNT_DEL), '##,##0'), 0) AS DEL
+		FROM
+			(SELECT 
+				PR.TARGET_ID,
+				PR.AP_NO,
+				COUNT(PR.HASH_ID) AS 'COUNT_OWN',
+				(CASE WHEN PR.PROCESSING_FLAG NOT IN (1,2) THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_FAL',
+				(CASE WHEN PR.PROCESSING_FLAG = 3 THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_LEGAL',
+				(CASE WHEN PR.PROCESSING_FLAG = 5 THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_SYS',
+				(CASE WHEN PR.PROCESSING_FLAG = 1 THEN COUNT(PR.HASH_ID) ELSE 0 END)  AS 'COUNT_DEL'
+			FROM pi_ap_server AP, pi_data_processing PR
+				LEFT OUTER JOIN pi_targets T ON PR.TARGET_ID = T.TARGET_ID AND PR.AP_NO = T.AP_NO
+			WHERE T.AP_NO = AP.AP_NO
+					<if test="targetList != null">
+					  	AND PR.TARGET_ID IN (
+						<foreach collection="targetList" item="item" separator=",">
+					        #{item}
+					    </foreach>
+					    )
+				    </if>
+			GROUP BY PR.TARGET_ID, PR.AP_NO
+			
+			) D
+	</select>
+	
+	<select id="selectDashDataRank" resultType="hashmap">
+		SELECT D.TARGET_ID, D.AP_NO, D.PLATFORM, D.NAME AS SERVER,
+				 D.FILE, D.COUNT
+		FROM (SELECT MAX(TC.REGDATE) AS REGDATE,
+						 T.TARGET_ID,
+						 T.AP_NO,
+						 T.NAME AS FULL_NAME,
+						 T.TARGET_USE,
+						 IFNULL(TC.PATH_CNT, 0) AS FILE,
+						 IFNULL(TC.TOTAL, 0) AS COUNT,
+						 SUBSTRING_INDEX(T.NAME, '.', 1) AS HOST_NAME,
+						 SUBSTRING_INDEX(SUBSTRING_INDEX(T.NAME, '.', -2), '.', 1) AS NAME,
+						 SUBSTRING_INDEX(T.NAME, '.', -1) AS SERIAL,
+						 T.PLATFORM
+				FROM pi_ap_server AP, pi_targets T
+					LEFT OUTER JOIN (SELECT PTC.*
+							FROM pi_total PTC, (SELECT MAX(regdate) AS REGDATE, target_id,ap_no
+															FROM pi_total 
+															GROUP BY target_id) DTC
+							WHERE PTC.target_id = DTC.TARGET_ID
+								AND PTC.regdate = DTC.REGDATE
+								AND PTC.ap_no = DTC.AP_NO) TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+				WHERE 1=1
+					AND T.AP_NO = AP.AP_NO
+					<if test='id == "server" || id == "" ||  id == null'>
+						AND AP.IS_SERVER = 1
+					</if>
+					AND T.TARGET_USE = 'Y'
+					<if test="fromDate != null and toDate != null">  
+						AND T.TARGET_ID IN (
+							SELECT ST.TARGET_ID 
+							FROM pi_schedule_group SG, pi_schedule_targets ST
+							WHERE SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+								<if test='id == "server" || id == "" ||  id == null'>
+									AND SG.TYPE = 0
+								</if>
+								<if test='id == "pc"'>
+									AND SG.TYPE != 0
+								</if>
+							 	AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+							GROUP BY ST.TARGET_ID, ST.AP_NO
+												)
+					</if>
+						GROUP BY T.TARGET_ID, T.AP_NO
+						)D
+		WHERE 1=1
+		ORDER BY D.FILE DESC
+	</select>
+	
+	<select id="selectDashPersonalServerRank" resultType="hashmap">
+	    SELECT D.TARGET_ID, D.AP_NO, D.PLATFORM, D.NAME AS SERVER,
+				 D.FILE, D.COUNT
+		FROM (SELECT MAX(TC.REGDATE) AS REGDATE,
+						 T.TARGET_ID,
+						 T.AP_NO,
+						 T.NAME AS FULL_NAME,
+						 T.TARGET_USE,
+						 IFNULL(TC.PATH_CNT, 0) AS FILE,
+						 IFNULL(TC.TOTAL, 0) AS COUNT,
+						 SUBSTRING_INDEX(T.NAME, '.', 1) AS HOST_NAME,
+						 SUBSTRING_INDEX(SUBSTRING_INDEX(T.NAME, '.', -2), '.', 1) AS NAME,
+						 SUBSTRING_INDEX(T.NAME, '.', -1) AS SERIAL,
+						 T.PLATFORM
+				FROM pi_ap_server AP, pi_targets T
+					LEFT OUTER JOIN (SELECT PTC.*
+							FROM pi_total PTC, (SELECT MAX(regdate) AS REGDATE, target_id,ap_no
+															FROM pi_total 
+															GROUP BY target_id) DTC
+							WHERE PTC.target_id = DTC.TARGET_ID
+								AND PTC.regdate = DTC.REGDATE
+								AND PTC.ap_no = DTC.AP_NO) TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+				WHERE 1=1
+					AND T.AP_NO = AP.AP_NO
+					<if test="targetList != null">
+						AND T.TARGET_ID IN (
+						<foreach collection="targetList" item="item" separator=",">
+							#{item}
+						</foreach>
+						)
+					</if>
+				GROUP BY T.TARGET_ID, T.AP_NO
+				)D
+		WHERE 1=1
+		ORDER BY D.FILE DESC
+	</select>
+	
+	<select id="selectDashPersonalManagerRank" resultType="hashmap">
+	    SELECT D.TARGET_ID, D.AP_NO, D.PLATFORM, D.NAME AS SERVER,
+				 D.FILE, D.COUNT
+		FROM (SELECT MAX(TC.REGDATE) AS REGDATE,
+						 T.TARGET_ID,
+						 T.AP_NO,
+						 T.NAME AS FULL_NAME,
+						 T.TARGET_USE,
+						 IFNULL(TC.PATH_CNT, 0) AS FILE,
+						 IFNULL(TC.TOTAL, 0) AS COUNT,
+						 SUBSTRING_INDEX(T.NAME, '.', 1) AS HOST_NAME,
+						 SUBSTRING_INDEX(SUBSTRING_INDEX(T.NAME, '.', -2), '.', 1) AS NAME,
+						 SUBSTRING_INDEX(T.NAME, '.', -1) AS SERIAL,
+						 T.PLATFORM
+				FROM pi_ap_server AP, pi_targets T
+					LEFT OUTER JOIN (SELECT PTC.*
+							         FROM pi_total PTC, (SELECT MAX(regdate) AS REGDATE, target_id,ap_no
+							                                        FROM pi_total 
+							                                        GROUP BY target_id) DTC
+							         WHERE PTC.target_id = DTC.TARGET_ID
+							            AND PTC.regdate = DTC.REGDATE
+							            AND PTC.ap_no = DTC.AP_NO) TC ON T.TARGET_ID = TC.TARGET_ID AND T.AP_NO = TC.AP_NO
+				WHERE 1=1
+					AND T.AP_NO = AP.AP_NO
+					AND T.TARGET_USE = 'Y'
+					<choose>
+						<when test="targetList != null and !targetList.isEmpty()">
+							AND T.TARGET_ID IN (
+							<foreach collection="targetList" item="item" separator=",">
+						        #{item}
+						    </foreach>
+						    )
+						</when>
+						<otherwise>
+			                AND T.TARGET_ID = ''
+			            </otherwise>
+					</choose>
+				GROUP BY T.TARGET_ID, T.AP_NO
+			  )D
+		WHERE 1=1
+		ORDER BY D.FILE DESC
+	</select>
+	
+	<select id="selectDashDataTodoApproval" resultType="hashmap">
+		SELECT COUNT(DISTINCT DPG.idx) AS APPROVAL_CNT, 'NOT_APPROVAL' AS APPROVAL_STATUS
+		FROM pi_data_processing_group DPG 
+			LEFT OUTER JOIN PI_DATA_PROCESSING DP ON DP.DATA_PROCESSING_GROUP_IDX = DPG.IDX
+			LEFT OUTER JOIN pi_target_user TU ON DP.TARGET_ID = TU.TARGET_ID AND DP.AP_NO = TU.AP_NO
+		WHERE DPG.approval_status = ''
+			AND TU.user_no = #{user_no}
+		UNION ALL
+		SELECT COUNT(CHARGE_ID), 'WAIT_APPROVAL'
+		FROM pi_arocessing_user_view AUV
+		WHERE  AUV.approval_status = 'W'
+			AND AUV.user_no = #{user_no}
+		UNION ALL
+		SELECT COUNT(DISTINCT G.schedule_group_id) , 'SCHEDULED'
+		FROM pi_schedule_group G, pi_schedule_targets ST, pi_scheduled_location SL
+			LEFT OUTER JOIN pi_target_user TU ON TU.target_id = SL.target_id AND TU.ap_no = SL.ap_no
+		WHERE G.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID 
+			AND ST.target_id = SL.target_id 
+			AND ST.ap_no = SL.ap_no
+			AND SL.`status` IN ('scanning', 'scheduled')
+			AND TU.user_no = #{user_no}
+	</select>
+	
+	<select id="selectDashPieDraw" resultType="hashmap">
+		SELECT COUNT(T.target_id) AS total_cnt, IFNULL(PSL.STATUS, 'notscanned') as search_status,  IF(T.platform = 'Remote Access Only', 'DB','SERVER') AS platform
+		FROM pi_targets T
+		<if test="user_grade != 9">
+			LEFT OUTER JOIN pi_target_user TU ON T.target_id = TU.target_id AND T.ap_no = TU.ap_no
+	    </if>
+			LEFT OUTER JOIN (SELECT I.target_id, I.ap_no
+								FROM pi_isolated I
+								<if test="user_grade == 9">
+									<choose>
+										<when test="fromDate != null and toDate != null">
+											WHERE I.regdate BETWEEN DATE_FORMAT(#{fromDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{toDate}, '%Y-%m-%d 23:59:59') 
+										</when>
+										<otherwise>
+											WHERE I.regdate BETWEEN DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-%d 00:00:00') AND DATE_FORMAT(CURDATE(), '%Y-%m-%d 23:59:59')
+										</otherwise>
+									</choose> 
+								</if>
+									
+								GROUP BY I.target_id, I.ap_no) D ON T.target_id = D.target_id AND T.ap_no = D.ap_no
+			LEFT OUTER JOIN (SELECT SL.target_id, SL.ap_no, SL.updated, SL.`status`
+									FROM pi_scheduled_location SL, (SELECT target_id, ap_no, MAX(updated) AS updated
+									FROM pi_scheduled_location SL
+									<if test="user_grade == 9">
+										<choose>
+											<when test="fromDate != null and toDate != null">
+												WHERE FROM_UNIXTIME(updated) BETWEEN DATE_FORMAT(#{fromDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{toDate}, '%Y-%m-%d 23:59:59')
+											</when>
+											<otherwise>
+												WHERE FROM_UNIXTIME(updated) BETWEEN DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-%d 00:00:00') AND DATE_FORMAT(CURDATE(), '%Y-%m-%d 23:59:59')
+											</otherwise>
+										</choose> 
+									</if>
+										
+									GROUP BY target_id, ap_no) DSL
+									WHERE SL.target_id = DSL.target_id
+										AND SL.ap_no = DSL.ap_no
+										AND SL.updated = DSL.updated) PSL ON PSL.target_id = D.target_id AND PSL.ap_no = D.ap_no
+		WHERE T.TARGET_USE = 'Y'
+		<if test="user_grade != 9">
+			AND TU.user_no = #{user_no}
+	    </if>
+		GROUP BY PSL.STATUS, IF(T.platform = 'Remote Access Only', 1,0)
+	</select>
+	
+	<select id="selectDashGridDrawData" resultType="hashmap">
+		SELECT R.match_locations, R.`match`, CONCAT(R.target_name," [",(R.ap_no+1),"]") AS target_name
+		FROM pi_rawisolated R,
+			(SELECT PR.target_id, PR.ap_no, MAX(report_timestamp) AS report_timestamp
+			FROM pi_rawisolated PR
+			<if test="user_grade != 9">
+					LEFT OUTER JOIN pi_target_user TU ON TU.target_id = PR.TARGET_ID AND TU.ap_no = PR.AP_NO
+					WHERE TU.user_no = #{user_no}
+		    </if>
+		    <if test="user_grade == 9">
+				<choose>
+					<when test="fromDate != null and toDate != null">
+						WHERE FROM_UNIXTIME(report_timestamp) BETWEEN DATE_FORMAT(#{fromDate}, '%Y-%m-%d 00:00:00') AND DATE_FORMAT(#{toDate}, '%Y-%m-%d 23:59:59')
+					</when>
+					<otherwise>
+						WHERE FROM_UNIXTIME(report_timestamp) BETWEEN DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-%d 00:00:00') AND DATE_FORMAT(CURDATE(), '%Y-%m-%d 23:59:59')
+					</otherwise>
+				</choose> 
+		    </if>
+			GROUP BY target_id, ap_no) D
+		WHERE R.target_id = D.target_id
+			AND R.ap_no = D.ap_no 
+			AND R.report_timestamp = D.report_timestamp
+		ORDER BY R.MATCH DESC
+	</select>
+	
+	<select id="selectDashBarDrawDate" resultType="hashmap">
+		SELECT R.target_id ,R.ap_no ,R.data_types
+			,DATE_FORMAT(FROM_UNIXTIME(R.report_timestamp), '%Y-%m-%d') AS report_timestamp
+				FROM pi_rawisolated R, (SELECT target_id, ap_no, MAX(report_timestamp) AS report_timestamp
+										FROM pi_rawisolated 
+				WHERE path = 'All local files'
+		<if test='dayStatus == "month"'>
+			AND FROM_UNIXTIME(report_timestamp) BETWEEN DATE_SUB(NOW(),INTERVAL ${days} MONTH ) AND NOW()
+		</if>
+		<if test='dayStatus == "day"'>
+			AND FROM_UNIXTIME(report_timestamp) BETWEEN DATE_SUB(NOW(),INTERVAL ${days} DAY) AND NOW()
+		</if> 
+		<if test="targetList != null and targetList.size() > 0">
+			AND (target_id, ap_no) in 
+			(
+			<foreach collection="targetList" item="targetList" separator=",">
+				(#{targetList.target_id}, #{targetList.ap})
+			</foreach>
+			)
+		</if>
+		GROUP BY target_id, ap_no, DATE_FORMAT(FROM_UNIXTIME(report_timestamp), '%Y-%m-%d')) D
+		WHERE D.target_id = R.target_id
+			AND D.ap_no = R.ap_no
+			AND D.report_timestamp = R.report_timestamp
+	</select>
+	
+	<select id="selectDashBarDrawMonthDate" resultType="hashmap">
+		SELECT R.target_id ,R.ap_no ,R.data_types 
+		,DATE_FORMAT(FROM_UNIXTIME(R.report_timestamp), '%Y-%m') AS report_timestamp
+				FROM pi_rawisolated R, (SELECT target_id, ap_no, MAX(report_timestamp) AS report_timestamp
+										FROM pi_rawisolated 
+				WHERE path = 'All local files'
+			<if test='dayStatus == "month"'>
+				AND FROM_UNIXTIME(report_timestamp) BETWEEN DATE_SUB(NOW(),INTERVAL ${days} MONTH) AND NOW()
+			</if>
+			<if test='dayStatus == "year"'>
+				AND FROM_UNIXTIME(report_timestamp) BETWEEN DATE_SUB(NOW(),INTERVAL ${days} YEAR) AND NOW()
+			</if>
+			<if test="targetList != null and targetList.size() > 0">
+				AND (target_id, ap_no) in 
+				(
+				<foreach collection="targetList" item="targetList" separator=",">
+					(#{targetList.target_id}, #{targetList.ap})
+				</foreach>
+				)
+			</if>
+		GROUP BY target_id, ap_no, DATE_FORMAT(FROM_UNIXTIME(report_timestamp), '%Y-%m')) D
+		WHERE D.target_id = R.target_id
+			AND D.ap_no = R.ap_no
+			AND D.report_timestamp = R.report_timestamp
+	</select>
+	
+	<select id="selectDetectionTable" resultType="hashmap">
+		SELECT COUNT(DISTINCT F.hash_id) AS find_path, COUNT(DISTINCT DP.hash_id) AS processing_path,
+		COUNT(DISTINCT I.path) AS inaccess_path
+		FROM pi_find F, pi_targets T
+			<if test="user_grade != 9">
+				LEFT OUTER JOIN pi_target_user TU ON TU.target_id = T.target_id AND TU.ap_no = T.ap_no
+		    </if>
+			LEFT OUTER JOIN pi_data_processing DP ON DP.target_id = T.target_id AND DP.ap_no = T.ap_no AND DP.approval_type = 1
+			LEFT OUTER JOIN pi_inaccess I ON I.target_id= T.target_id AND I.ap_no = T.ap_no
+		WHERE F.deldate IS NULL
+		<if test="user_grade != 9">
+			AND TU.user_no = #{user_no}
+	    </if>
+		AND F.target_id = T.target_id
+		AND F.ap_no = T.ap_no
+		AND T.TARGET_USE = 'Y'
+	</select>
+	
+	<select id="selectApprovalTable" resultType="hashmap">
+		SELECT COUNT(DP.hash_id) AS approval_file, 
+			SUM(IF(DPF.`type` = 0, 1, 0)) AS approval_false
+		FROM pi_data_processing_flag DPF, pi_data_processing DP
+		<if test="user_grade != 9">
+			LEFT OUTER JOIN pi_target_user TU ON TU.target_id = DP.target_id AND TU.ap_no = DP.ap_no
+	    </if>
+		WHERE DP.processing_flag = DPF.processing_flag
+			AND DP.approval_type = 1
+			<if test="user_grade != 9">
+			AND TU.user_no = #{user_no}
+	    </if>
+	</select>
+	
+	<select id="selectDashDataPersonalServer" resultType="hashmap">
+	    SELECT D.SCHEDULE_GROUP_ID,
+			D.USER_NO,
+			D.STATUS,
+			D.TARGET_ID,
+			D.AP_NO,
+			D.TYPE,
+			CONCAT(CAST(D.REGDATE AS CHAR),'_', COUNT(D.TARGET_ID), '대') AS RESULT,
+			D.REGDATE
+		FROM (SELECT SG.SCHEDULE_GROUP_ID,
+		      SG.USER_NO,
+		      SG.STATUS,
+		      ST.TARGET_ID,
+		      ST.AP_NO,
+		      SG.TYPE,
+		      DATE_FORMAT(SG.REGDATE, '%Y년%m월') AS REGDATE
+		      FROM pi_schedule_group SG, pi_schedule_targets ST
+		      WHERE 
+					SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+				<if test="fromDate != null and fromDate != '' and toDate != null and toDate != '' ">
+					AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+			 	</if>
+			 		AND SG.TYPE = 0	
+		      GROUP BY SG.SCHEDULE_GROUP_ID) D
+		GROUP BY REGDATE
+	</select>
+	
+	<select id="selectDashDataPersonalPC" resultType="hashmap">
+	    SELECT D.SCHEDULE_GROUP_ID,
+			D.USER_NO,
+			D.STATUS,
+			D.TARGET_ID,
+			D.AP_NO,
+			D.TYPE,
+			CONCAT(CAST(D.REGDATE AS CHAR),'_', COUNT(D.TARGET_ID), '대') AS RESULT,
+			D.REGDATE
+		FROM (SELECT SG.SCHEDULE_GROUP_ID,
+		      SG.USER_NO,
+		      SG.STATUS,
+		      ST.TARGET_ID,
+		      ST.AP_NO,
+		      SG.TYPE,
+		      DATE_FORMAT(SG.REGDATE, '%Y년%m월') AS REGDATE
+		      FROM pi_schedule_group SG, pi_schedule_targets ST
+		      WHERE 
+					SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+				<if test="fromDate != null and fromDate != '' and toDate != null and toDate != '' ">
+					AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate},' 23:59:59')
+			 	</if>
+			 		AND NOT SG.TYPE = 0	
+		      GROUP BY SG.SCHEDULE_GROUP_ID) D
+		GROUP BY REGDATE
+	</select>
+	
+	<select id="selectDashDataPersonalServerCount" resultType="hashmap">
+		SELECT 
+			(SELECT COUNT(*) FROM pi_targets T, pi_ap_server AP WHERE T.AP_NO = AP.AP_NO AND AP.IS_SERVER = 1 AND T.TARGET_USE = 'Y') AS SERVER_CNT,
+			(SELECT COUNT(*) FROM pi_targets T, pi_ap_server AP WHERE T.AP_NO = AP.AP_NO AND AP.IS_SERVER = 0 AND T.TARGET_USE = 'Y') AS PC_CNT
+	</select>
+	
+	<select id="selectDashDataPersonalServerCircle" resultType="hashmap">
+		SELECT  D.AP_NO,
+				 D.TOTAL,
+				 D.ERROR,
+				 D.SEARCHED,
+				 D.WAIT,
+				 D.COMPLETE,
+				 D.PAUSE,
+				 D.SCANCOMP,
+				 SUM(D.COMPLETE + D.SCANCOMP) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(SUM(D.COMPLETE + D.SCANCOMP) / D.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(SUM(D.COMPLETE + D.SCANCOMP) / D.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM(
+			SELECT  A.AP_NO AS AP_NO,
+					A.TARGET_ID,
+					 COUNT(A.TARGET_ID) AS TOTAL,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'ERROR' THEN 1 END) AS ERROR,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'SEARCHING' THEN 1 END) AS SEARCHED,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME = 0 THEN 1
+					 END) AS WAIT,
+					 COUNT(
+					 CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME != 0 AND A.MATCHCNT =
+					 0
+					 OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT = 0 AND A.SEARCH_TIME !=
+					 0
+					 THEN 1 END ) AS COMPLETE,
+					 COUNT(CASE WHEN INSTR(UPPER(A.SEARCH_STATUS), 'PAUSED') > 0 THEN 1 END) AS
+					 PAUSE,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.MATCHCNT != 0 AND A.SEARCH_TIME
+					 != 0
+					 OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT != 0 AND A.SEARCH_TIME !=
+					 0 THEN 1 END) AS SCANCOMP
+			FROM
+				(SELECT  SG.SCHEDULE_GROUP_ID,
+							SG.USER_NO,
+							SG.STATUS,
+							T.TARGET_ID,
+							T.AP_NO,
+							T.SEARCH_STATUS,
+							T.SEARCH_TIME,
+							T.MATCHCNT,
+							SG.TYPE,
+							DATE_FORMAT(T.REGDATE, '%Y%m') AS ID,
+							DATE_FORMAT(T.REGDATE, '%Y년 %m월') AS REGDATE
+				FROM pi_schedule_group SG, pi_targets T
+				WHERE 1=1
+				  AND SG.TYPE = 0
+				  <if test="targetList != null">
+				  	AND T.TARGET_ID IN (
+					<foreach collection="targetList" item="item" separator=",">
+				        #{item}
+				    </foreach>
+				    )
+			      </if>
+				  AND T.TARGET_USE = 'Y'
+				GROUP BY REGDATE, T.TARGET_ID, T.AP_NO
+			) A 
+		) D
+		UNION ALL
+				SELECT D.AP_NO, 
+				 D.TOTAL,
+				 D.ERROR,
+				 D.SEARCHED,
+				 D.WAIT,
+				 D.COMPLETE,
+				 D.PAUSE,
+				 D.SCANCOMP,
+				 SUM(D.COMPLETE + D.SCANCOMP) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(SUM(D.COMPLETE + D.SCANCOMP) / D.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(SUM(D.COMPLETE + D.SCANCOMP) / D.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM(
+			SELECT   A.AP_NO AS AP_NO,
+					 A.TARGET_ID,
+					 COUNT(A.TARGET_ID) AS TOTAL,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'ERROR' THEN 1 END) AS ERROR,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'SEARCHING' THEN 1 END) AS SEARCHED,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME = 0 THEN 1
+					 END) AS WAIT,
+					 COUNT(
+					 CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.SEARCH_TIME != 0 AND A.MATCHCNT =
+					 0
+					 OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT = 0 AND A.SEARCH_TIME !=
+					 0
+					 THEN 1 END ) AS COMPLETE,
+					 COUNT(CASE WHEN INSTR(UPPER(A.SEARCH_STATUS), 'PAUSED') > 0 THEN 1 END) AS
+					 PAUSE,
+					 COUNT(CASE WHEN A.SEARCH_STATUS = 'NONE' AND A.MATCHCNT != 0 AND A.SEARCH_TIME
+					 != 0
+					 OR A.SEARCH_STATUS = 'SEARCHED' AND A.MATCHCNT != 0 AND A.SEARCH_TIME !=
+					 0 THEN 1 END) AS SCANCOMP
+			FROM
+				(SELECT  SG.SCHEDULE_GROUP_ID,
+							SG.USER_NO,
+							SG.STATUS,
+							T.TARGET_ID,
+							T.AP_NO,
+							T.SEARCH_STATUS,
+							T.SEARCH_TIME,
+							T.MATCHCNT,
+							SG.TYPE,
+							DATE_FORMAT(T.REGDATE, '%Y%m') AS ID,
+							DATE_FORMAT(T.REGDATE, '%Y년 %m월') AS REGDATE
+				FROM pi_schedule_group SG, pi_targets T
+				WHERE 1=1
+				  AND SG.TYPE = 0
+				  AND T.PLATFORM = 'Remote Access Only'
+				  <if test="targetList != null">
+				  	AND TARGET_ID IN (
+					<foreach collection="targetList" item="item" separator=",">
+				        #{item}
+				    </foreach>
+				    )
+			      </if>
+				  AND T.TARGET_USE = 'Y'
+				GROUP BY REGDATE, T.TARGET_ID, T.AP_NO
+			) A 
+		) D
+	</select>
+	
+	<select id="selectDashDataImple" resultType="hashmap">
+		SELECT 
+			ROW_NUMBER() OVER(ORDER BY RATE DESC) AS NUM,
+			F.TARGET_ID,
+			F.AP_NO,
+			F.NAME,
+			F.SERVICE_CODE,
+			F.SERVICE_NM,
+			F.MAX_PATH_CNT,
+			F.MAX_TOTAL,
+			CONCAT(ROUND(F.MAX_TOTAL / F.MIN_TOTAL * 100) , '%') AS RATE,
+			F.MAX_DATE,
+			F.MIN_PATH_CNT,
+			F.MIN_TOTAL,
+			DATE_FORMAT(F.MIN_DATE, '%Y-%m-%d') AS MIN_DATE,
+			F.COMPLETED,
+			DATE_FORMAT(F.DATE_COMPLETED, '%Y-%m-%d %H:%i:%s') AS DATE_COMPLETED
+		FROM
+			(SELECT 
+				D.TARGET_ID,
+				D.AP_NO,
+				D.NAME,
+				D.SERVICE_CODE,
+				D.SERVICE_NM,
+				(SELECT TP.PATH_CNT FROM pi_total TP WHERE TP.REGDATE = D.MAX_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MAX_PATH_CNT,
+				(SELECT TP.TOTAL FROM pi_total TP WHERE TP.REGDATE = D.MAX_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MAX_TOTAL,
+				DATE_FORMAT(D.MAX_DATE, '%Y-%m-%d') AS MAX_DATE,
+				(SELECT TP.PATH_CNT FROM pi_total TP WHERE TP.REGDATE = D.MIN_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MIN_PATH_CNT,
+				(SELECT TP.TOTAL FROM pi_total TP WHERE TP.REGDATE = D.MIN_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MIN_TOTAL,
+				DATE_FORMAT(D.MIN_DATE, '%Y-%m-%d') AS MIN_DATE,
+				(SELECT COUNT(SCHEDULE_STATUS) FROM pi_schedules S WHERE D.TARGET_ID = S.SCHEDULE_TARGET_ID AND SCHEDULE_STATUS = 'completed') AS COMPLETED,
+			 	(SELECT MAX(REGDATE) FROM pi_schedules S WHERE D.TARGET_ID = S.SCHEDULE_TARGET_ID AND SCHEDULE_STATUS = 'completed') AS DATE_COMPLETED
+			FROM
+				(SELECT	
+					T.TARGET_ID,
+					T.AP_NO,
+					T.NAME,
+					TU.SERVICE_CODE,
+					TU.SERVICE_NM,
+					MAX(TC.REGDATE) AS MAX_DATE,
+					MIN(TC.REGDATE) AS MIN_DATE
+				FROM pi_total TC, pi_targets T 
+					LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+				WHERE TC.TARGET_ID = T.TARGET_ID 
+				  AND TC.AP_NO = T.AP_NO
+				GROUP BY TARGET_ID, AP_NO) D
+		) F
+		LIMIT 20
+	</select>
+	
+	<select id="selectDashPersonalServerImple" resultType="hashmap">
+		SELECT 
+			ROW_NUMBER() OVER(ORDER BY RATE DESC) AS NUM,
+			F.TARGET_ID,
+			F.AP_NO,
+			F.NAME,
+			F.SERVICE_CODE,
+			F.SERVICE_NM,
+			F.MAX_PATH_CNT,
+			F.MAX_TOTAL,
+			CONCAT(ROUND(F.MAX_TOTAL / F.MIN_TOTAL * 100) , '%') AS RATE,
+			DATE_FORMAT(F.MAX_DATE, '%Y-%m-%d') AS MAX_DATE,
+			F.MIN_PATH_CNT,
+			F.MIN_TOTAL,
+			DATE_FORMAT(F.MIN_DATE, '%Y-%m-%d') AS MIN_DATE,
+			F.COMPLETED,
+			DATE_FORMAT(F.DATE_COMPLETED, '%Y-%m-%d %H:%i:%s') AS DATE_COMPLETED
+		FROM
+			(SELECT 
+				D.TARGET_ID,
+				D.AP_NO,
+				D.NAME,
+				D.SERVICE_CODE,
+				D.SERVICE_NM,
+				(SELECT TP.PATH_CNT FROM pi_total TP WHERE TP.REGDATE = D.MAX_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MAX_PATH_CNT,
+				(SELECT TP.TOTAL FROM pi_total TP WHERE TP.REGDATE = D.MAX_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MAX_TOTAL,
+				D.MAX_DATE,
+				(SELECT TP.PATH_CNT FROM pi_total TP WHERE TP.REGDATE = D.MIN_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MIN_PATH_CNT,
+				(SELECT TP.TOTAL FROM pi_total TP WHERE TP.REGDATE = D.MIN_DATE AND TP.TARGET_ID = D.TARGET_ID AND TP.AP_NO = D.AP_NO) AS MIN_TOTAL,
+				D.MIN_DATE,
+				(SELECT COUNT(SCHEDULE_STATUS) FROM pi_schedules S WHERE D.TARGET_ID = S.SCHEDULE_TARGET_ID AND SCHEDULE_STATUS = 'completed') AS COMPLETED,
+			 	(SELECT MAX(REGDATE) FROM pi_schedules S WHERE D.TARGET_ID = S.SCHEDULE_TARGET_ID AND SCHEDULE_STATUS = 'completed') AS DATE_COMPLETED
+			FROM
+				(SELECT	
+					T.TARGET_ID,
+					T.AP_NO,
+					T.NAME,
+					TU.SERVICE_CODE,
+					TU.SERVICE_NM,
+					MAX(TC.REGDATE) AS MAX_DATE,
+					MIN(TC.REGDATE) AS MIN_DATE
+				FROM pi_total TC, pi_targets T 
+					LEFT OUTER JOIN pi_target_user TU ON T.TARGET_ID = TU.TARGET_ID AND T.AP_NO = TU.AP_NO
+				WHERE TC.TARGET_ID = T.TARGET_ID 
+				  AND TC.AP_NO = T.AP_NO
+				  
+				<if test="targetList != null">
+					  	AND T.TARGET_ID IN (
+					<foreach collection="targetList" item="item" separator=",">
+				        #{item}
+				    </foreach>
+				    )
+			    </if>
+				GROUP BY TARGET_ID, AP_NO) D
+		) F
+	</select>
+	
+	<select id="selectSystemCurrentProgressOneDrive" resultType="hashmap"> 
+		<!-- SELECT IFNULL(S.TOTAL, 0) AS TOTAL, IFNULL(S.COMPLETE, 0) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM (
+			SELECT SUM(IF(D.STATUS='completed', 1, 0)) AS COMPLETE,
+					 COUNT(D.TARGET_ID) AS TOTAL
+			FROM(SELECT T.TARGET_ID, L.LOCATION_ID, L.PATH, SL.STATUS, FROM_UNIXTIME(SL.STARTED), T.NAME
+					FROM pi_targets T, pi_locations L
+						LEFT OUTER JOIN pi_scheduled_location SL ON L.TARGET_ID = SL.TARGET_ID AND L.LOCATION_ID = SL.LOCATION_ID
+					WHERE T.AP_NO != 0
+						AND T.TARGET_ID = L.TARGET_ID
+						AND L.PROTOCOL = 'onedrive'
+						<if test="fromDate != null and toDate != null">  
+						  AND T.TARGET_ID IN (
+								SELECT ST.TARGET_ID 
+								FROM pi_schedule_group SG, pi_schedule_targets ST
+								WHERE SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+									AND NOT SG.TYPE = 0
+									   	AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+								GROUP BY ST.TARGET_ID, ST.AP_NO
+						   )
+			    	   </if>
+					)D
+		)S -->
+		SELECT IFNULL(S.TOTAL, 0) AS TOTAL, IFNULL(S.COMPLETE, 0) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+	FROM (
+			SELECT SUM(IF(D.SCHEDULE_STATUS='completed', 1, 0)) AS COMPLETE,
+					 COUNT(D.TARGET_ID) AS TOTAL
+			FROM (
+				SELECT ST.TARGET_ID,
+						 ST.AP_NO,
+						 ST.LOCATION_ID,
+						 ST.REGDATE,
+						 S.SCHEDULE_STATUS,
+						 ST.STATUS,
+						 S.SCHEDULE_TARGET_NAME
+				FROM pi_schedule_targets ST
+					LEFT OUTER JOIN pi_locations L ON L.TARGET_ID = ST.TARGET_ID AND L.LOCATION_ID = ST.LOCATION_ID 
+					LEFT OUTER JOIN pi_schedules S ON S.SCHEDULE_TARGET_ID = ST.TARGET_ID AND S.AP_NO = ST.AP_NO AND ST.RECON_SCHEDULE_ID = S.SCHEDULE_ID
+				WHERE 1=1
+					AND L.PROTOCOL = 'onedrive'
+					<if test="fromDate != null and toDate != null"> 
+					AND ST.TARGET_ID IN (
+							SELECT ST.TARGET_ID 
+							FROM pi_schedule_group SG, pi_schedule_targets ST
+							WHERE SG.SCHEDULE_GROUP_ID = ST.SCHEDULE_GROUP_ID
+								AND NOT SG.TYPE = 0
+								   	AND SG.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59')
+							GROUP BY ST.TARGET_ID, ST.AP_NO
+											   )
+					</if>
+					<!-- AND ST.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59') -->
+				GROUP BY ST.TARGET_ID, ST.AP_NO, ST.LOCATION_ID, DATE_FORMAT(ST.REGDATE, '%Y-%m-%d')
+				ORDER BY REGDATE
+				 )D
+			)S
+	</select>
+		
+	<select id="selectDashPersonalProgressOneDrive" resultType="hashmap">
+		<!-- SELECT IFNULL(S.TOTAL, 0) AS TOTAL, IFNULL(S.COMPLETE, 0) AS PROGRESS_COMPLETE,
+				 IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0) AS VALUE,
+				 CONCAT(IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM (
+			SELECT SUM(IF(D.STATUS='completed', 1, 0)) AS COMPLETE,
+					 COUNT(D.TARGET_ID) AS TOTAL
+			FROM(SELECT T.TARGET_ID, L.LOCATION_ID, L.PATH, SL.STATUS, FROM_UNIXTIME(SL.STARTED), T.NAME
+					FROM pi_targets T, pi_locations L
+						LEFT OUTER JOIN pi_scheduled_location SL ON L.TARGET_ID = SL.TARGET_ID AND L.LOCATION_ID = SL.LOCATION_ID
+					WHERE T.AP_NO != 0
+						AND T.TARGET_ID = L.TARGET_ID
+						AND L.PROTOCOL = 'onedrive'
+						<if test="targetList != null">
+							AND T.TARGET_ID IN (
+						<foreach collection="targetList" item="item" separator=","> #{item} </foreach>
+						)
+						</if>
+					)D
+		)S -->
+		
+		SELECT IFNULL(S.TOTAL, 0) AS TOTAL, IFNULL(S.COMPLETE, 0) AS PROGRESS_COMPLETE,
+			 IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0) AS VALUE,
+			 CONCAT(IFNULL(TRUNCATE(S.COMPLETE / S.TOTAL * 100, 1), 0.0), '%') AS PERCENT
+		FROM (
+				SELECT SUM(IF(D.SCHEDULE_STATUS='completed', 1, 0)) AS COMPLETE,
+						 COUNT(D.TARGET_ID) AS TOTAL
+				FROM (
+					SELECT ST.TARGET_ID,
+							 ST.AP_NO,
+							 ST.LOCATION_ID,
+							 ST.REGDATE,
+							 S.SCHEDULE_STATUS,
+							 ST.STATUS,
+							 S.SCHEDULE_TARGET_NAME
+					FROM pi_schedule_targets ST
+						LEFT OUTER JOIN pi_locations L ON L.TARGET_ID = ST.TARGET_ID AND L.LOCATION_ID = ST.LOCATION_ID 
+						LEFT OUTER JOIN pi_schedules S ON S.SCHEDULE_TARGET_ID = ST.TARGET_ID AND S.AP_NO = ST.AP_NO AND ST.RECON_SCHEDULE_ID = S.SCHEDULE_ID
+					WHERE 1=1
+						AND L.PROTOCOL = 'onedrive'
+						<if test="targetList != null">
+							AND ST.TARGET_ID IN (
+						<foreach collection="targetList" item="item" separator=","> #{item} </foreach>
+						)
+						</if>
+						<if test="date != null"> 
+							AND DATE_FORMAT(ST.REGDATE, '%Y년 %m월') = #{date}
+						</if>
+					<!-- AND ST.REGDATE BETWEEN CONCAT(#{fromDate},' 00:00:00') AND CONCAT(#{toDate} ,' 23:59:59') -->
+					GROUP BY ST.TARGET_ID, ST.AP_NO, ST.LOCATION_ID, DATE_FORMAT(ST.REGDATE, '%Y-%m-%d')
+					ORDER BY REGDATE
+					 )D
+				)S
+	</select>
+	
+	<select id="selectNoticePop" resultType="hashmap">
+		SELECT
+		NOTICE_ID,
+		NOTICE_TITLE,
+		DATE_FORMAT(REGDATE, '%Y.%m.%d') AS REGDATE 
+		FROM PI_NOTICE 
+		WHERE NOTICE_ALERT = 1
+		ORDER BY NOTICE_ID DESC
+		LIMIT 1
+	</select>
+	
+	<select id="selectDashAllData" resultType="hashmap" parameterType="hashmap">
+	</select>
+	
+	<select id="selectChkManagerTargetId" resultType="hashmap">
+		SELECT TARGET_ID
+		FROM PI_TARGET_USER TU
+		WHERE TU.USER_NO = #{user_no}
+		UNION ALL
+		SELECT TARGET_ID
+		FROM pi_target_service_user TU
+		WHERE INSA_CODE IN(
+			WITH RECURSIVE CTE AS 
+				(SELECT G.INSA_CODE AS INSA_CODE,
+					G.TEAM_NAME,
+					G.UP_IDX
+				FROM pi_group G
+				WHERE G.INSA_CODE = #{insa_code}
+				UNION ALL
+				SELECT G1.INSA_CODE,
+					G1.TEAM_NAME,
+					G1.UP_IDX
+				FROM pi_group G1, CTE
+				WHERE CTE.INSA_CODE = G1.UP_IDX
+				  AND G1.UP_IDX != G1.INSA_CODE
+				) 
+			SELECT CTE.INSA_CODE
+			FROM CTE
+		)
+	</select>
+	
+</mapper>
