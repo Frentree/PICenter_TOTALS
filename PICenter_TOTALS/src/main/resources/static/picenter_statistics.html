@@ -9,108 +9,6 @@
     <link rel="stylesheet" href="/css/common.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
-        /* ===== Legacy PICenter_RM Override ===== */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Malgun Gothic', dotum, sans-serif;
-            font-size: 12px;
-            color: #333;
-            background: #f0f0f0;
-            min-height: 100vh;
-        }
-
-        /* ===== Header (white, 55px, fixed top) ===== */
-        .rm_header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 55px;
-            background: #fff;
-            border-bottom: 2px solid #0c4da2;
-            display: flex;
-            align-items: center;
-            padding: 0 15px;
-            z-index: 1000;
-        }
-        .rm_header .logo_area {
-            display: flex;
-            align-items: center;
-            margin-right: 20px;
-        }
-        .rm_header .logo_area .logo_text {
-            font-size: 18px;
-            font-weight: bold;
-            color: #0c4da2;
-            letter-spacing: -0.5px;
-        }
-        .rm_header .logo_area .logo_text span {
-            font-weight: 400;
-            font-size: 11px;
-            color: #888;
-            margin-left: 6px;
-        }
-
-        /* Navigation */
-        .rm_nav {
-            display: flex;
-            align-items: center;
-            flex: 1;
-        }
-        .rm_nav a {
-            display: inline-block;
-            padding: 0 14px;
-            line-height: 53px;
-            font-size: 13px;
-            font-weight: 500;
-            color: #555;
-            text-decoration: none;
-            border-bottom: 2px solid transparent;
-            transition: color 0.2s;
-        }
-        .rm_nav a:hover {
-            color: #0c4da2;
-        }
-        .rm_nav a.on {
-            color: #0c4da2;
-            font-weight: 700;
-            border-bottom: 2px solid #0c4da2;
-        }
-
-        /* Header right */
-        .rm_header_right {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .rm_header_right .user_name {
-            font-size: 12px;
-            color: #555;
-        }
-        .rm_header_right .user_name strong {
-            color: #333;
-        }
-        .rm_header_right .btn_logout {
-            padding: 4px 12px;
-            font-size: 11px;
-            color: #666;
-            background: #f5f5f5;
-            border: 1px solid #ccc;
-            border-radius: 2px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .rm_header_right .btn_logout:hover {
-            background: #e8e8e8;
-        }
-
-        /* ===== Content wrapper ===== */
-        .rm_content {
-            margin-top: 55px;
-            padding: 15px;
-            min-height: calc(100vh - 55px);
-        }
-
         /* Page title */
         .page_title_bar {
             margin-bottom: 10px;
@@ -336,29 +234,31 @@
 <body>
 
 <!-- Header -->
-<div class="rm_header">
-    <div class="logo_area">
-        <span class="logo_text"><a href="/picenter_dashboard" style="color:inherit;text-decoration:none;">개인정보 검출관리 센터</a></span>
+<div class="header">
+    <div class="header_left">
+        <a href="/picenter_dashboard" class="logo">개인정보 검출관리 센터</a>
     </div>
-    <div class="rm_nav">
-        <a href="/picenter_dashboard">대시보드</a>
-        <a href="/picenter_target">타겟</a>
-        <a href="/picenter_detection">검출</a>
-        <a href="/picenter_scan">스캔</a>
-        <a href="/picenter_report">보고서</a>
-        <a href="/picenter_statistics" class="on">통계</a>
-        <a href="/picenter_user">사용자</a>
-        <a href="/picenter_notice">공지사항</a>
-        <a href="/picenter_setting">설정</a>
+    <div class="header_center">
+        <ul class="gnb_menu">
+            <li><a href="/picenter_dashboard">대시보드</a></li>
+            <li><a href="/picenter_target">타겟</a></li>
+            <li><a href="/picenter_detection">검출</a></li>
+            <li><a href="/picenter_scan">스캔</a></li>
+            <li><a href="/picenter_report">보고서</a></li>
+            <li class="on"><a href="/picenter_statistics">통계</a></li>
+            <li><a href="/picenter_user">사용자</a></li>
+            <li><a href="/picenter_notice">공지사항</a></li>
+            <li><a href="/picenter_setting">설정</a></li>
+        </ul>
     </div>
-    <div class="rm_header_right">
-        <span class="user_name" id="userInfo"></span>
+    <div class="header_right">
+        <span class="user_info" id="userInfo"></span>
         <button class="btn_logout" id="btnLogout">로그아웃</button>
     </div>
 </div>
 
 <!-- Content -->
-<div class="rm_content">
+<div class="main">
     <div class="page_title_bar">
         <h3>보고서</h3>
     </div>

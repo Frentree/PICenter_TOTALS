@@ -1,0 +1,61 @@
+# ===== Build & IDE =====
+*.class
+*.jar
+*.war
+*.ear
+*.log
+*.pid
+*.swp
+*.bak
+*.backup
+*~
+
+# Gradle
+.gradle/
+build/
+bin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Maven
+target/
+*.iml
+
+# IDE
+.idea/
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+*.code-workspace
+out/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Logs & Runtime =====
+logs/
+*.log
+app.pid
+nohup.out
+hs_err_pid*
+
+# ===== Claude AI Working Files =====
+.claude/
+
+# ===== Change Reports (auto-generated) =====
+**/CHANGES_REPORT.txt
+**/CHANGES_*.md
+**/2026-*_CHANGES.md
+**/2026-*_MIGRATION_LOG.md
+**/PAGINATION_*.md
+**/ITEM*_FIX*.md
+**/EXCEPTION_TABLE_MISSING.md
+**/REQUEST_BODY_CHANGES.md
+
+# ===== Backup Files =====
+*.java.backup
+*.jsp.cp

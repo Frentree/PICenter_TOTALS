@@ -20,107 +20,6 @@
         a { text-decoration: none; color: inherit; }
         table { border-collapse: collapse; border-spacing: 0; }
 
-        /* ===== HEADER ===== */
-        .container_header {
-            width: 100%;
-            height: 55px;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 102;
-            padding: 0 50px 0 0;
-            border-bottom: 1px solid #c8ced3;
-            border-top: 1px solid #c8ced3;
-            background: #fff;
-            box-shadow: 1px 1px 1px rgba(0,0,0,.1);
-        }
-        .img_logo {
-            position: absolute;
-            top: 10px;
-            left: 40px;
-        }
-        .img_logo h1 {
-            font-size: 17px;
-            font-weight: bold;
-            color: #2f353a;
-            line-height: 35px;
-            cursor: pointer;
-        }
-        .img_logo h1 span {
-            font-size: 12px;
-            font-weight: normal;
-            color: #888;
-            margin-left: 4px;
-        }
-        nav { margin: 0 auto; text-align: center; }
-        .gnb_menu { display: inline-block; margin-left: 100px; list-style: none; }
-        .gnb_menu li { float: left; }
-        .gnb_menu li a {
-            padding: 0 12px;
-            text-align: center;
-            position: relative;
-            line-height: 53px;
-            display: inline-block;
-            color: #676554;
-            font-size: 16px;
-            transition: color 0.2s;
-        }
-        .gnb_menu li a:after {
-            content: "";
-            height: 3px;
-            position: absolute;
-            background: transparent;
-            width: 1px;
-            left: 50%;
-            bottom: 5px;
-            transition: 0.2s;
-        }
-        .gnb_menu li a:hover:after {
-            content: "";
-            height: 3px;
-            position: absolute;
-            background: #2f353a;
-            width: 100%;
-            left: 0;
-            bottom: 5px;
-        }
-        .gnb_menu .on,
-        .gnb_menu .on:hover {
-            cursor: default;
-            color: #2f353a;
-            font-weight: 600;
-        }
-        .gnb_menu .on:after {
-            content: "";
-            height: 3px;
-            position: absolute;
-            background: #2f353a;
-            width: 100%;
-            left: 0;
-            bottom: 5px;
-        }
-        .user_area {
-            position: absolute;
-            right: 30px;
-            top: 15px;
-            font-size: 12px;
-            color: #555;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        .user_area .btn_logout {
-            padding: 4px 12px;
-            background: #fff;
-            border: 1px solid #c8ced3;
-            border-radius: 3px;
-            font-size: 12px;
-            color: #555;
-            cursor: pointer;
-        }
-        .user_area .btn_logout:hover { background: #f0f0f0; }
-
         /* ===== MAIN CONTAINER ===== */
         .container {
             width: 100%;
@@ -372,30 +271,28 @@
 <body>
 
 <!-- Header -->
-<header>
-    <div class="container_header">
-        <div class="img_logo">
-            <a href="/picenter_dashboard"><h1>개인정보 검출관리 센터</h1></a>
-        </div>
-        <nav>
-            <ul class="gnb_menu">
-                <li><a href="/picenter_dashboard">대시보드</a></li>
-                <li><a href="/picenter_target">타겟</a></li>
-                <li><a href="/picenter_detection">검출</a></li>
-                <li><a href="/picenter_scan">스캔</a></li>
-                <li><a href="/picenter_report">보고서</a></li>
-                <li><a href="/picenter_statistics">통계</a></li>
-                <li><a href="/picenter_user">사용자</a></li>
-                <li><a href="/picenter_notice" class="on">공지사항</a></li>
-                <li><a href="/picenter_setting">설정</a></li>
-            </ul>
-        </nav>
-        <div class="user_area">
-            <span id="userInfo"></span>
-            <button class="btn_logout" id="btnLogout">로그아웃</button>
-        </div>
+<div class="header">
+    <div class="header_left">
+        <a href="/picenter_dashboard" class="logo">개인정보 검출관리 센터</a>
     </div>
-</header>
+    <div class="header_center">
+        <ul class="gnb_menu">
+            <li><a href="/picenter_dashboard">대시보드</a></li>
+            <li><a href="/picenter_target">타겟</a></li>
+            <li><a href="/picenter_detection">검출</a></li>
+            <li><a href="/picenter_scan">스캔</a></li>
+            <li><a href="/picenter_report">보고서</a></li>
+            <li><a href="/picenter_statistics">통계</a></li>
+            <li><a href="/picenter_user">사용자</a></li>
+            <li class="on"><a href="/picenter_notice">공지사항</a></li>
+            <li><a href="/picenter_setting">설정</a></li>
+        </ul>
+    </div>
+    <div class="header_right">
+        <span class="user_info" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
 
 <!-- Main Content -->
 <section>
