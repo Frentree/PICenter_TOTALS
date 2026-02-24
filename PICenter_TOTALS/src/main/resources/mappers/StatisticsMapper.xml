@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.StatisticsMapper">
+
+    <!--
+        Actual table schemas used in this mapper:
+
+        pi_targets:     target_id(PK), ap_no(PK), name, platform, TARGET_USE,
+                        search_status, matchcnt, regdate, group_idx
+
+        pi_find:        hash_id(PK), target_id(PK), ap_no(PK), path, account,
+                        owner, regdate, credate
+                        (NO: fid, deldate, remediation_status)
+
+        pi_data_processing: data_processing_idx(PK), target_id, hash_id,
+                            approval_status('W'/'Y'/'N'), processing_flag,
+                            user_no, regdate
+                            (NO: ap_no, okdate)
+
+        pi_summary:     target_id(PK), object_id(PK), data_type(PK), ap_no(PK),
+                        match_count, regdate
+
+        pi_agents:      agent_name(PK), ap_no(PK), agent_version,
+                        agent_connected(bit), agent_connected_ip
+
+        pi_target_group: idx(PK auto), name, degree, type, TARGET_ID, up_idx
+                        (used instead of pi_groups for group joins)
+    -->
+
+    <!-- ==================== Overall Statistics ==================== -->
+
+    <!--
+        Overall counts of detections, approval statuses, processing states.
+        approval_status: 'Y' = approved (true positive), 'N' = rejected (false positive), 'W' = waiting
+        Group filtering uses pi_targets.group_idx joined with pi_target_group.
+    -->
+    <select id="selectOverallStatistics" parameterType="map" resultType="map">
+        SELECT
+            COUNT(DISTINCT f.HASH_ID) AS totalDetections,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+            CASE
+                WHEN COUNT(DISTINCT f.HASH_ID) > 0
+                THEN ROUND(SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) * 100.0
+                           / COUNT(DISTINCT f.HASH_ID), 2)
+                ELSE 0
+            END AS truePositiveRate,
+            CASE
+                WHEN COUNT(DISTINCT f.HASH_ID) > 0
+                THEN ROUND(SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) * 100.0
+                           / COUNT(DISTINCT f.HASH_ID), 2)
+                ELSE 0
+            END AS falsePositiveRate,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NOT NULL THEN 1 ELSE 0 END) AS processedCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NULL THEN 1 ELSE 0 END) AS unprocessedCount
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.GROUP_IDX IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg.IDX FROM pi_target_group tg INNER JOIN CTE ON tg.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND f.REGDATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND f.REGDATE &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- ==================== Detection Statistics by Data Type ==================== -->
+
+    <!--
+        Detection counts grouped by data_type from pi_summary.
+        Joins pi_find -> pi_summary on (target_id, hash_id=object_id).
+        Joins pi_find -> pi_data_processing on (target_id, hash_id).
+    -->
+    <select id="selectDetectionStatistics" parameterType="map" resultType="map">
+        SELECT
+            s.DATA_TYPE AS datatype,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NOT NULL THEN 1 ELSE 0 END) AS processedCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NULL THEN 1 ELSE 0 END) AS unprocessedCount,
+            CASE
+                WHEN COUNT(*) > 0
+                THEN ROUND(SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END AS truePositiveRate
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_summary s ON f.TARGET_ID = s.TARGET_ID AND f.AP_NO = s.AP_NO AND f.HASH_ID = s.OBJECT_ID
+        LEFT JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.GROUP_IDX IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg.IDX FROM pi_target_group tg INNER JOIN CTE ON tg.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND f.REGDATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND f.REGDATE &lt;= #{endDate}
+        </if>
+        GROUP BY s.DATA_TYPE
+        ORDER BY totalCount DESC
+    </select>
+
+    <!-- ==================== Top 5 True Positives ==================== -->
+
+    <!--
+        Top 5 targets by count of approved (approval_status='Y') detections.
+        pi_agents is joined via (t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO).
+        Group info comes from pi_target_group via t.GROUP_IDX.
+    -->
+    <select id="selectTruePositiveTop5" parameterType="map" resultType="map">
+        SELECT
+            t.TARGET_ID AS targetNo,
+            t.NAME AS targetName,
+            IFNULL(a.AGENT_CONNECTED_IP, '') AS targetIp,
+            IFNULL(tg.NAME, '') AS groupName,
+            t.GROUP_IDX AS groupId,
+            COUNT(*) AS totalDetections,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        INNER JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO
+        LEFT JOIN pi_target_group tg ON t.GROUP_IDX = tg.IDX
+        WHERE t.TARGET_USE = 'Y'
+            AND dp.APPROVAL_STATUS = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.GROUP_IDX IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg2.IDX FROM pi_target_group tg2 INNER JOIN CTE ON tg2.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        GROUP BY t.TARGET_ID, t.AP_NO, t.NAME, a.AGENT_CONNECTED_IP, tg.NAME, t.GROUP_IDX
+        ORDER BY truePositiveCount DESC
+        LIMIT 5
+    </select>
+
+    <!-- ==================== Top 5 False Positives ==================== -->
+
+    <!--
+        Top 5 targets by count of rejected (approval_status='N') detections.
+    -->
+    <select id="selectFalsePositiveTop5" parameterType="map" resultType="map">
+        SELECT
+            t.TARGET_ID AS targetNo,
+            t.NAME AS targetName,
+            IFNULL(a.AGENT_CONNECTED_IP, '') AS targetIp,
+            IFNULL(tg.NAME, '') AS groupName,
+            t.GROUP_IDX AS groupId,
+            COUNT(*) AS totalDetections,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        INNER JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO
+        LEFT JOIN pi_target_group tg ON t.GROUP_IDX = tg.IDX
+        WHERE t.TARGET_USE = 'Y'
+            AND dp.APPROVAL_STATUS = 'N'
+        <if test="groupId != null and groupId != ''">
+            AND t.GROUP_IDX IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg2.IDX FROM pi_target_group tg2 INNER JOIN CTE ON tg2.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        GROUP BY t.TARGET_ID, t.AP_NO, t.NAME, a.AGENT_CONNECTED_IP, tg.NAME, t.GROUP_IDX
+        ORDER BY falsePositiveCount DESC
+        LIMIT 5
+    </select>
+
+    <!-- ==================== Datatype Statistics ==================== -->
+
+    <!--
+        Statistics grouped by data_type via pi_summary.
+    -->
+    <select id="selectDatatypeStatistics" parameterType="map" resultType="map">
+        SELECT
+            s.DATA_TYPE AS datatype,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NOT NULL THEN 1 ELSE 0 END) AS processedCount,
+            CASE
+                WHEN COUNT(*) > 0
+                THEN ROUND(SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2)
+                ELSE 0
+            END AS truePositiveRate
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_summary s ON f.TARGET_ID = s.TARGET_ID AND f.AP_NO = s.AP_NO AND f.HASH_ID = s.OBJECT_ID
+        LEFT JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.GROUP_IDX IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg.IDX FROM pi_target_group tg INNER JOIN CTE ON tg.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        GROUP BY s.DATA_TYPE
+        ORDER BY totalCount DESC
+    </select>
+
+    <!-- ==================== Monthly Statistics ==================== -->
+
+    <!--
+        Monthly trend: detection counts grouped by year-month of pi_find.regdate.
+    -->
+    <select id="selectMonthlyStatistics" parameterType="map" resultType="map">
+        SELECT
+            DATE_FORMAT(f.REGDATE, '%Y-%m') AS month,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NOT NULL THEN 1 ELSE 0 END) AS processedCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NULL THEN 1 ELSE 0 END) AS unprocessedCount
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        WHERE t.TARGET_USE = 'Y'
+        <if test="startDate != null and startDate != ''">
+            AND f.REGDATE &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND f.REGDATE &lt;= #{endDate}
+        </if>
+        GROUP BY DATE_FORMAT(f.REGDATE, '%Y-%m')
+        ORDER BY month ASC
+    </select>
+
+</mapper>

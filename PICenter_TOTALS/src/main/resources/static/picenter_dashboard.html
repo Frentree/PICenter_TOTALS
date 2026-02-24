@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <title>PICenter TOTALS - 대시보드</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <!-- ECharts CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <style>
+        /* ===== Dashboard Section ===== */
+        section {
+            padding: 0 65px 0 45px;
+        }
+        header {
+            background: none;
+        }
+        h4 {
+            margin: 14px 0 0 1px;
+            font-size: 16px;
+            font-weight: normal;
+        }
+
+        /* ===== Content wrap ===== */
+        .content_wrap {
+            margin-top: 55px;
+            padding: 0;
+        }
+
+        /* ===== Container Main (3-column dashboard) ===== */
+        .container_main {
+            width: 100%;
+            height: auto;
+            min-height: 815px;
+            position: relative;
+            padding: 0 65px 29px 45px;
+            margin-top: 10px;
+            display: flex;
+            gap: 0;
+        }
+
+        /* ===== Left Area (351px) ===== */
+        .left_area {
+            width: 351px;
+            min-width: 351px;
+            flex-shrink: 0;
+            padding-top: 16px;
+        }
+
+        .left_area h4 {
+            position: relative;
+            color: #FF7F00;
+            margin-top: 19px;
+            margin-bottom: 5px;
+        }
+
+        .user_info_table {
+            width: 351px;
+            border-collapse: collapse;
+        }
+        .user_info_table th {
+            text-align: center;
+            border-radius: 0.25rem;
+            background: #f5f6f8;
+            border: 1px solid #c8ced3;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            white-space: nowrap;
+        }
+        .user_info_table td {
+            border: 1px solid #c8ced3;
+            padding: 4px 6px;
+        }
+        .user_info_table input[type="text"] {
+            width: 221px;
+            padding-left: 5px;
+            height: 28px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+        }
+        .user_info_table input[type="text"]:focus {
+            border-color: #FF7F00;
+            outline: none;
+        }
+        .user_info_table input[type="text"]::placeholder {
+            color: #aaa;
+        }
+        .btn_look_approval {
+            display: inline-block;
+            width: 30px;
+            height: 28px;
+            margin-top: 0;
+            border: 1px solid #c8ced3;
+            background: #f5f6f8 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%23555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>') no-repeat center center;
+            cursor: pointer;
+            border-radius: 2px;
+            vertical-align: middle;
+        }
+        .btn_look_approval:hover {
+            background-color: #e8e8e8;
+        }
+
+        .left_box {
+            margin-top: 11px;
+            height: 655px;
+            width: 351px;
+            background-color: #fff;
+            border: 1px solid #c8ced3;
+            border-radius: 0.25rem;
+            padding: 5px;
+            overflow-y: auto;
+        }
+
+        /* Tree items */
+        .tree_group { margin-bottom: 2px; }
+        .tree_group_name {
+            cursor: pointer;
+            padding: 5px 8px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tree_group_name:hover { background: #f0f4f8; }
+        .tree_toggle {
+            display: inline-block;
+            width: 14px;
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .tree_children {
+            display: none;
+            padding-left: 24px;
+        }
+        .tree_children.open { display: block; }
+        .tree_child_item {
+            padding: 4px 8px;
+            font-size: 12px;
+            color: #555;
+            cursor: pointer;
+        }
+        .tree_child_item:hover {
+            background: #e8f0fe;
+            color: #0c4da2;
+        }
+        .tree_child_item.selected {
+            background: #dbeafe;
+            color: #0c4da2;
+            font-weight: 600;
+        }
+
+        /* ===== Chart Area ===== */
+        .chart_area {
+            flex: 1;
+            display: flex;
+            gap: 5px;
+            padding-left: 20px;
+        }
+
+        /* ===== Chart Left (413px) ===== */
+        .chart_left {
+            width: 413px;
+            min-width: 413px;
+            flex-shrink: 0;
+        }
+        .chart_left h4 {
+            position: relative;
+            color: #FF7F00;
+            margin-top: 35px;
+            margin-bottom: 5px;
+        }
+        .chart_left h4#managerRank {
+            color: #FF7A00;
+            display: inline-block;
+            margin-top: 23px;
+            padding-bottom: 5px;
+        }
+
+        .left_box_chart {
+            width: 413px;
+            margin-right: 5px;
+            background-color: #fff;
+            border: 1px solid #c8ced3;
+            border-radius: 0.25rem;
+            padding: 5px;
+        }
+        .chart_box_donut {
+            height: 265px;
+            padding: 0;
+            border: none;
+            background: #fff;
+            width: 405px;
+        }
+
+        .left_box_dash_rank {
+            width: 413px;
+            height: 376px;
+            padding: 10px 0;
+            background-color: #fff;
+            border: 1px solid #c8ced3;
+            border-radius: 0.25rem;
+            overflow-y: auto;
+        }
+
+        /* Rank data table */
+        .data_table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .data_table thead th {
+            background: #f5f6f8;
+            padding: 8px 10px;
+            font-weight: 600;
+            color: #555;
+            text-align: center;
+            border-bottom: 2px solid #c8ced3;
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+        }
+        .data_table tbody td {
+            padding: 7px 10px;
+            text-align: center;
+            border-bottom: 1px solid #eee;
+            color: #444;
+            font-size: 12px;
+        }
+        .data_table tbody tr:hover { background: #f8f9fb; }
+        .data_table .td_left { text-align: left; }
+        .data_table .td_right {
+            text-align: right;
+            font-weight: 600;
+        }
+
+        /* ===== Chart Center (remaining width) ===== */
+        .chart_center {
+            flex: 1;
+            margin-left: 5px;
+        }
+        .chart_center h4 {
+            color: #FF7F00;
+            margin-top: 35px;
+            margin-bottom: 5px;
+        }
+
+        .chart_box_bar {
+            width: 100%;
+            min-height: 705px;
+            background: #fff;
+            border: 1px solid #c8ced3;
+            border-radius: 0.25rem;
+            padding: 1.6px;
+            overflow: hidden;
+            position: relative;
+        }
+        .chart_box_bar .date_area {
+            float: right;
+            padding: 8px 12px;
+        }
+        .chart_box_bar .date_area select {
+            width: 100px;
+            height: 28px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            background: #fff;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        #main_graph {
+            margin-top: 30px;
+            height: 665px;
+            width: 100%;
+        }
+
+        /* ===== Empty message ===== */
+        .empty_msg {
+            text-align: center;
+            color: #999;
+            padding: 30px 10px;
+            font-size: 13px;
+        }
+
+        /* ===== Clear float ===== */
+        .clear { clear: both; }
+        .clear_l { clear: left; }
+
+        /* ===== Popup overlay ===== */
+        .popup_layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.4);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .popup_box {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .popup_top {
+            background: #f9f9f9;
+            padding: 8px 0;
+        }
+        .popup_top h1 {
+            color: #222;
+            padding: 0;
+            box-shadow: none;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .popup_content {
+            margin: 8px 0;
+        }
+        .popup_tbl {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .popup_tbl th, .popup_tbl td {
+            padding: 8px 10px;
+            border: 1px solid #e0e0e0;
+            font-size: 12px;
+        }
+        .popup_tbl th {
+            background: #f5f6f8;
+            font-weight: 600;
+            color: #555;
+        }
+        .popup_btn {
+            text-align: center;
+            padding: 10px 0;
+        }
+        .popup_btn button {
+            padding: 6px 20px;
+            background: #555;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 0 4px;
+        }
+        .popup_btn button:hover {
+            background: #333;
+        }
+        .CancleImg {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+        .CancleImg:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+    <!-- ===== Header ===== -->
+    <header class="header">
+        <div class="header_left">
+            <div class="logo">
+                <a href="/picenter_dashboard">개인정보 검출관리 센터</a>
+            </div>
+        </div>
+        <div class="header_center">
+            <nav class="nav">
+                <a href="/picenter_dashboard" class="nav_item on" id="menu_dashboard">대시보드</a>
+                <a href="/picenter_target" class="nav_item" id="menu_target">타겟</a>
+                <a href="/picenter_detection" class="nav_item" id="menu_detection">검출</a>
+                <a href="/picenter_scan" class="nav_item" id="menu_scan">스캔</a>
+                <a href="/picenter_report" class="nav_item" id="menu_report">보고서</a>
+                <a href="/picenter_statistics" class="nav_item" id="menu_statistics">통계</a>
+                <a href="/picenter_user" class="nav_item" id="menu_user">사용자</a>
+                <a href="/picenter_notice" class="nav_item" id="menu_notice">공지사항</a>
+                <a href="/picenter_setting" class="nav_item" id="menu_setting">설정</a>
+            </nav>
+        </div>
+        <div class="header_right">
+            <span class="user_info" id="user_Information"></span>
+            <button class="btn_logout" id="btnLogout">로그아웃</button>
+        </div>
+    </header>
+
+    <!-- ===== Dashboard Content ===== -->
+    <div class="content_wrap">
+        <div class="container_main">
+
+            <!-- ========== LEFT: 대상 현황 (351px) ========== -->
+            <div class="left_area">
+                <h4>대상 현황</h4>
+                <table class="user_info_table">
+                    <tbody>
+                        <tr>
+                            <th>대상조회</th>
+                            <td>
+                                <input type="text" id="targetSearch" placeholder="호스트명을 입력하세요." size="10">
+                            </td>
+                            <td>
+                                <input type="button" class="btn_look_approval" id="btn_sch_target">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="left_box" id="treeArea">
+                    <div class="empty_msg">데이터를 불러오는 중...</div>
+                </div>
+            </div>
+
+            <!-- ========== CHART AREA ========== -->
+            <div class="chart_area">
+
+                <!-- ===== Chart Left (413px): 도넛차트 + 순위 ===== -->
+                <div class="chart_left">
+                    <h4>검출 현황 요약</h4>
+                    <div class="left_box_chart">
+                        <div class="chart_box_donut">
+                            <div id="circleGraph" style="height: 100%; width: 405px;"></div>
+                        </div>
+                    </div>
+
+                    <h4 id="managerRank">개인정보 보유 순위</h4>
+                    <div class="left_box_dash_rank">
+                        <table class="data_table" id="rankTable">
+                            <thead>
+                                <tr>
+                                    <th style="width:40%;">대상</th>
+                                    <th style="width:35%;">검출파일수(컬럼수)</th>
+                                    <th style="width:25%;">검출건수</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rankingsBody">
+                                <tr><td colspan="3" class="empty_msg">데이터를 불러오는 중...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ===== Chart Center (나머지): 막대 차트 ===== -->
+                <div class="chart_center">
+                    <h4 id="rm_title">검출 현황 - 전체</h4>
+                    <div class="chart_box_bar">
+                        <div class="date_area">
+                            <select id="days">
+                                <option value="days">7일 전</option>
+                                <option value="month">1개월 전</option>
+                                <option value="three_month">3개월 전</option>
+                                <option value="six_month">6개월 전</option>
+                                <option value="year" selected>1년 전</option>
+                            </select>
+                            <input type="hidden" id="tree_id" value="">
+                        </div>
+                        <div id="main_graph"></div>
+                    </div>
+                </div>
+
+                <div class="clear_l"></div>
+            </div>
+
+            <div class="clear"></div>
+        </div>
+    </div>
+
+    <!-- ===== Detail Popup ===== -->
+    <div id="pcDetailPopup" class="popup_layer" style="display: none;">
+        <div class="popup_box" style="height: 200px; width: 850px;">
+            <span class="CancleImg" id="btnCanclePCDetailPopup" title="닫기">&#10005;</span>
+            <div class="popup_top">
+                <h1>상세 조회</h1>
+            </div>
+            <div class="popup_content">
+                <div style="background: #fff; border: 1px solid #c8ced3; padding: 10px;">
+                    <table class="popup_tbl">
+                        <colgroup>
+                            <col width="20%"><col width="25%"><col width="15%"><col width="20%"><col width="20%">
+                        </colgroup>
+                        <tbody id="popup_details"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="popup_btn">
+                <button type="button" id="btnClose">닫기</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {
+    'use strict';
+
+    // ===== Authentication =====
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Display user info
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            var userUpper = (user.userId || '').toUpperCase();
+            document.getElementById('user_Information').textContent =
+                (user.userName || '') + '(' + userUpper + ')';
+        } catch(e) {}
+    }
+
+    // ===== Logout =====
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    // ===== API Helper =====
+    function api(url) {
+        return fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        }).then(function(r) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return r.json();
+        });
+    }
+
+    // ===== Number formatter (comma separator) =====
+    function formatNumber(n) {
+        if (n === null || n === undefined || n === '') return '0';
+        return Number(n).toLocaleString();
+    }
+
+    // ===== HTML Escape =====
+    function escapeHtml(str) {
+        if (!str) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    // ===== Selected tree node tracking =====
+    var selectedTargetId = null;
+    var selectedTargetType = null;
+    var selectedTargetText = null;
+
+    // =========================================================
+    //  1. LEFT AREA: 대상 현황 (Groups Tree)
+    // =========================================================
+    function loadGroups() {
+        api('/api/v1/targets/groups').then(function(data) {
+            if (!data) return;
+            var treeArea = document.getElementById('treeArea');
+            var items = [];
+
+            if (data.success && data.data) {
+                items = Array.isArray(data.data) ? data.data : [];
+            } else if (Array.isArray(data)) {
+                items = data;
+            }
+
+            if (items.length === 0) {
+                treeArea.innerHTML = '<div class="empty_msg">등록된 대상이 없습니다</div>';
+                return;
+            }
+
+            var html = '';
+            // Root node: "전체"
+            html += '<div class="tree_group">';
+            html += '<div class="tree_group_name" data-id="target" data-type="0" data-text="전체">';
+            html += '<span class="tree_toggle">-</span> 전체';
+            html += '</div>';
+            html += '<div class="tree_children open" id="tree_root_children">';
+
+            for (var i = 0; i < items.length; i++) {
+                var group = items[i];
+                var groupName = group.groupName || group.name || group.grpName || group.text || ('그룹 ' + (i + 1));
+                var groupId = group.id || group.groupId || ('group_' + i);
+                var children = group.targets || group.children || group.hosts || [];
+                var childCount = group.targetCount || group.count || children.length || 0;
+
+                html += '<div class="tree_group" style="padding-left: 8px;">';
+                html += '<div class="tree_group_name" data-idx="' + i + '" data-id="' + escapeHtml(String(groupId)) + '" data-type="0" data-text="' + escapeHtml(groupName) + '">';
+                html += '<span class="tree_toggle">+</span>';
+                html += escapeHtml(groupName) + ' (' + childCount + ')';
+                html += '</div>';
+
+                if (children.length > 0) {
+                    html += '<div class="tree_children" id="tree_children_' + i + '">';
+                    for (var j = 0; j < children.length; j++) {
+                        var child = children[j];
+                        var childName = child.hostName || child.targetName || child.name || child.text || child.ip || '-';
+                        var childId = child.id || child.targetId || child.hostId || ('child_' + i + '_' + j);
+                        var childAp = child.ap || child.apNo || '';
+                        var childConnected = child.connected || '';
+                        html += '<div class="tree_child_item" data-id="' + escapeHtml(String(childId)) + '" data-type="1" data-ap="' + escapeHtml(String(childAp)) + '" data-text="' + escapeHtml(childName) + '">';
+                        html += escapeHtml(childName);
+                        if (child.ip) html += ' <span style="color:#999;">(' + escapeHtml(child.ip) + ')</span>';
+                        html += '</div>';
+                    }
+                    html += '</div>';
+                }
+
+                html += '</div>';
+            }
+
+            html += '</div></div>';
+            treeArea.innerHTML = html;
+
+            // Toggle tree expand/collapse
+            treeArea.addEventListener('click', function(e) {
+                var groupName = e.target.closest('.tree_group_name');
+                if (groupName) {
+                    var idx = groupName.getAttribute('data-idx');
+                    if (idx !== null) {
+                        var childrenEl = document.getElementById('tree_children_' + idx);
+                        var toggleEl = groupName.querySelector('.tree_toggle');
+                        if (childrenEl) {
+                            if (childrenEl.classList.contains('open')) {
+                                childrenEl.classList.remove('open');
+                                if (toggleEl) toggleEl.textContent = '+';
+                            } else {
+                                childrenEl.classList.add('open');
+                                if (toggleEl) toggleEl.textContent = '-';
+                            }
+                        }
+                    }
+                    // Handle tree node selection for charts
+                    handleTreeNodeClick(groupName);
+                }
+
+                var childItem = e.target.closest('.tree_child_item');
+                if (childItem) {
+                    handleTreeNodeClick(childItem);
+                }
+            });
+        }).catch(function() {
+            document.getElementById('treeArea').innerHTML = '<div class="empty_msg">데이터 로드 실패</div>';
+        });
+    }
+
+    function handleTreeNodeClick(el) {
+        // Remove previous selection
+        var prev = document.querySelectorAll('.tree_child_item.selected, .tree_group_name.selected');
+        for (var i = 0; i < prev.length; i++) prev[i].classList.remove('selected');
+        el.classList.add('selected');
+
+        selectedTargetId = el.getAttribute('data-id');
+        selectedTargetType = el.getAttribute('data-type');
+        selectedTargetText = el.getAttribute('data-text') || '전체';
+
+        if (selectedTargetId === 'target' || selectedTargetType === '0') {
+            document.getElementById('rm_title').textContent = '검출 현황 - ' + (selectedTargetText || '전체');
+        } else {
+            document.getElementById('rm_title').textContent = '검출 현황 - ' + selectedTargetText;
+        }
+
+        loadBarChart();
+    }
+
+    // Tree search
+    document.getElementById('btn_sch_target').addEventListener('click', function() {
+        doTreeSearch();
+    });
+    document.getElementById('targetSearch').addEventListener('keyup', function(e) {
+        if (e.keyCode === 13) doTreeSearch();
+    });
+
+    function doTreeSearch() {
+        var keyword = document.getElementById('targetSearch').value.trim().toLowerCase();
+        var groups = document.querySelectorAll('#treeArea .tree_group');
+        for (var i = 0; i < groups.length; i++) {
+            var nameEl = groups[i].querySelector('.tree_group_name');
+            var nameText = nameEl ? nameEl.textContent.toLowerCase() : '';
+            var childItems = groups[i].querySelectorAll('.tree_child_item');
+            var childMatch = false;
+
+            for (var j = 0; j < childItems.length; j++) {
+                var childText = childItems[j].textContent.toLowerCase();
+                if (!keyword || childText.indexOf(keyword) >= 0) {
+                    childItems[j].style.display = '';
+                    childMatch = true;
+                } else {
+                    childItems[j].style.display = 'none';
+                }
+            }
+
+            if (!keyword || nameText.indexOf(keyword) >= 0 || childMatch) {
+                groups[i].style.display = '';
+                // Expand matching groups
+                if (keyword && childMatch) {
+                    var childrenDiv = groups[i].querySelector('.tree_children');
+                    var toggleEl = groups[i].querySelector('.tree_toggle');
+                    if (childrenDiv && !childrenDiv.classList.contains('open')) {
+                        childrenDiv.classList.add('open');
+                        if (toggleEl) toggleEl.textContent = '-';
+                    }
+                }
+            } else {
+                groups[i].style.display = 'none';
+            }
+        }
+    }
+
+    // =========================================================
+    //  2. CENTER LEFT: 검출 현황 요약 (Donut Chart via ECharts)
+    // =========================================================
+    var circleChart = null;
+
+    function loadCircleGraph() {
+        api('/api/v1/dashboard/system-current').then(function(data) {
+            if (!data) return;
+
+            var result = [];
+            if (data.success && data.data) {
+                result = Array.isArray(data.data) ? data.data : [data.data];
+            } else if (Array.isArray(data)) {
+                result = data;
+            }
+
+            renderCircleGraph(result);
+        }).catch(function() {
+            document.getElementById('circleGraph').innerHTML = '<div class="empty_msg">차트 데이터 로드 실패</div>';
+        });
+    }
+
+    function renderCircleGraph(result) {
+        if (!result || result.length === 0) {
+            document.getElementById('circleGraph').innerHTML = '<div class="empty_msg">차트 데이터가 없습니다</div>';
+            return;
+        }
+
+        var total = 0, error = 0, searched = 0, wait = 0, complete = 0, scancomp = 0, pause = 0;
+
+        for (var i = 0; i < result.length; i++) {
+            var row = result[i];
+            if (row.TOTAL !== undefined) total = Number(row.TOTAL) || 0;
+            if (row.ERROR !== undefined) error += Number(row.ERROR) || 0;
+            if (row.SEARCHED !== undefined) searched += Number(row.SEARCHED) || 0;
+            if (row.WAIT !== undefined) wait += Number(row.WAIT) || 0;
+            if (row.COMPLETE !== undefined) complete += Number(row.COMPLETE) || 0;
+            if (row.SCANCOMP !== undefined) scancomp += Number(row.SCANCOMP) || 0;
+            if (row.PAUSE !== undefined) pause += Number(row.PAUSE) || 0;
+            // Also support lowercase keys
+            if (row.total !== undefined && !row.TOTAL) total = Number(row.total) || 0;
+            if (row.error !== undefined && !row.ERROR) error += Number(row.error) || 0;
+            if (row.searched !== undefined && !row.SEARCHED) searched += Number(row.searched) || 0;
+            if (row.wait !== undefined && !row.WAIT) wait += Number(row.wait) || 0;
+            if (row.complete !== undefined && !row.COMPLETE) complete += Number(row.complete) || 0;
+            if (row.scancomp !== undefined && !row.SCANCOMP) scancomp += Number(row.scancomp) || 0;
+            if (row.pause !== undefined && !row.PAUSE) pause += Number(row.pause) || 0;
+        }
+
+        var chartDom = document.getElementById('circleGraph');
+        if (circleChart) {
+            circleChart.dispose();
+        }
+        circleChart = echarts.init(chartDom);
+
+        circleChart.setOption({
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b} : {c} ({d}%)'
+            },
+            legend: {
+                data: ['오류', '검색중', '결과없음', '검출', '미검색', '일시정지'],
+                padding: [0, 75, 0, 75],
+                bottom: 3
+            },
+            textStyle: {
+                fontFamily: "'Malgun Gothic', dotum, sans-serif",
+                fontSize: 14
+            },
+            series: [{
+                name: '시스템현황',
+                type: 'pie',
+                radius: ['30%', '60%'],
+                color: ['#CC0F2E', '#68A62F', '#11088D', '#038FDA', '#6F037F', '#FBCD1F'],
+                center: ['50%', '43%'],
+                data: [
+                    { value: error, name: '오류' },
+                    { value: searched, name: '검색중' },
+                    { value: complete, name: '결과없음' },
+                    { value: scancomp, name: '검출' },
+                    { value: wait, name: '미검색' },
+                    { value: pause, name: '일시정지' }
+                ],
+                itemStyle: {
+                    emphasis: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                },
+                label: {
+                    show: false
+                }
+            }]
+        });
+
+        // Center text: total count
+        var existingSpan = document.getElementById('spanid');
+        if (existingSpan) existingSpan.remove();
+
+        var totalDiv = document.createElement('div');
+        totalDiv.id = 'spanid';
+        totalDiv.style.cssText = 'display:inline-block; position:absolute; left:50%; top:38%; transform:translateX(-50%) translateY(-50%); text-align:center; pointer-events:none;';
+        totalDiv.innerHTML = '<h4 style="margin:0; font-size:14px; font-weight:normal;">' +
+            '총 대상수<br>' + formatNumber(total) + '</h4>';
+        chartDom.style.position = 'relative';
+        chartDom.appendChild(totalDiv);
+    }
+
+    // =========================================================
+    //  3. CENTER LEFT: 개인정보 보유 순위 (Rankings Table)
+    // =========================================================
+    function loadRankings() {
+        api('/api/v1/dashboard/rankings').then(function(data) {
+            if (!data) return;
+            var tbody = document.getElementById('rankingsBody');
+            var items = [];
+
+            if (data.success && data.data) {
+                items = Array.isArray(data.data) ? data.data : [];
+            } else if (Array.isArray(data)) {
+                items = data;
+            }
+
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="empty_msg">데이터가 없습니다</td></tr>';
+                return;
+            }
+
+            var html = '';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var name = item.NAME || item.name || item.targetName || item.hostName || '-';
+                var fileCount = item.FILE || item.file || item.fileCount || item.detectionFileCount || 0;
+                var count = item.COUNT || item.count || item.totalCount || item.detectionCount || 0;
+
+                html += '<tr>';
+                html += '<td class="td_left">' + escapeHtml(name) + '</td>';
+                html += '<td class="td_right">' + formatNumber(fileCount) + '</td>';
+                html += '<td class="td_right">' + formatNumber(count) + '</td>';
+                html += '</tr>';
+            }
+            tbody.innerHTML = html;
+        }).catch(function() {
+            document.getElementById('rankingsBody').innerHTML =
+                '<tr><td colspan="3" class="empty_msg">데이터 로드 실패</td></tr>';
+        });
+    }
+
+    // =========================================================
+    //  4. RIGHT: 검출 현황 Bar Chart (ECharts)
+    // =========================================================
+    var barChart = null;
+
+    function loadBarChart() {
+        var days = document.getElementById('days').value;
+        var params = 'days=' + encodeURIComponent(days);
+        if (selectedTargetId && selectedTargetId !== 'target') {
+            params += '&target_id=' + encodeURIComponent(selectedTargetId);
+        }
+
+        api('/api/v1/dashboard/charts/bar?' + params).then(function(data) {
+            if (!data) return;
+
+            var chartData = null;
+            if (data.success && data.data) {
+                chartData = data.data;
+            } else if (data.Data || data.DataTypes) {
+                chartData = data;
+            }
+
+            if (!chartData) {
+                renderBarChartEmpty();
+                return;
+            }
+
+            renderBarChart(chartData);
+        }).catch(function() {
+            renderBarChartEmpty();
+        });
+
+        // Also load datatypes for the legend
+        loadDataTypes();
+    }
+
+    function loadDataTypes() {
+        api('/api/v1/dashboard/datatypes').then(function(data) {
+            // datatypes used for color mapping if needed
+        }).catch(function() {});
+    }
+
+    function renderBarChart(result) {
+        var days = [];
+        var names = [];
+        var colors = [];
+        var series = [];
+
+        // Support legacy format: { Data: [...], DataTypes: [...] }
+        var dataRows = result.Data || result.data || [];
+        var dataTypes = result.DataTypes || result.dataTypes || [];
+
+        if (dataRows.length === 0 && dataTypes.length === 0) {
+            // Try alternative format: { labels: [...], datasets: [...] }
+            if (result.labels && result.datasets) {
+                var lbls = [];
+                var vals = [];
+                for (var i = 0; i < result.labels.length; i++) {
+                    var lbl = result.labels[i];
+                    lbls.push(lbl.label || lbl.name || lbl.date || lbl);
+                }
+                for (var i = 0; i < result.datasets.length; i++) {
+                    var ds = result.datasets[i];
+                    var dsName = ds.label || ds.name || ('데이터 ' + (i + 1));
+                    var dsColor = ds.color || ds.backgroundColor || '#038FDA';
+                    var dsData = ds.data || ds.values || [];
+                    series.push({
+                        name: dsName,
+                        type: 'bar',
+                        color: dsColor,
+                        data: dsData
+                    });
+                    names.push(dsName);
+                    colors.push(dsColor);
+                }
+                days = lbls;
+            } else {
+                renderBarChartEmpty();
+                return;
+            }
+        } else {
+            // Legacy format processing
+            for (var i = 0; i < dataRows.length; i++) {
+                days.push(dataRows[i].DAYS || dataRows[i].days || dataRows[i].date || '');
+            }
+
+            for (var i = 0; i < dataTypes.length; i++) {
+                var dtName = dataTypes[i].PATTERN_NAME || dataTypes[i].patternName || dataTypes[i].name || '';
+                var dtId = dataTypes[i].ID || dataTypes[i].id || '';
+                var dtColor = dataTypes[i].COLOR_CODE || dataTypes[i].colorCode || dataTypes[i].color || '#038FDA';
+                var types = [];
+
+                for (var u = 0; u < dataRows.length; u++) {
+                    var row = dataRows[u];
+                    types.push(row[dtId] || 0);
+                }
+
+                names.push(dtName);
+                colors.push(dtColor);
+                series.push({
+                    name: dtName,
+                    type: 'bar',
+                    color: dtColor,
+                    data: types
+                });
+            }
+        }
+
+        var chartDom = document.getElementById('main_graph');
+        if (barChart) {
+            barChart.dispose();
+        }
+        barChart = echarts.init(chartDom);
+
+        barChart.setOption({
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            grid: {
+                left: '6%',
+                containLabel: true
+            },
+            legend: {
+                data: names,
+                color: colors
+            },
+            xAxis: [{
+                type: 'category',
+                data: days
+            }],
+            yAxis: [{
+                type: 'value',
+                axisLabel: {
+                    textStyle: { fontSize: 11 }
+                }
+            }],
+            series: series,
+            toolbox: {
+                show: true,
+                bottom: 15,
+                right: 60,
+                textStyle: {
+                    fontFamily: "'Malgun Gothic', dotum, sans-serif",
+                    fontSize: 13
+                },
+                feature: {
+                    dataView: {
+                        show: true,
+                        readOnly: false,
+                        title: '데이터',
+                        optionToContent: function(opt) {
+                            var axisData = opt.xAxis[0].data;
+                            var seriesData = opt.series;
+                            var table = '<div style="padding:8px;"><button type="button" onclick="window.__dashboardDownloadCsv()" style="padding:4px 12px; margin:4px; cursor:pointer;">다운로드</button></div>'
+                                + '<table id="chartdata" style="width:100%;text-align:center;border-collapse:collapse;"><tbody><tr style="background:#f5f6f8;">'
+                                + '<td style="padding:6px;border:1px solid #ddd;">날짜</td>';
+                            for (var i = 0; i < seriesData.length; i++) {
+                                table += '<td style="padding:6px;border:1px solid #ddd;">' + seriesData[i].name + '</td>';
+                            }
+                            table += '</tr>';
+                            for (var i = 0; i < axisData.length; i++) {
+                                table += '<tr><td style="padding:4px;border:1px solid #eee;">' + axisData[i] + '</td>';
+                                for (var u = 0; u < seriesData.length; u++) {
+                                    table += '<td style="padding:4px;border:1px solid #eee;">' + (seriesData[u].data[i] || 0) + '</td>';
+                                }
+                                table += '</tr>';
+                            }
+                            table += '</tbody></table>';
+                            return table;
+                        }
+                    },
+                    magicType: {
+                        show: true,
+                        title: { line: '선형차트', bar: '막대차트' },
+                        type: ['line', 'bar']
+                    },
+                    restore: {
+                        show: true,
+                        title: '복원'
+                    },
+                    saveAsImage: {
+                        show: true,
+                        title: '이미지로저장'
+                    }
+                }
+            }
+        });
+    }
+
+    function renderBarChartEmpty() {
+        var chartDom = document.getElementById('main_graph');
+        if (barChart) {
+            barChart.dispose();
+            barChart = null;
+        }
+        chartDom.innerHTML = '<div class="empty_msg" style="padding-top:200px;">차트 데이터가 없습니다</div>';
+    }
+
+    // CSV download for bar chart data view
+    window.__dashboardDownloadCsv = function() {
+        var table = document.getElementById('chartdata');
+        if (!table) return;
+
+        var BOM = '\uFEFF';
+        var csvString = BOM;
+        for (var rowCnt = 0; rowCnt < table.rows.length; rowCnt++) {
+            var rowData = table.rows[rowCnt].cells;
+            for (var colCnt = 0; colCnt < rowData.length; colCnt++) {
+                var columnData = rowData[colCnt].innerHTML.replace(/"/g, '""');
+                csvString += '"' + columnData + '",';
+            }
+            csvString = csvString.substring(0, csvString.length - 1) + '\r\n';
+        }
+        csvString = csvString.substring(0, csvString.length - 1);
+
+        var blob = new Blob([csvString], { type: 'text/csv;charset=utf8' });
+        var csvUrl = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.setAttribute('style', 'display:none');
+        a.setAttribute('href', csvUrl);
+        a.setAttribute('download', 'data.csv');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    };
+
+    // =========================================================
+    //  5. Event Listeners
+    // =========================================================
+
+    // Period change -> reload bar chart
+    document.getElementById('days').addEventListener('change', function() {
+        loadBarChart();
+    });
+
+    // Detail popup close
+    document.getElementById('btnClose').addEventListener('click', function() {
+        document.getElementById('pcDetailPopup').style.display = 'none';
+    });
+    document.getElementById('btnCanclePCDetailPopup').addEventListener('click', function() {
+        document.getElementById('pcDetailPopup').style.display = 'none';
+    });
+
+    // Window resize - re-render echarts
+    window.addEventListener('resize', function() {
+        if (circleChart) circleChart.resize();
+        if (barChart) barChart.resize();
+    });
+
+    // =========================================================
+    //  6. Initial Data Load
+    // =========================================================
+    function loadAllData() {
+        loadGroups();
+        loadCircleGraph();
+        loadRankings();
+        loadBarChart();
+    }
+
+    loadAllData();
+
+    // Auto-refresh every 5 minutes
+    setInterval(loadAllData, 5 * 60 * 1000);
+
+})();
+</script>
+</body>
+</html>

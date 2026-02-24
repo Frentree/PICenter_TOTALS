@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.GroupMapper">
+
+    <!--
+        Actual remote DB schema:
+
+        pi_target_group: idx(PK auto_increment), name(varchar50), degree(varchar2 default '1'),
+            type(varchar2 default '0'), TARGET_ID(varchar100), connected_ip, AP_NO,
+            up_idx(varchar10), credate, process, regdate, TARGET_USE
+
+        pi_targets: target_id(PK), ap_no(PK), name, TARGET_USE, group_idx
+
+        pi_group: insa_code(PK), company_code(PK), team_name, fullname, degree, type, target_id, up_idx
+
+        NOTE: There is NO pi_groups table. Use pi_target_group for target groups.
+    -->
+
+    <!-- Select all target groups (flat list for tree building) -->
+    <select id="selectGroupList" resultType="map">
+        SELECT
+            tg.idx          AS groupId,
+            tg.name         AS groupName,
+            tg.up_idx       AS parentGroupId,
+            tg.degree       AS sortOrder,
+            tg.regdate      AS regDt,
+            tg.type         AS groupType,
+            tg.TARGET_ID    AS targetId,
+            tg.connected_ip AS connectedIp,
+            tg.AP_NO        AS apNo,
+            tg.TARGET_USE   AS targetUse,
+            IFNULL(tc.TARGET_COUNT, 0) AS targetCount
+        FROM pi_target_group tg
+        LEFT JOIN (
+            SELECT group_idx, COUNT(*) AS TARGET_COUNT
+            FROM pi_targets
+            WHERE TARGET_USE = 'Y'
+            GROUP BY group_idx
+        ) tc ON tg.idx = tc.group_idx
+        ORDER BY tg.name ASC, tg.idx ASC
+    </select>
+
+    <!-- Select single group detail -->
+    <select id="selectGroupDetail" parameterType="string" resultType="map">
+        SELECT
+            tg.idx          AS groupId,
+            tg.name         AS groupName,
+            tg.up_idx       AS parentGroupId,
+            tg.degree       AS sortOrder,
+            tg.type         AS groupType,
+            tg.TARGET_ID    AS targetId,
+            tg.connected_ip AS connectedIp,
+            tg.AP_NO        AS apNo,
+            tg.credate      AS creDate,
+            tg.process      AS process,
+            tg.regdate      AS regDt,
+            tg.TARGET_USE   AS targetUse
+        FROM pi_target_group tg
+        WHERE tg.idx = #{groupId}
+    </select>
+
+    <!-- Select group statistics (target counts) -->
+    <select id="selectGroupStats" parameterType="string" resultType="map">
+        SELECT
+            tg.idx       AS groupId,
+            tg.name      AS groupName,
+            IFNULL(t.totalTargets, 0)    AS totalTargets,
+            IFNULL(t.activeTargets, 0)   AS activeTargets,
+            IFNULL(t.inactiveTargets, 0) AS inactiveTargets
+        FROM pi_target_group tg
+        LEFT JOIN (
+            SELECT
+                group_idx,
+                COUNT(*)                                                       AS totalTargets,
+                SUM(CASE WHEN TARGET_USE = 'Y' THEN 1 ELSE 0 END)             AS activeTargets,
+                SUM(CASE WHEN TARGET_USE != 'Y' OR TARGET_USE IS NULL THEN 1 ELSE 0 END) AS inactiveTargets
+            FROM pi_targets
+            GROUP BY group_idx
+        ) t ON tg.idx = t.group_idx
+        WHERE tg.idx = #{groupId}
+    </select>
+
+    <!-- Insert a new group -->
+    <insert id="insertGroup" parameterType="map" useGeneratedKeys="true" keyProperty="groupId">
+        INSERT INTO pi_target_group (
+            name, degree, type, TARGET_ID, up_idx, credate, regdate
+        ) VALUES (
+            #{groupName}, #{sortOrder, jdbcType=VARCHAR}, #{groupType, jdbcType=VARCHAR},
+            #{targetId, jdbcType=VARCHAR}, #{parentGroupId}, NOW(), NOW()
+        )
+    </insert>
+
+    <!-- Update targets' group assignment (set group_idx on pi_targets) -->
+    <update id="updateTargetGroup" parameterType="map">
+        UPDATE pi_targets
+        SET group_idx = #{groupId}
+        WHERE target_id IN
+        <foreach collection="targetIds" item="targetId" open="(" separator="," close=")">
+            #{targetId}
+        </foreach>
+    </update>
+
+</mapper>

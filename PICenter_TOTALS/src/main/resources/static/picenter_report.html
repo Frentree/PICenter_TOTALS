@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>PICenter - 통합 보고서</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        /* ===== Legacy PICenter_RM Override ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            font-size: 12px;
+            color: #333;
+            background: #f0f0f0;
+            min-height: 100vh;
+        }
+
+        /* ===== Header (white, 55px, fixed top) ===== */
+        .rm_header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 55px;
+            background: #fff;
+            border-bottom: 2px solid #0c4da2;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+        }
+        .rm_header .logo_area {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+        .rm_header .logo_area .logo_text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0c4da2;
+            letter-spacing: -0.5px;
+        }
+        .rm_header .logo_area .logo_text span {
+            font-weight: 400;
+            font-size: 11px;
+            color: #888;
+            margin-left: 6px;
+        }
+
+        /* Navigation */
+        .rm_nav {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .rm_nav a {
+            display: inline-block;
+            padding: 0 14px;
+            line-height: 53px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s;
+        }
+        .rm_nav a:hover {
+            color: #0c4da2;
+        }
+        .rm_nav a.on {
+            color: #0c4da2;
+            font-weight: 700;
+            border-bottom: 2px solid #0c4da2;
+        }
+
+        /* Header right */
+        .rm_header_right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rm_header_right .user_name {
+            font-size: 12px;
+            color: #555;
+        }
+        .rm_header_right .user_name strong {
+            color: #333;
+        }
+        .rm_header_right .btn_logout {
+            padding: 4px 12px;
+            font-size: 11px;
+            color: #666;
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .rm_header_right .btn_logout:hover {
+            background: #e8e8e8;
+        }
+
+        /* ===== Content wrapper ===== */
+        .rm_content {
+            margin-top: 55px;
+            padding: 15px;
+            min-height: calc(100vh - 55px);
+        }
+
+        /* Page title */
+        .page_title_bar {
+            margin-bottom: 10px;
+        }
+        .page_title_bar h3 {
+            font-size: 20px;
+            font-weight: 400;
+            color: #222;
+            padding-top: 10px;
+        }
+
+        /* ===== Search table (legacy user_info style, max-width 1246px) ===== */
+        .search_table {
+            border: 1px solid #c8ced3;
+            border-radius: 0.25rem;
+            width: 100%;
+            max-width: 1246px;
+            background: #fff;
+            border-collapse: collapse;
+            display: inline-table;
+            margin-bottom: 0;
+        }
+        .search_table th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 0 10px;
+            height: 31.5px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            width: 100px;
+            border-radius: 0.25rem;
+        }
+        .search_table td {
+            height: 31.5px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+        }
+        .search_table td input[type="text"],
+        .search_table td input[type="date"] {
+            height: 27px;
+            padding: 0 5px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            color: #333;
+        }
+        .search_table td input[type="text"]:read-only {
+            background-color: #f5f5f5;
+        }
+        .date_sep {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            color: #000;
+            font-size: 13px;
+        }
+
+        /* Buttons */
+        .btn_search_rm {
+            height: 27px;
+            padding: 0 12px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat center;
+            background-color: #0c4da2;
+            border: none;
+            width: 30px;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        .btn_search_rm:hover {
+            background-color: #0a3f8a;
+        }
+        .btn_down {
+            background-color: #fff;
+            border: 1px solid #cdcdcd;
+            color: #000;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 5px 14px;
+            cursor: pointer;
+            border-radius: 0.25rem;
+            white-space: nowrap;
+        }
+        .btn_down:hover { background-color: #e4e4e4; }
+        .btn_clear {
+            background-color: #fff;
+            border: 1px solid #cdcdcd;
+            color: #000;
+            font-size: 12px;
+            font-weight: 400;
+            padding: 0;
+            width: 55px;
+            height: 27px;
+            cursor: pointer;
+            border-radius: 0.25rem;
+        }
+        .btn_clear:hover { background-color: #e4e4e4; }
+
+        /* Grid top area */
+        .grid_top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .grid_top .search_area_left {
+            flex: 1;
+            min-width: 0;
+        }
+        .grid_top .list_sch {
+            display: flex;
+            align-items: flex-end;
+            padding-top: 6px;
+        }
+
+        /* ===== Data Table ===== */
+        .data_grid_wrap {
+            margin-top: 10px;
+            overflow: hidden;
+            border: 1px solid #c8ced3;
+            border-radius: 0.25rem;
+            background: #fff;
+        }
+        .grid_scroll {
+            max-height: 649px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+        .rm_data_table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .rm_data_table thead th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 7px 8px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .rm_data_table tbody td {
+            font-size: 12px;
+            color: #333;
+            padding: 6px 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            background: #fff;
+        }
+        .rm_data_table tbody tr:hover {
+            background: #f5f8fc;
+        }
+        .rm_data_table tbody td.td_left {
+            text-align: left;
+        }
+        .rm_data_table tbody td.td_right {
+            text-align: right;
+        }
+
+        /* ===== Pagination ===== */
+        .legacy_pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            padding: 10px 0;
+            margin-top: 5px;
+        }
+        .legacy_pagination button {
+            min-width: 28px;
+            height: 28px;
+            padding: 0 6px;
+            border: 1px solid #cdcdcd;
+            border-radius: 0.25rem;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .legacy_pagination button:hover { background: #e4e4e4; }
+        .legacy_pagination button.active {
+            background: #0c4da2;
+            color: #fff;
+            border-color: #0c4da2;
+            font-weight: 600;
+        }
+        .legacy_pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ===== Empty Message ===== */
+        .rm_empty {
+            text-align: center;
+            color: #999;
+            padding: 30px 0;
+            font-size: 12px;
+        }
+
+        /* ===== Error Box ===== */
+        .error_box_legacy {
+            padding: 10px 14px;
+            background: #fff0f0;
+            color: #d32f2f;
+            border: 1px solid #ffcccc;
+            border-radius: 0.25rem;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        /* ===== Footer ===== */
+        .rm_footer {
+            text-align: center;
+            font-size: 11px;
+            color: #aaa;
+            padding: 10px 0;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="rm_header">
+    <div class="logo_area">
+        <span class="logo_text"><a href="/picenter_dashboard" style="color:inherit;text-decoration:none;">개인정보 검출관리 센터</a></span>
+    </div>
+    <div class="rm_nav">
+        <a href="/picenter_dashboard">대시보드</a>
+        <a href="/picenter_target">타겟</a>
+        <a href="/picenter_detection">검출</a>
+        <a href="/picenter_scan">스캔</a>
+        <a href="/picenter_report" class="on">보고서</a>
+        <a href="/picenter_statistics">통계</a>
+        <a href="/picenter_user">사용자</a>
+        <a href="/picenter_notice">공지사항</a>
+        <a href="/picenter_setting">설정</a>
+    </div>
+    <div class="rm_header_right">
+        <span class="user_name" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
+
+<!-- Content -->
+<div class="rm_content">
+    <div class="page_title_bar">
+        <h3>통합 보고서</h3>
+    </div>
+
+    <!-- Search Area -->
+    <div class="grid_top">
+        <div class="search_area_left">
+            <table class="search_table">
+                <tbody>
+                    <tr>
+                        <th>호스트명</th>
+                        <td style="width:255px;">
+                            <input type="text" style="width:186px; padding-left:5px;" id="SCH_TARGET" placeholder="호스트를 선택하세요" readonly="readonly">
+                            <button type="button" class="btn_clear" id="btnHostClear">Clear</button>
+                        </td>
+                        <th>기간별</th>
+                        <td>
+                            <input type="date" id="SCH_FROM_DATE" style="text-align:center; width:186px;">
+                            <span class="date_sep">~</span>
+                            <input type="date" id="SCH_TO_DATE" style="text-align:center; width:186px;">
+                        </td>
+                        <th>경로</th>
+                        <td style="width:255px;">
+                            <input type="text" style="width:243px; padding-left:5px;" id="SCH_PATH" placeholder="경로를 입력하세요.">
+                        </td>
+                        <td style="padding:5px 5px 0 5px;">
+                            <button type="button" class="btn_search_rm" id="btnSearch" title="검색"></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="list_sch">
+            <div style="margin-top:12px;">
+                <button type="button" class="btn_down" id="btnDownload">다운로드</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="data_grid_wrap">
+        <div class="grid_scroll">
+            <table class="rm_data_table">
+                <thead>
+                    <tr id="reportHeader">
+                        <th style="width:60px;">No</th>
+                        <th style="width:90px;">OS</th>
+                        <th style="width:140px;">호스트</th>
+                        <th style="width:120px;">IP</th>
+                        <th style="width:300px;">경로</th>
+                        <th style="width:80px;">총개수</th>
+                        <!-- Dynamic pattern columns will be appended here -->
+                    </tr>
+                </thead>
+                <tbody id="reportBody">
+                    <tr><td colspan="6" class="rm_empty">조건을 설정하여 검색해주세요</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="legacy_pagination" id="pagination"></div>
+
+    <!-- Error -->
+    <div id="errorMsg" class="error_box_legacy" style="display:none;"></div>
+</div>
+
+<!-- Footer -->
+<div class="rm_footer">Copyright &copy; PICenter. All Rights Reserved.</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var PAGE_SIZE = 100;
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+    var dynamicColumns = [];
+    var headerBuilt = false;
+
+    // ---------- Auth guard ----------
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // ---------- Display user info ----------
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            document.getElementById('userInfo').innerHTML =
+                '<strong>' + escHtml(user.userName || '') + '</strong> (' + escHtml(user.userId || '') + ')';
+        } catch (e) { /* ignore */ }
+    }
+
+    // ---------- Logout ----------
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    // ---------- Date initialization ----------
+    function initDates() {
+        var now = new Date();
+        var toStr = formatDate(now);
+        var from = new Date(now);
+        from.setDate(from.getDate() - 30);
+        var fromStr = formatDate(from);
+        document.getElementById('SCH_FROM_DATE').value = fromStr;
+        document.getElementById('SCH_TO_DATE').value = toStr;
+    }
+    initDates();
+
+    // ---------- Host clear ----------
+    document.getElementById('btnHostClear').addEventListener('click', function() {
+        document.getElementById('SCH_TARGET').value = '';
+    });
+
+    // ---------- Search button ----------
+    document.getElementById('btnSearch').addEventListener('click', function() {
+        var from = document.getElementById('SCH_FROM_DATE').value;
+        var to = document.getElementById('SCH_TO_DATE').value;
+        if (from && to && from > to) {
+            alert('입력한 끝 날짜가 시작 날짜 보다 빠릅니다.');
+            return;
+        }
+        loadReport(0);
+    });
+
+    // ---------- Enter key on path input ----------
+    document.getElementById('SCH_PATH').addEventListener('keydown', function(e) {
+        if (e.keyCode === 13) {
+            document.getElementById('btnSearch').click();
+        }
+    });
+
+    // ---------- Download button ----------
+    document.getElementById('btnDownload').addEventListener('click', function() {
+        var params = buildQuery(0);
+        fetch('/api/v1/reports/export/excel?' + params, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        }).then(function(resp) {
+            if (resp.status === 401 || resp.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return resp.blob();
+        }).then(function(blob) {
+            if (!blob) return;
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement('a');
+            a.href = url;
+            var today = new Date();
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            a.download = '통합_보고서_' + today.getFullYear() + mm + dd + '.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }).catch(function() {
+            showError('다운로드에 실패했습니다.');
+        });
+    });
+
+    // ---------- API helper ----------
+    function api(url) {
+        return fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        }).then(function(r) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return r.json();
+        });
+    }
+
+    // ---------- Build query params ----------
+    function buildQuery(page) {
+        var params = 'page=' + page + '&size=' + PAGE_SIZE;
+        var host = document.getElementById('SCH_TARGET').value;
+        var fromDate = document.getElementById('SCH_FROM_DATE').value;
+        var toDate = document.getElementById('SCH_TO_DATE').value;
+        var path = document.getElementById('SCH_PATH').value;
+
+        if (host) params += '&hostName=' + encodeURIComponent(host);
+        if (fromDate) params += '&fromDate=' + encodeURIComponent(fromDate);
+        if (toDate) params += '&toDate=' + encodeURIComponent(toDate);
+        if (path) params += '&path=' + encodeURIComponent(path);
+
+        return params;
+    }
+
+    // ---------- Load report ----------
+    function loadReport(page) {
+        document.getElementById('errorMsg').style.display = 'none';
+        var url = '/api/v1/reports/summary?' + buildQuery(page);
+
+        api(url).then(function(data) {
+            if (!data) return;
+            if (data.success && data.data) {
+                renderTable(data.data, page);
+            } else if (Array.isArray(data)) {
+                renderTable({ content: data, totalPages: 1 }, page);
+            } else {
+                showError(data.error ? data.error.message : '보고서 데이터를 불러오는데 실패했습니다.');
+                renderEmptyTable();
+            }
+        }).catch(function() {
+            showError('서버 연결에 실패했습니다.');
+            renderEmptyTable();
+        });
+    }
+
+    // ---------- Build dynamic header columns ----------
+    function buildDynamicHeader(items) {
+        if (headerBuilt || items.length === 0) return;
+
+        var sample = items[0];
+        var headerRow = document.getElementById('reportHeader');
+        var staticFields = ['No', 'PLATFORM', 'TARGET_NAME', 'IP', 'PATH', 'TYPE',
+                            'platform', 'targetName', 'target_name', 'ip', 'path', 'type',
+                            'totalCount', 'total_count', 'TOTAL', 'total',
+                            'os', 'OS', 'hostName', 'host_name', 'TARGET_ID', 'HASH_ID',
+                            'AP_NO', 'ACCOUNT', 'CREDATE', 'DELDATE',
+                            'credate', 'deldate', 'createdAt', 'deletedAt'];
+
+        dynamicColumns = [];
+
+        // Detect dynamic pattern columns from data
+        for (var key in sample) {
+            if (sample.hasOwnProperty(key)) {
+                var isStatic = false;
+                for (var s = 0; s < staticFields.length; s++) {
+                    if (key === staticFields[s]) { isStatic = true; break; }
+                }
+                if (!isStatic && typeof sample[key] === 'number') {
+                    dynamicColumns.push(key);
+                }
+            }
+        }
+
+        // Append dynamic columns to header
+        for (var d = 0; d < dynamicColumns.length; d++) {
+            var th = document.createElement('th');
+            th.style.width = '110px';
+            th.textContent = dynamicColumns[d];
+            headerRow.appendChild(th);
+        }
+
+        headerBuilt = true;
+    }
+
+    // ---------- Render table ----------
+    function renderTable(pageData, page) {
+        var tbody = document.getElementById('reportBody');
+        var items = pageData.content || pageData.list || [];
+        if (Array.isArray(pageData) && !pageData.content) {
+            items = pageData;
+        }
+        var totalPages = pageData.totalPages || 1;
+
+        if (items.length === 0) {
+            var colCount = 6 + dynamicColumns.length;
+            tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="rm_empty">조회된 데이터가 없습니다.</td></tr>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        // Build dynamic columns on first data load
+        buildDynamicHeader(items);
+
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var no = page * PAGE_SIZE + i + 1;
+            html += '<tr>' +
+                '<td>' + no + '</td>' +
+                '<td>' + escHtml(item.PLATFORM || item.platform || item.os || item.OS || '-') + '</td>' +
+                '<td>' + escHtml(item.TARGET_NAME || item.targetName || item.hostName || item.target_name || '-') + '</td>' +
+                '<td>' + escHtml(item.IP || item.ip || item.targetIp || '-') + '</td>' +
+                '<td class="td_left" style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(item.PATH || item.path || '-') + '">' +
+                    escHtml(item.PATH || item.path || '-') + '</td>' +
+                '<td class="td_right">' + fmtNum(item.TYPE || item.totalCount || item.total_count || item.TOTAL || 0) + '</td>';
+
+            // Dynamic pattern columns
+            for (var d = 0; d < dynamicColumns.length; d++) {
+                html += '<td class="td_right">' + fmtNum(item[dynamicColumns[d]] || 0) + '</td>';
+            }
+
+            html += '</tr>';
+        }
+        tbody.innerHTML = html;
+        renderPagination(page, totalPages);
+    }
+
+    function renderEmptyTable() {
+        var colCount = 6 + dynamicColumns.length;
+        document.getElementById('reportBody').innerHTML =
+            '<tr><td colspan="' + colCount + '" class="rm_empty">데이터 없음</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+    }
+
+    // ---------- Pagination ----------
+    function renderPagination(current, total) {
+        var el = document.getElementById('pagination');
+        if (total <= 1) { el.innerHTML = ''; return; }
+
+        var html = '';
+        var blockSize = 10;
+        var startPage = Math.floor(current / blockSize) * blockSize;
+        var endPage = Math.min(startPage + blockSize, total);
+
+        html += '<button ' + (current === 0 ? 'disabled' : '') + ' data-page="0">&laquo;</button>';
+        html += '<button ' + (current === 0 ? 'disabled' : '') + ' data-page="' + (current - 1) + '">&lsaquo;</button>';
+
+        for (var i = startPage; i < endPage; i++) {
+            html += '<button class="' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        }
+
+        html += '<button ' + (current >= total - 1 ? 'disabled' : '') + ' data-page="' + (current + 1) + '">&rsaquo;</button>';
+        html += '<button ' + (current >= total - 1 ? 'disabled' : '') + ' data-page="' + (total - 1) + '">&raquo;</button>';
+
+        el.innerHTML = html;
+
+        var btns = el.querySelectorAll('button');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].addEventListener('click', function() {
+                if (this.disabled) return;
+                loadReport(parseInt(this.getAttribute('data-page')));
+            });
+        }
+    }
+
+    // ---------- Utilities ----------
+    function fmtNum(n) {
+        if (n === null || n === undefined || n === '') return '0';
+        return Number(n).toLocaleString();
+    }
+
+    function escHtml(str) {
+        if (!str || str === '-') return str || '-';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function escAttr(str) {
+        if (!str || str === '-') return str || '-';
+        return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatDate(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    function showError(msg) {
+        var el = document.getElementById('errorMsg');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    // ---------- Initial: do not auto-load, wait for search ----------
+    // (Legacy behavior: show empty grid with "조건을 설정하여 검색해주세요")
+
+})();
+</script>
+</body>
+</html>

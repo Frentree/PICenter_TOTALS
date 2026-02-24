@@ -1,0 +1,308 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.DashboardMapper">
+
+    <!--
+        DashboardMapper.xml - corrected for actual remote DB schema.
+
+        Key tables and their schemas:
+          pi_targets:          group_id, target_id(PK), ap_no(PK), name, TARGET_USE, search_status, platform, critical, error, notice, matchcnt, regdate, group_idx, net_type(int), net_id
+          pi_agents:           agent_name(PK), ap_no(PK), AGENT_USE, agent_version, agent_connected(bit 0/1), agent_connected_ip, REGDATE, AGENT_CONNECTED_START_DT
+          pi_find:             hash_id(PK), group_id, target_id(PK), ap_no(PK), path, account, owner, regdate, credate
+          pi_data_processing:  data_processing_idx(PK), ap_no, target_id, hash_id(text), approval_status(default 'W'), processing_flag, user_no, regdate, notepad
+          pi_summary:          group_id, target_id(PK), object_id(PK), data_type(PK), ap_no(PK), match_count, regdate
+          pi_scan_history:     target_id(PK), ap_no(PK), started(varchar), status(varchar), regdate(date)
+          pi_target_group:     idx(PK auto), name, degree, type, TARGET_ID, up_idx
+          pi_datatypes:        datatype_id(PK), datatype_label, version
+
+        Agent join pattern: LEFT JOIN pi_agents a ON t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+        approval_status values: 'W'(waiting), 'Y'(approved), 'N'(rejected), 'R'(returned)
+        agent_connected is a bit column: 1 = connected, 0 = disconnected
+        pi_scan_history has NO finished_at, found_count, total_files columns
+        Use pi_target_group instead of pi_groups
+    -->
+
+    <!-- ============================================================
+         selectDashboardInfo
+         Aggregated dashboard info: target count, detection count,
+         processing breakdown, last scan date.
+         ============================================================ -->
+    <select id="selectDashboardInfo" parameterType="map" resultType="map">
+        SELECT
+            (SELECT COUNT(*)
+               FROM pi_targets t
+              WHERE t.TARGET_USE = 'Y'
+                <if test="groupId != null and groupId != ''">
+                    AND t.group_id = #{groupId}
+                </if>
+            ) AS totalTargets,
+
+            COUNT(f.hash_id) AS totalDetections,
+
+            SUM(CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 1 ELSE 0 END) AS totalProcessed,
+
+            SUM(CASE WHEN dp.processing_flag IS NULL OR dp.processing_flag = 0 THEN 1 ELSE 0 END) AS totalUnprocessed,
+
+            SUM(CASE WHEN dp.approval_status = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+
+            SUM(CASE WHEN dp.approval_status = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+
+            (SELECT MAX(sh.regdate)
+               FROM pi_scan_history sh
+              INNER JOIN pi_targets t2 ON sh.target_id = t2.target_id AND sh.ap_no = t2.ap_no
+              WHERE t2.TARGET_USE = 'Y'
+                <if test="groupId != null and groupId != ''">
+                    AND t2.group_id = #{groupId}
+                </if>
+            ) AS lastScanDate
+
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND f.regdate &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND f.regdate &lt;= #{endDate}
+        </if>
+    </select>
+
+    <!-- ============================================================
+         selectDatatypeStatus
+         Detection counts grouped by datatype via pi_summary.
+         ============================================================ -->
+    <select id="selectDatatypeStatus" parameterType="map" resultType="map">
+        SELECT
+            s.data_type AS datatype,
+            dt.datatype_label AS datatypeLabel,
+            SUM(s.match_count) AS count,
+            SUM(CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN s.match_count ELSE 0 END) AS processedCount,
+            SUM(CASE WHEN dp.approval_status = 'Y' THEN s.match_count ELSE 0 END) AS truePositiveCount
+        FROM pi_summary s
+        INNER JOIN pi_targets t ON s.target_id = t.target_id AND s.ap_no = t.ap_no
+        LEFT JOIN pi_datatypes dt ON s.data_type = dt.datatype_id
+        LEFT JOIN pi_data_processing dp ON s.target_id = dp.target_id AND s.ap_no = dp.ap_no AND s.object_id = dp.hash_id
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        GROUP BY s.data_type, dt.datatype_label
+        ORDER BY count DESC
+    </select>
+
+    <!-- ============================================================
+         selectSystemCurrent
+         Current system status: agents online/offline, scan status.
+         agent_connected is bit (1=connected, 0=disconnected).
+         pi_scan_history.status is varchar (e.g. 'running','completed','error').
+         ============================================================ -->
+    <select id="selectSystemCurrent" resultType="map">
+        SELECT
+            (SELECT COUNT(*)
+               FROM pi_agents
+              WHERE AGENT_USE = 'Y') AS totalAgents,
+
+            (SELECT COUNT(*)
+               FROM pi_agents
+              WHERE AGENT_USE = 'Y'
+                AND agent_connected = 1) AS activeAgents,
+
+            (SELECT COUNT(*)
+               FROM pi_agents
+              WHERE AGENT_USE = 'Y'
+                AND (agent_connected = 0 OR agent_connected IS NULL)) AS inactiveAgents,
+
+            (SELECT COUNT(*)
+               FROM pi_scan_history) AS totalScans,
+
+            (SELECT COUNT(*)
+               FROM pi_scan_history
+              WHERE LOWER(status) = 'running') AS runningScans,
+
+            (SELECT COUNT(*)
+               FROM pi_scan_history
+              WHERE LOWER(status) = 'scheduled') AS scheduledScans,
+
+            'NORMAL' AS systemStatus,
+            NOW() AS lastUpdateTime
+    </select>
+
+    <!-- ============================================================
+         selectPathCurrent
+         Detection path current status: top detected file paths.
+         ============================================================ -->
+    <select id="selectPathCurrent" parameterType="map" resultType="map">
+        SELECT
+            f.path AS path,
+            COUNT(*) AS detectionCount,
+            SUM(CASE WHEN dp.approval_status = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            t.name AS targetName
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        GROUP BY f.path, t.name
+        ORDER BY detectionCount DESC
+        LIMIT 20
+    </select>
+
+    <!-- ============================================================
+         selectDashboardDetections
+         Recent dashboard detections list.
+         Agent join: t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+         ============================================================ -->
+    <select id="selectDashboardDetections" parameterType="map" resultType="map">
+        SELECT
+            f.hash_id AS findNo,
+            f.path AS findPath,
+            s.data_type AS datatype,
+            f.regdate AS findDate,
+            CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+            CASE WHEN dp.approval_status = 'Y' THEN 'Y'
+                 WHEN dp.approval_status = 'N' THEN 'N'
+                 ELSE NULL END AS trueYn,
+            t.name AS targetName,
+            a.agent_connected_ip AS targetIp
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_summary s ON f.target_id = s.target_id AND f.ap_no = s.ap_no AND f.hash_id = s.object_id
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        LEFT JOIN pi_agents a ON t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        ORDER BY f.regdate DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <!-- ============================================================
+         selectPieChartData
+         Pie chart data: detection breakdown by data_type.
+         ============================================================ -->
+    <select id="selectPieChartData" parameterType="map" resultType="map">
+        SELECT
+            IFNULL(dt.datatype_label, s.data_type) AS label,
+            SUM(s.match_count) AS value
+        FROM pi_summary s
+        INNER JOIN pi_targets t ON s.target_id = t.target_id AND s.ap_no = t.ap_no
+        LEFT JOIN pi_datatypes dt ON s.data_type = dt.datatype_id
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND s.regdate &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND s.regdate &lt;= #{endDate}
+        </if>
+        GROUP BY s.data_type, dt.datatype_label
+        ORDER BY value DESC
+    </select>
+
+    <!-- ============================================================
+         selectBarChartData
+         Bar chart data: monthly detection trend with approval breakdown.
+         ============================================================ -->
+    <select id="selectBarChartData" parameterType="map" resultType="map">
+        SELECT
+            DATE_FORMAT(f.regdate, '%Y-%m') AS label,
+            COUNT(*) AS totalCount,
+            SUM(CASE WHEN dp.approval_status = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            SUM(CASE WHEN dp.approval_status = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+            SUM(CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 1 ELSE 0 END) AS processedCount
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND f.regdate &gt;= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND f.regdate &lt;= #{endDate}
+        </if>
+        GROUP BY DATE_FORMAT(f.regdate, '%Y-%m')
+        ORDER BY label ASC
+    </select>
+
+    <!-- ============================================================
+         selectGridData
+         Grid table data: per-target detection summary.
+         Agent join: t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+         ============================================================ -->
+    <select id="selectGridData" parameterType="map" resultType="map">
+        SELECT
+            t.target_id AS targetNo,
+            t.name AS targetName,
+            a.agent_connected_ip AS targetIp,
+            t.group_id AS groupId,
+            tg.name AS groupName,
+            COUNT(f.hash_id) AS detectionCount,
+            SUM(CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 1 ELSE 0 END) AS processedCount,
+            SUM(CASE WHEN dp.approval_status = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            MAX(f.regdate) AS lastDetectionDate
+        FROM pi_targets t
+        LEFT JOIN pi_find f ON t.target_id = f.target_id AND t.ap_no = f.ap_no
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        LEFT JOIN pi_agents a ON t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+        LEFT JOIN pi_target_group tg ON t.group_idx = tg.idx
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND (f.regdate IS NULL OR f.regdate &gt;= #{startDate})
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND (f.regdate IS NULL OR f.regdate &lt;= #{endDate})
+        </if>
+        GROUP BY t.target_id, t.ap_no, t.name, a.agent_connected_ip, t.group_id, tg.name
+        ORDER BY detectionCount DESC
+    </select>
+
+    <!-- ============================================================
+         selectRankingData
+         Ranking: top targets by detection count.
+         Agent join: t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+         ============================================================ -->
+    <select id="selectRankingData" parameterType="map" resultType="map">
+        SELECT
+            t.target_id AS targetNo,
+            t.name AS targetName,
+            a.agent_connected_ip AS targetIp,
+            t.group_id AS groupId,
+            tg.name AS groupName,
+            COUNT(f.hash_id) AS detectionCount,
+            SUM(CASE WHEN dp.approval_status = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        LEFT JOIN pi_agents a ON t.TARGET_ID = a.agent_name AND t.ap_no = a.ap_no
+        LEFT JOIN pi_target_group tg ON t.group_idx = tg.idx
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_id = #{groupId}
+        </if>
+        GROUP BY t.target_id, t.ap_no, t.name, a.agent_connected_ip, t.group_id, tg.name
+        ORDER BY detectionCount DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+</mapper>

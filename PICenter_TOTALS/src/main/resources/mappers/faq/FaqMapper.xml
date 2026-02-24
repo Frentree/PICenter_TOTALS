@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.FaqMapper">
+
+    <!--
+        Actual remote DB schema:
+
+        pi_faq: faq_no(PK auto_increment), faq_title(varchar100), faq_content(varchar3000),
+            faq_create_dt(timestamp), faq_status(char1 default 'N'),
+            faq_user_sosok(varchar200), user_no(varchar255)
+
+        NOTE: Column names differ from previous wrong assumptions:
+            - PK is faq_no, NOT FAQ_ID
+            - Title is faq_title, NOT FAQ_TITLE
+            - Content is faq_content, NOT FAQ_CON
+            - Date is faq_create_dt (timestamp), NOT REGDATE
+            - Has faq_status (char1) and faq_user_sosok (varchar200)
+    -->
+
+    <!-- FAQ list with pagination and optional search -->
+    <select id="selectFaqList" parameterType="map"
+            resultType="com.org.iopts.dto.response.FaqResponse">
+        SELECT
+            f.faq_no                                              AS faqId,
+            f.user_no                                             AS userNo,
+            f.faq_title                                           AS question,
+            f.faq_content                                         AS answer,
+            DATE_FORMAT(f.faq_create_dt, '%Y-%m-%d %H:%i:%s')    AS regDt,
+            u.USER_NAME                                           AS regUserName
+        FROM pi_faq f
+        LEFT JOIN pi_user u ON f.user_no = u.USER_NO
+        <where>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    f.faq_title LIKE CONCAT('%', #{searchKeyword}, '%')
+                    OR f.faq_content LIKE CONCAT('%', #{searchKeyword}, '%')
+                )
+            </if>
+        </where>
+        ORDER BY f.faq_create_dt DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count for pagination -->
+    <select id="selectFaqListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_faq f
+        <where>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (
+                    f.faq_title LIKE CONCAT('%', #{searchKeyword}, '%')
+                    OR f.faq_content LIKE CONCAT('%', #{searchKeyword}, '%')
+                )
+            </if>
+        </where>
+    </select>
+
+    <!-- Insert FAQ -->
+    <insert id="insertFaq" parameterType="map" useGeneratedKeys="true" keyProperty="faqId">
+        INSERT INTO pi_faq (
+            faq_title, faq_content, faq_create_dt, faq_status, user_no
+        ) VALUES (
+            #{question}, #{answer}, NOW(), DEFAULT, #{userNo}
+        )
+    </insert>
+
+    <!-- Update FAQ -->
+    <update id="updateFaq" parameterType="map">
+        UPDATE pi_faq
+        SET faq_title   = #{question},
+            faq_content = #{answer}
+        WHERE faq_no = #{faqId}
+    </update>
+
+    <!-- Delete FAQ (physical delete) -->
+    <delete id="deleteFaq" parameterType="long">
+        DELETE FROM pi_faq
+        WHERE faq_no = #{faqId}
+    </delete>
+
+</mapper>

@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.NoticeMapper">
+
+    <!--
+        Actual remote DB schema:
+
+        pi_notice: notice_id(PK auto_increment), notice_file_id(int),
+            user_no(varchar50), notice_con(varchar2000),
+            notice_title(text), notice_chk(int1), regdate(datetime),
+            notice_alert(int1 default 0)
+
+        pi_notice_file: (file attachment table for notices)
+            - Referenced via notice_file_id FK in pi_notice
+
+        NOTE: There is no VIEW_COUNT column. notice_chk (int, tinyint(1)) is
+              used for read/check status, not a view counter.
+    -->
+
+    <!-- Notice list with pagination and search -->
+    <select id="selectNoticeList" parameterType="map"
+            resultType="com.org.iopts.dto.response.NoticeResponse">
+        SELECT
+            n.notice_id                                            AS noticeId,
+            n.user_no                                              AS userNo,
+            n.notice_title                                         AS title,
+            n.notice_con                                           AS content,
+            n.notice_chk                                           AS noticeChk,
+            n.notice_alert                                         AS noticeAlert,
+            n.notice_file_id                                       AS noticeFileId,
+            DATE_FORMAT(n.regdate, '%Y-%m-%d %H:%i:%s')           AS regDt,
+            u.USER_NAME                                            AS regUserName
+        FROM pi_notice n
+        LEFT JOIN pi_user u ON n.user_no = u.USER_NO
+        WHERE 1=1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                n.notice_title LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR n.notice_con LIKE CONCAT('%', #{searchKeyword}, '%')
+            )
+        </if>
+        ORDER BY n.regdate DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count for pagination -->
+    <select id="selectNoticeListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_notice n
+        WHERE 1=1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (
+                n.notice_title LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR n.notice_con LIKE CONCAT('%', #{searchKeyword}, '%')
+            )
+        </if>
+    </select>
+
+    <!-- Notice detail -->
+    <select id="selectNoticeDetail" parameterType="long"
+            resultType="com.org.iopts.dto.response.NoticeResponse">
+        SELECT
+            n.notice_id                                            AS noticeId,
+            n.user_no                                              AS userNo,
+            n.notice_title                                         AS title,
+            n.notice_con                                           AS content,
+            n.notice_chk                                           AS noticeChk,
+            n.notice_alert                                         AS noticeAlert,
+            n.notice_file_id                                       AS noticeFileId,
+            DATE_FORMAT(n.regdate, '%Y-%m-%d %H:%i:%s')           AS regDt,
+            u.USER_NAME                                            AS regUserName
+        FROM pi_notice n
+        LEFT JOIN pi_user u ON n.user_no = u.USER_NO
+        WHERE n.notice_id = #{noticeId}
+    </select>
+
+    <!-- Insert notice -->
+    <insert id="insertNotice" parameterType="map" useGeneratedKeys="true" keyProperty="noticeId">
+        INSERT INTO pi_notice (
+            user_no, notice_title, notice_con,
+            notice_chk, notice_alert, notice_file_id, regdate
+        ) VALUES (
+            #{userNo}, #{title}, #{content},
+            #{noticeChk}, #{noticeAlert}, #{noticeFileId}, NOW()
+        )
+    </insert>
+
+    <!-- Update notice -->
+    <update id="updateNotice" parameterType="map">
+        UPDATE pi_notice
+        SET notice_title   = #{title},
+            notice_con     = #{content},
+            notice_chk     = #{noticeChk},
+            notice_alert   = #{noticeAlert},
+            notice_file_id = #{noticeFileId}
+        WHERE notice_id = #{noticeId}
+    </update>
+
+    <!-- Delete notice (physical delete) -->
+    <delete id="deleteNotice" parameterType="long">
+        DELETE FROM pi_notice
+        WHERE notice_id = #{noticeId}
+    </delete>
+
+    <!-- updateViewCount - notice_chk is a tinyint(1) check flag, not a counter.
+         Toggle notice_chk to 1 (read) for the given notice. -->
+    <update id="updateViewCount" parameterType="long">
+        UPDATE pi_notice
+        SET notice_chk = 1
+        WHERE notice_id = #{noticeId}
+    </update>
+
+</mapper>

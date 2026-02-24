@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.ExceptionMapper">
+
+    <!--
+        CRITICAL: There is NO pi_path_exception table in the remote DB!
+        The exception table is pi_exception.
+
+        pi_exception: idx(PK auto), group_id, target_id, hash_id,
+                 approval_status, regdate, okdate, reg_user_no, ok_user_no, reason(text)
+        Approval status values: 'W' = waiting, 'Y' = approved (exception active),
+                                'N' = rejected, 'E' = completed
+
+        pi_targets: target_id(PK), ap_no(PK), name, platform, regdate, group_idx, TARGET_USE
+    -->
+
+    <!-- Result Map for PathExceptionResponse -->
+    <resultMap id="pathExceptionResultMap" type="com.org.iopts.dto.response.PathExceptionResponse">
+        <id property="exceptionId" column="EXCEPTION_ID"/>
+        <result property="exceptionPath" column="EXCEPTION_PATH"/>
+        <result property="exceptionType" column="EXCEPTION_TYPE"/>
+        <result property="description" column="DESCRIPTION"/>
+        <result property="targetId" column="TARGET_ID"/>
+        <result property="useYn" column="USE_YN"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="regUser" column="REG_USER"/>
+        <result property="modDt" column="MOD_DT"/>
+        <result property="targetName" column="TARGET_NAME"/>
+    </resultMap>
+
+    <!-- Select path exception list with pagination - uses pi_exception -->
+    <select id="selectPathExceptionList" parameterType="map" resultMap="pathExceptionResultMap">
+        SELECT
+            pe.IDX                                          AS EXCEPTION_ID,
+            pe.HASH_ID                                      AS EXCEPTION_PATH,
+            CASE pe.APPROVAL_STATUS
+                WHEN 'W' THEN 'PENDING'
+                WHEN 'Y' THEN 'APPROVED'
+                WHEN 'N' THEN 'REJECTED'
+                WHEN 'E' THEN 'COMPLETED'
+                ELSE pe.APPROVAL_STATUS
+            END                                             AS EXCEPTION_TYPE,
+            pe.REASON                                       AS DESCRIPTION,
+            pe.TARGET_ID                                    AS TARGET_ID,
+            CASE pe.APPROVAL_STATUS
+                WHEN 'Y' THEN 'Y'
+                WHEN 'E' THEN 'Y'
+                ELSE 'N'
+            END                                             AS USE_YN,
+            pe.REGDATE                                      AS REG_DT,
+            pe.REG_USER_NO                                  AS REG_USER,
+            pe.OKDATE                                       AS MOD_DT,
+            t.NAME                                          AS TARGET_NAME
+        FROM pi_exception pe
+        LEFT JOIN pi_targets t
+            ON pe.TARGET_ID = t.TARGET_ID
+        ORDER BY pe.REGDATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count total path exceptions - uses pi_exception -->
+    <select id="selectPathExceptionListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_exception pe
+    </select>
+
+    <!-- Insert a new path exception into pi_exception -->
+    <insert id="insertPathException" parameterType="map">
+        INSERT INTO pi_exception (
+            GROUP_ID,
+            TARGET_ID,
+            HASH_ID,
+            APPROVAL_STATUS,
+            REGDATE,
+            REG_USER_NO,
+            REASON
+        ) VALUES (
+            #{targetId},
+            #{targetId},
+            #{exceptionPath},
+            'W',
+            NOW(),
+            #{regUser},
+            #{description}
+        )
+    </insert>
+
+    <!-- Delete path exception by IDX from pi_exception -->
+    <delete id="deletePathException" parameterType="long">
+        DELETE FROM pi_exception
+        WHERE IDX = #{exceptionId}
+    </delete>
+
+</mapper>

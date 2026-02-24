@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>PICenter - 타겟 관리</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        /* ===== Page-specific styles (Legacy PICenter_RM target) ===== */
+
+        /* Search table (legacy table-based) */
+        .target_search_table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #c8ced3;
+            background: #fff;
+            margin-bottom: 8px;
+        }
+        .target_search_table th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 0 10px;
+            height: 31.5px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            width: 100px;
+        }
+        .target_search_table td {
+            height: 31.5px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+        }
+        .target_search_table td input[type="text"] {
+            width: 100%;
+            height: 27px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            color: #555;
+            outline: none;
+        }
+        .target_search_table td input[type="text"]:focus {
+            border-color: #0c4da2;
+        }
+        .target_search_table td input[type="text"]::placeholder {
+            color: #bbb;
+        }
+        .target_search_table td select {
+            height: 27px;
+            padding: 0 4px;
+            border: 1px solid #c8ced3;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            color: #555;
+            min-width: 120px;
+            outline: none;
+            background: #fff;
+        }
+        .target_search_table td select:focus {
+            border-color: #0c4da2;
+        }
+        .target_search_table .td_btn {
+            width: 60px;
+            text-align: center;
+        }
+
+        /* Data table */
+        .target_table_wrap {
+            border: 1px solid #c8ced3;
+            background: #fff;
+            margin-bottom: 8px;
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+        .target_data_table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .target_data_table thead th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 8px 8px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+        }
+        .target_data_table tbody td {
+            font-size: 12px;
+            color: #333;
+            padding: 6px 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        .target_data_table tbody tr {
+            cursor: pointer;
+            transition: background 0.12s ease;
+        }
+        .target_data_table tbody tr:hover {
+            background: #f5f8fc;
+        }
+        .target_data_table tbody tr.selected_row {
+            background: #d4e4f7;
+        }
+        .target_data_table tbody td.td_left {
+            text-align: left;
+        }
+        .target_data_table tbody td.td_name {
+            text-align: left;
+            font-weight: 500;
+            color: #222;
+        }
+        .target_data_table tbody td.td_ip {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+        }
+
+        /* Pagination */
+        .target_pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            padding: 8px 0;
+        }
+        .target_pagination button {
+            min-width: 28px;
+            height: 26px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .target_pagination button:hover {
+            background: #e8eef4;
+        }
+        .target_pagination button.active {
+            background: #0c4da2;
+            color: #fff;
+            border-color: #0c4da2;
+            font-weight: 700;
+        }
+        .target_pagination button:disabled {
+            color: #ccc;
+            cursor: default;
+            background: #f9f9f9;
+        }
+        .target_pagination .page_info {
+            font-size: 12px;
+            color: #888;
+            margin: 0 8px;
+        }
+
+        /* Empty */
+        .target_empty {
+            text-align: center;
+            color: #999;
+            padding: 40px 0;
+            font-size: 12px;
+        }
+
+        /* Status badges */
+        .status_active {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status_inactive {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+            background: #fce4ec;
+            color: #c62828;
+        }
+
+        /* ===== Detail Popup ===== */
+        .popup_overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .popup_overlay.show {
+            display: flex;
+        }
+        .popup_container {
+            background: #f9f9f9;
+            border-radius: 0.25rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 640px;
+            max-width: 90%;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+        .popup_hdr {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #f9f9f9;
+        }
+        .popup_ttl {
+            font-size: 16px;
+            font-weight: 600;
+            color: #222;
+        }
+        .popup_close_btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+        .popup_close_btn:hover {
+            background: #eee;
+            color: #333;
+        }
+        .popup_bdy {
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #c8ced3;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Detail info table */
+        .detail_info_table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .detail_info_table th {
+            text-align: center;
+            padding: 8px 10px;
+            font-size: 12px;
+            color: #333;
+            font-weight: 600;
+            width: 120px;
+            background: #e8eef4;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+        }
+        .detail_info_table td {
+            padding: 8px 10px;
+            font-size: 12px;
+            color: #555;
+            border: 1px solid #ddd;
+            word-break: break-word;
+        }
+
+        /* Toolbar row */
+        .target_toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .target_toolbar_left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .target_toolbar_left .total_count {
+            font-size: 12px;
+            color: #888;
+        }
+        .target_toolbar_left .total_count strong {
+            color: #0c4da2;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="header_left">
+        <a href="/picenter_dashboard" class="logo">개인정보 검출관리 센터</a>
+    </div>
+    <div class="header_center">
+        <nav class="nav">
+            <a href="/picenter_dashboard" class="nav_item">대시보드</a>
+            <a href="/picenter_target" class="nav_item active">타겟</a>
+            <a href="/picenter_detection" class="nav_item">검출</a>
+            <a href="/picenter_scan" class="nav_item">스캔</a>
+            <a href="/picenter_report" class="nav_item">보고서</a>
+            <a href="/picenter_statistics" class="nav_item">통계</a>
+            <a href="/picenter_user" class="nav_item">사용자</a>
+            <a href="/picenter_notice" class="nav_item">공지사항</a>
+            <a href="/picenter_setting" class="nav_item">설정</a>
+        </nav>
+    </div>
+    <div class="header_right">
+        <span class="user_info" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
+
+<!-- Content -->
+<div class="container">
+    <!-- Page title -->
+    <div class="page_title_section">
+        <h3 class="page_title">타겟 관리</h3>
+        <p class="page_desc">등록된 검출 대상(타겟)을 관리합니다.</p>
+    </div>
+
+    <!-- Search -->
+    <table class="target_search_table">
+        <tr>
+            <th>호스트명</th>
+            <td>
+                <input type="text" id="searchHostName" placeholder="호스트명을 입력하세요.">
+            </td>
+            <th>상태</th>
+            <td>
+                <select id="searchStatus">
+                    <option value="">전체</option>
+                    <option value="active">활성</option>
+                    <option value="inactive">비활성</option>
+                </select>
+            </td>
+            <th>그룹</th>
+            <td>
+                <select id="searchGroup">
+                    <option value="">전체</option>
+                </select>
+            </td>
+            <td class="td_btn">
+                <button class="btn btn_primary" id="btnSearch">검색</button>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Toolbar -->
+    <div class="target_toolbar">
+        <div class="target_toolbar_left">
+            <span class="total_count">전체 <strong id="totalCount">0</strong>건</span>
+            <span class="total_count" id="pageInfo"></span>
+        </div>
+    </div>
+
+    <!-- Data table -->
+    <div class="target_table_wrap">
+        <table class="target_data_table">
+            <thead>
+                <tr>
+                    <th style="width:50px;">No</th>
+                    <th>호스트명</th>
+                    <th style="width:130px;">IP</th>
+                    <th style="width:80px;">OS</th>
+                    <th style="width:80px;">상태</th>
+                    <th style="width:120px;">그룹</th>
+                    <th style="width:110px;">에이전트 버전</th>
+                    <th style="width:130px;">마지막 스캔일</th>
+                </tr>
+            </thead>
+            <tbody id="targetBody">
+                <tr><td colspan="8" class="target_empty">로딩중...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="target_pagination" id="pagination"></div>
+</div>
+
+<!-- Detail Popup -->
+<div class="popup_overlay" id="detailPopup">
+    <div class="popup_container">
+        <div class="popup_hdr">
+            <span class="popup_ttl">타겟 상세 정보</span>
+            <button class="popup_close_btn" id="detailPopupClose">&times;</button>
+        </div>
+        <div class="popup_bdy" id="detailBody">
+            <div class="target_empty">로딩중...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var PAGE_SIZE = 20;
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+    var currentPage = 0;
+
+    // ========== Auth guard ==========
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Display user info
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            document.getElementById('userInfo').innerHTML =
+                escHtml(user.userName || '') + '(' + escHtml(user.userId || '') + ')';
+        } catch(e) {}
+    }
+
+    // Logout
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    // ========== API Helper ==========
+    function api(url) {
+        return fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        }).then(function(r) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return r.json();
+        });
+    }
+
+    // ========== SEARCH ==========
+    document.getElementById('btnSearch').addEventListener('click', function() {
+        loadTargets(0);
+    });
+    document.getElementById('searchHostName').addEventListener('keyup', function(e) {
+        if (e.key === 'Enter') loadTargets(0);
+    });
+
+    // ========== LOAD GROUPS (for filter) ==========
+    function loadGroups() {
+        api('/api/v1/targets/groups').then(function(data) {
+            if (!data) return;
+            var groups = [];
+            if (data.success && data.data) {
+                groups = flattenGroups(data.data);
+            } else if (Array.isArray(data)) {
+                groups = flattenGroups(data);
+            }
+
+            var select = document.getElementById('searchGroup');
+            groups.forEach(function(g) {
+                var opt = document.createElement('option');
+                opt.value = g.id || g.groupId || '';
+                opt.textContent = g.name || g.groupName || g.text || '';
+                select.appendChild(opt);
+            });
+        }).catch(function() {
+            // silently fail, groups filter will show only "전체"
+        });
+    }
+
+    function flattenGroups(nodes) {
+        var result = [];
+        if (!Array.isArray(nodes)) return result;
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            var type = (node.data && node.data.type) || node.type;
+            if (type !== 1 && type !== 'host') {
+                result.push({
+                    id: node.id || node.groupId || '',
+                    name: node.text || node.name || node.groupName || ''
+                });
+            }
+            if (node.children && node.children.length > 0) {
+                result = result.concat(flattenGroups(node.children));
+            }
+        }
+        return result;
+    }
+
+    // ========== LOAD TARGETS ==========
+    function loadTargets(page) {
+        currentPage = page;
+        var hostName = document.getElementById('searchHostName').value.trim();
+        var status = document.getElementById('searchStatus').value;
+        var group = document.getElementById('searchGroup').value;
+
+        var url = '/api/v1/targets?page=' + page + '&size=' + PAGE_SIZE;
+        if (hostName) {
+            url += '&searchKeyword=' + encodeURIComponent(hostName);
+        }
+        if (status) {
+            url += '&status=' + encodeURIComponent(status);
+        }
+        if (group) {
+            url += '&groupId=' + encodeURIComponent(group);
+        }
+
+        api(url).then(function(data) {
+            if (!data) return;
+            if (data.success && data.data) {
+                renderTable(data.data, page);
+            } else if (data.content) {
+                renderTable(data, page);
+            } else if (Array.isArray(data)) {
+                renderTable({ content: data, totalElements: data.length, totalPages: 1 }, page);
+            } else {
+                renderEmptyTable();
+            }
+        }).catch(function() {
+            renderEmptyTable();
+        });
+    }
+
+    // ========== RENDER TABLE ==========
+    function renderTable(pageData, page) {
+        var tbody = document.getElementById('targetBody');
+        var items = pageData.content || pageData.list || [];
+        var total = pageData.totalElements || pageData.totalCount || 0;
+        var totalPg = pageData.totalPages || Math.ceil(total / PAGE_SIZE) || 1;
+
+        document.getElementById('totalCount').textContent = total.toLocaleString();
+        document.getElementById('pageInfo').textContent = '(' + (page + 1) + ' / ' + totalPg + ' 페이지)';
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="target_empty">등록된 타겟이 없습니다.</td></tr>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        var html = '';
+        items.forEach(function(item, i) {
+            var isActive = item.status === 'active' || item.agentStatus === 'Y' ||
+                           item.status === 'ACTIVE' || item.enable === 1 || item.enable === '1';
+            var statusClass = isActive ? 'status_active' : 'status_inactive';
+            var statusText = isActive ? '활성' : '비활성';
+            var targetId = item.targetId || item.id || '';
+
+            html += '<tr data-id="' + escAttr(targetId) + '">';
+            html += '<td>' + (page * PAGE_SIZE + i + 1) + '</td>';
+            html += '<td class="td_name">' + escHtml(item.targetName || item.hostName || item.name || '-') + '</td>';
+            html += '<td class="td_ip">' + escHtml(item.targetIp || item.ip || '-') + '</td>';
+            html += '<td>' + escHtml(item.osType || item.os || '-') + '</td>';
+            html += '<td><span class="' + statusClass + '">' + statusText + '</span></td>';
+            html += '<td>' + escHtml(item.groupName || item.group || '-') + '</td>';
+            html += '<td>' + escHtml(item.agentVersion || item.version || '-') + '</td>';
+            html += '<td>' + escHtml(item.lastScanDate || item.scanDate || item.lastScan || '-') + '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+
+        // Row click: open detail popup
+        tbody.querySelectorAll('tr').forEach(function(tr) {
+            tr.addEventListener('click', function() {
+                var id = this.dataset.id;
+                if (id) openDetailPopup(id);
+            });
+        });
+
+        renderPagination(page, totalPg);
+    }
+
+    function renderEmptyTable() {
+        document.getElementById('targetBody').innerHTML =
+            '<tr><td colspan="8" class="target_empty">데이터를 불러올 수 없습니다.</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        document.getElementById('totalCount').textContent = '0';
+        document.getElementById('pageInfo').textContent = '';
+    }
+
+    // ========== PAGINATION ==========
+    function renderPagination(current, total) {
+        var el = document.getElementById('pagination');
+        if (total <= 1) { el.innerHTML = ''; return; }
+
+        var html = '';
+        var start = Math.max(0, current - 4);
+        var end = Math.min(total, start + 10);
+        if (end - start < 10) start = Math.max(0, end - 10);
+
+        html += '<button' + (current > 0 ? '' : ' disabled') + ' data-page="0">&laquo;</button>';
+        html += '<button' + (current > 0 ? '' : ' disabled') + ' data-page="' + Math.max(0, current - 1) + '">&lsaquo;</button>';
+
+        for (var i = start; i < end; i++) {
+            html += '<button class="' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        }
+
+        html += '<button' + (current < total - 1 ? '' : ' disabled') + ' data-page="' + Math.min(total - 1, current + 1) + '">&rsaquo;</button>';
+        html += '<button' + (current < total - 1 ? '' : ' disabled') + ' data-page="' + (total - 1) + '">&raquo;</button>';
+
+        el.innerHTML = html;
+        el.querySelectorAll('button:not([disabled])').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                loadTargets(parseInt(this.dataset.page));
+            });
+        });
+    }
+
+    // ========== DETAIL POPUP ==========
+    function openDetailPopup(targetId) {
+        var popup = document.getElementById('detailPopup');
+        var body = document.getElementById('detailBody');
+        body.innerHTML = '<div class="target_empty">로딩중...</div>';
+        popup.classList.add('show');
+
+        // Try to get detailed info from the targets list API or a specific endpoint
+        api('/api/v1/targets/' + encodeURIComponent(targetId)).then(function(data) {
+            if (!data) {
+                body.innerHTML = '<div class="target_empty">상세 정보를 불러올 수 없습니다.</div>';
+                return;
+            }
+
+            var detail = (data.success && data.data) ? data.data : data;
+            if (!detail) {
+                body.innerHTML = '<div class="target_empty">상세 정보가 없습니다.</div>';
+                return;
+            }
+
+            var html = '<table class="detail_info_table">';
+            html += makeRow('호스트명', detail.targetName || detail.hostName || detail.name || '-');
+            html += makeRow('IP 주소', detail.targetIp || detail.ip || '-');
+            html += makeRow('OS', detail.osType || detail.os || '-');
+            html += makeRow('상태', (detail.status === 'active' || detail.agentStatus === 'Y') ? '활성' : '비활성');
+            html += makeRow('그룹', detail.groupName || detail.group || '-');
+            html += makeRow('에이전트 버전', detail.agentVersion || detail.version || '-');
+            html += makeRow('마지막 스캔일', detail.lastScanDate || detail.scanDate || detail.lastScan || '-');
+            html += makeRow('등록일', detail.regDate || detail.createDate || detail.registDate || '-');
+            if (detail.description || detail.note) {
+                html += makeRow('설명', detail.description || detail.note || '-');
+            }
+            if (detail.scanPath || detail.path) {
+                html += makeRow('스캔 경로', detail.scanPath || detail.path || '-');
+            }
+            if (detail.policyName || detail.policy) {
+                html += makeRow('정책', detail.policyName || detail.policy || '-');
+            }
+            html += '</table>';
+
+            body.innerHTML = html;
+        }).catch(function() {
+            body.innerHTML = '<div class="target_empty">상세 정보를 불러올 수 없습니다.</div>';
+        });
+    }
+
+    function makeRow(label, value) {
+        return '<tr><th>' + escHtml(label) + '</th><td>' + escHtml(value) + '</td></tr>';
+    }
+
+    document.getElementById('detailPopupClose').addEventListener('click', function() {
+        document.getElementById('detailPopup').classList.remove('show');
+    });
+    document.getElementById('detailPopup').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+
+    // ========== UTILITIES ==========
+    function escHtml(str) {
+        if (str === null || str === undefined) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(String(str)));
+        return div.innerHTML;
+    }
+
+    function escAttr(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    // ========== INITIAL LOAD ==========
+    loadGroups();
+    loadTargets(0);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.ApprovalMapper">
+
+    <!--
+        CRITICAL: There is NO pi_approval table in the remote DB!
+        The approval workflow uses pi_data_processing table instead.
+
+        pi_data_processing: data_processing_idx(PK auto), ap_no, target_id, hash_id(text),
+                 approval_status(varchar50 default 'W'), approval_type, global_type, regdate,
+                 user_no, data_processing_group_id, processing_flag(int),
+                 data_processing_group_idx, notepad(text), add_content(text)
+        Approval status values: 'W' = waiting/pending, 'Y' = approved, 'N' = rejected
+
+        pi_find: hash_id(PK varchar100), group_id(varchar100), target_id(PK varchar100),
+                 ap_no(PK int), path(text), owner(varchar200), regdate, credate, ...
+        pi_targets: target_id(PK), ap_no(PK), name, platform, regdate, group_idx, TARGET_USE
+    -->
+
+    <!-- Result Map for ApprovalResponse -->
+    <resultMap id="approvalResultMap" type="com.org.iopts.dto.response.ApprovalResponse">
+        <id property="approvalId" column="APPROVAL_ID"/>
+        <result property="findId" column="FIND_ID"/>
+        <result property="approvalStatus" column="APPROVAL_STATUS"/>
+        <result property="approvalType" column="APPROVAL_TYPE"/>
+        <result property="requestUser" column="REQUEST_USER"/>
+        <result property="requestComment" column="REQUEST_COMMENT"/>
+        <result property="approvalUser" column="APPROVAL_USER"/>
+        <result property="approvalComment" column="APPROVAL_COMMENT"/>
+        <result property="requestDt" column="REQUEST_DT"/>
+        <result property="approvalDt" column="APPROVAL_DT"/>
+        <result property="targetName" column="TARGET_NAME"/>
+        <result property="filePath" column="FILE_PATH"/>
+    </resultMap>
+
+    <!-- Common WHERE clause for approval filters using pi_data_processing -->
+    <sql id="approvalCondition">
+        <where>
+            <!-- Only show records that are in approval workflow (have approval_status set) -->
+            AND dp.APPROVAL_STATUS IS NOT NULL
+            <if test="status != null and status != ''">
+                <choose>
+                    <when test="status == 'PENDING'">
+                        AND dp.APPROVAL_STATUS = 'W'
+                    </when>
+                    <when test="status == 'APPROVED'">
+                        AND dp.APPROVAL_STATUS = 'Y'
+                    </when>
+                    <when test="status == 'REJECTED'">
+                        AND dp.APPROVAL_STATUS = 'N'
+                    </when>
+                    <when test="status == 'CANCELLED'">
+                        AND dp.APPROVAL_STATUS = 'C'
+                    </when>
+                    <otherwise>
+                        AND dp.APPROVAL_STATUS = #{status}
+                    </otherwise>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <!-- Select approval list with pagination - uses pi_data_processing -->
+    <select id="selectApprovalList" parameterType="map" resultMap="approvalResultMap">
+        SELECT
+            dp.DATA_PROCESSING_IDX                          AS APPROVAL_ID,
+            dp.HASH_ID                                      AS FIND_ID,
+            CASE dp.APPROVAL_STATUS
+                WHEN 'W' THEN 'PENDING'
+                WHEN 'Y' THEN 'APPROVED'
+                WHEN 'N' THEN 'REJECTED'
+                WHEN 'C' THEN 'CANCELLED'
+                ELSE dp.APPROVAL_STATUS
+            END                                             AS APPROVAL_STATUS,
+            dp.APPROVAL_TYPE                                AS APPROVAL_TYPE,
+            dp.USER_NO                                      AS REQUEST_USER,
+            dp.NOTEPAD                                      AS REQUEST_COMMENT,
+            ''                                              AS APPROVAL_USER,
+            dp.ADD_CONTENT                                  AS APPROVAL_COMMENT,
+            dp.REGDATE                                      AS REQUEST_DT,
+            NULL                                            AS APPROVAL_DT,
+            t.NAME                                          AS TARGET_NAME,
+            f.PATH                                          AS FILE_PATH
+        FROM pi_data_processing dp
+        LEFT JOIN pi_find f
+            ON dp.HASH_ID = f.HASH_ID AND dp.TARGET_ID = f.TARGET_ID AND dp.AP_NO = f.AP_NO
+        LEFT JOIN pi_targets t
+            ON dp.TARGET_ID = t.TARGET_ID AND dp.AP_NO = t.AP_NO
+        <include refid="approvalCondition"/>
+        ORDER BY dp.REGDATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count total approvals matching filter - uses pi_data_processing -->
+    <select id="selectApprovalListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_data_processing dp
+        LEFT JOIN pi_find f
+            ON dp.HASH_ID = f.HASH_ID AND dp.TARGET_ID = f.TARGET_ID AND dp.AP_NO = f.AP_NO
+        LEFT JOIN pi_targets t
+            ON dp.TARGET_ID = t.TARGET_ID AND dp.AP_NO = t.AP_NO
+        <include refid="approvalCondition"/>
+    </select>
+
+    <!-- Select approval detail by DATA_PROCESSING_IDX - uses pi_data_processing -->
+    <select id="selectApprovalDetail" parameterType="long" resultMap="approvalResultMap">
+        SELECT
+            dp.DATA_PROCESSING_IDX                          AS APPROVAL_ID,
+            dp.HASH_ID                                      AS FIND_ID,
+            CASE dp.APPROVAL_STATUS
+                WHEN 'W' THEN 'PENDING'
+                WHEN 'Y' THEN 'APPROVED'
+                WHEN 'N' THEN 'REJECTED'
+                WHEN 'C' THEN 'CANCELLED'
+                ELSE dp.APPROVAL_STATUS
+            END                                             AS APPROVAL_STATUS,
+            dp.APPROVAL_TYPE                                AS APPROVAL_TYPE,
+            dp.USER_NO                                      AS REQUEST_USER,
+            dp.NOTEPAD                                      AS REQUEST_COMMENT,
+            ''                                              AS APPROVAL_USER,
+            dp.ADD_CONTENT                                  AS APPROVAL_COMMENT,
+            dp.REGDATE                                      AS REQUEST_DT,
+            NULL                                            AS APPROVAL_DT,
+            t.NAME                                          AS TARGET_NAME,
+            f.PATH                                          AS FILE_PATH
+        FROM pi_data_processing dp
+        LEFT JOIN pi_find f
+            ON dp.HASH_ID = f.HASH_ID AND dp.TARGET_ID = f.TARGET_ID AND dp.AP_NO = f.AP_NO
+        LEFT JOIN pi_targets t
+            ON dp.TARGET_ID = t.TARGET_ID AND dp.AP_NO = t.AP_NO
+        WHERE dp.DATA_PROCESSING_IDX = #{approvalId}
+    </select>
+
+    <!-- Update approval status in pi_data_processing -->
+    <update id="updateApprovalStatus" parameterType="map">
+        UPDATE pi_data_processing
+        SET
+            APPROVAL_STATUS = CASE #{approvalStatus}
+                WHEN 'APPROVED'  THEN 'Y'
+                WHEN 'REJECTED'  THEN 'N'
+                WHEN 'CANCELLED' THEN 'C'
+                WHEN 'PENDING'   THEN 'W'
+                ELSE #{approvalStatus}
+            END,
+            ADD_CONTENT = #{approvalComment},
+            REGDATE = NOW()
+        WHERE DATA_PROCESSING_IDX = #{approvalId}
+    </update>
+
+</mapper>

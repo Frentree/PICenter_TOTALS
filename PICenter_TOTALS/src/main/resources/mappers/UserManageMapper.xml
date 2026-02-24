@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.UserManageMapper">
+
+    <!-- ==================== Result Maps ==================== -->
+
+    <resultMap id="UserResponseMap" type="com.org.iopts.dto.response.UserResponse">
+        <id property="userNo" column="USER_NO"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="userName" column="USER_NAME"/>
+        <result property="userGrade" column="USER_GRADE"/>
+        <result property="teamCode" column="TEAM_CODE"/>
+        <result property="teamName" column="TEAM_NAME"/>
+        <result property="email" column="EMAIL"/>
+        <result property="phone" column="PHONE"/>
+        <result property="useYn" column="USE_YN"/>
+        <result property="lockYn" column="LOCK_YN"/>
+        <result property="lockDt" column="LOCK_DT"/>
+        <result property="loginFailCnt" column="LOGIN_FAIL_CNT"/>
+        <result property="lastLoginDt" column="LAST_LOGIN_DT"/>
+        <result property="pwdChangeDt" column="PWD_CHANGE_DT"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="regUser" column="REG_USER"/>
+        <result property="modDt" column="MOD_DT"/>
+        <result property="modUser" column="MOD_USER"/>
+    </resultMap>
+
+    <resultMap id="UserLogResponseMap" type="com.org.iopts.dto.response.UserLogResponse">
+        <id property="logNo" column="LOG_NO"/>
+        <result property="userNo" column="USER_NO"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="userName" column="USER_NAME"/>
+        <result property="logType" column="MENU_NAME"/>
+        <result property="logDetail" column="ACTION"/>
+        <result property="ipAddress" column="IP_ADDR"/>
+        <result property="logDt" column="REG_DT"/>
+    </resultMap>
+
+    <!-- ==================== Search Condition Fragment ==================== -->
+
+    <sql id="userSearchCondition">
+        <if test="searchType != null and searchKeyword != null">
+            <choose>
+                <when test="searchType == 'userId'">
+                    AND u.user_id LIKE CONCAT('%', #{searchKeyword}, '%')
+                </when>
+                <when test="searchType == 'userName'">
+                    AND u.user_name LIKE CONCAT('%', #{searchKeyword}, '%')
+                </when>
+                <when test="searchType == 'teamCode'">
+                    AND u.insa_code = #{searchKeyword}
+                </when>
+                <when test="searchType == 'userGrade'">
+                    AND u.user_grade = #{searchKeyword}
+                </when>
+                <when test="searchType == 'useYn'">
+                    AND u.acc_yn = #{searchKeyword}
+                </when>
+            </choose>
+        </if>
+    </sql>
+
+    <sql id="userLogSearchCondition">
+        <if test="searchType != null and searchKeyword != null">
+            <choose>
+                <when test="searchType == 'userId'">
+                    AND u.user_id LIKE CONCAT('%', #{searchKeyword}, '%')
+                </when>
+                <when test="searchType == 'userName'">
+                    AND u.user_name LIKE CONCAT('%', #{searchKeyword}, '%')
+                </when>
+                <when test="searchType == 'logType'">
+                    AND l.menu_name = #{searchKeyword}
+                </when>
+                <when test="searchType == 'ipAddress'">
+                    AND l.user_ip LIKE CONCAT('%', #{searchKeyword}, '%')
+                </when>
+            </choose>
+        </if>
+    </sql>
+
+    <!-- ==================== User CRUD ==================== -->
+
+    <!-- Select paginated user list -->
+    <select id="selectUserList" parameterType="map" resultMap="UserResponseMap">
+        SELECT
+            u.user_no        AS USER_NO,
+            u.user_id        AS USER_ID,
+            u.user_name      AS USER_NAME,
+            u.user_grade     AS USER_GRADE,
+            u.insa_code      AS TEAM_CODE,
+            g.team_name      AS TEAM_NAME,
+            u.user_email     AS EMAIL,
+            u.user_phone     AS PHONE,
+            u.acc_yn         AS USE_YN,
+            u.lock_status    AS LOCK_YN,
+            u.LOCK_DATE      AS LOCK_DT,
+            u.FAILED_COUNT   AS LOGIN_FAIL_CNT,
+            u.logindate      AS LAST_LOGIN_DT,
+            u.pwd_upt_dt     AS PWD_CHANGE_DT,
+            u.regdate        AS REG_DT,
+            NULL             AS REG_USER,
+            NULL             AS MOD_DT,
+            NULL             AS MOD_USER
+        FROM pi_user u
+        LEFT JOIN pi_group g ON u.insa_code = g.insa_code
+        WHERE 1=1
+        <include refid="userSearchCondition"/>
+        ORDER BY u.user_no DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count total users matching search filters -->
+    <select id="selectUserListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_user u
+        WHERE 1=1
+        <include refid="userSearchCondition"/>
+    </select>
+
+    <!-- Select single user detail -->
+    <select id="selectUserDetail" parameterType="String" resultMap="UserResponseMap">
+        SELECT
+            u.user_no        AS USER_NO,
+            u.user_id        AS USER_ID,
+            u.user_name      AS USER_NAME,
+            u.user_grade     AS USER_GRADE,
+            u.insa_code      AS TEAM_CODE,
+            g.team_name      AS TEAM_NAME,
+            u.user_email     AS EMAIL,
+            u.user_phone     AS PHONE,
+            u.acc_yn         AS USE_YN,
+            u.lock_status    AS LOCK_YN,
+            u.LOCK_DATE      AS LOCK_DT,
+            u.FAILED_COUNT   AS LOGIN_FAIL_CNT,
+            u.logindate      AS LAST_LOGIN_DT,
+            u.pwd_upt_dt     AS PWD_CHANGE_DT,
+            u.regdate        AS REG_DT,
+            NULL             AS REG_USER,
+            NULL             AS MOD_DT,
+            NULL             AS MOD_USER
+        FROM pi_user u
+        LEFT JOIN pi_group g ON u.insa_code = g.insa_code
+        WHERE u.user_no = #{userNo}
+    </select>
+
+    <!-- Insert a new user -->
+    <insert id="insertUser" parameterType="map">
+        INSERT INTO pi_user (
+            user_no,
+            user_id,
+            password,
+            user_name,
+            user_grade,
+            insa_code,
+            user_email,
+            user_phone,
+            acc_yn,
+            lock_status,
+            FAILED_COUNT,
+            pwd_upt_dt,
+            regdate,
+            startdate,
+            enddate
+        ) VALUES (
+            #{userNo},
+            #{userId},
+            SHA2(HEX(#{userPwd}), 256),
+            #{userName},
+            #{userGrade},
+            #{teamCode},
+            #{email},
+            #{phone},
+            IFNULL(#{useYn}, 'Y'),
+            IFNULL(#{lockYn}, 0),
+            0,
+            NOW(),
+            NOW(),
+            #{startDate},
+            #{endDate}
+        )
+    </insert>
+
+    <!-- Update an existing user -->
+    <update id="updateUser" parameterType="map">
+        UPDATE pi_user
+        SET
+            <if test="userName != null">user_name = #{userName},</if>
+            <if test="userGrade != null">user_grade = #{userGrade},</if>
+            <if test="teamCode != null">insa_code = #{teamCode},</if>
+            <if test="email != null">user_email = #{email},</if>
+            <if test="phone != null">user_phone = #{phone},</if>
+            <if test="useYn != null">acc_yn = #{useYn},</if>
+            user_no = user_no
+        WHERE user_no = #{userNo}
+    </update>
+
+    <!-- Delete a user -->
+    <delete id="deleteUser" parameterType="String">
+        DELETE FROM pi_user
+        WHERE user_no = #{userNo}
+    </delete>
+
+    <!-- ==================== Password Management ==================== -->
+
+    <!-- Update password (user-initiated change) -->
+    <update id="updatePassword" parameterType="map">
+        UPDATE pi_user
+        SET
+            password = SHA2(HEX(#{userPwd}), 256),
+            pwd_upt_dt = NOW()
+        WHERE user_no = #{userNo}
+          AND password = SHA2(HEX(#{oldPassword}), 256)
+    </update>
+
+    <!-- Reset password (admin-initiated) -->
+    <update id="resetPassword" parameterType="map">
+        UPDATE pi_user
+        SET
+            password = SHA2(HEX(#{userPwd}), 256),
+            FAILED_COUNT = 0,
+            lock_status = 0,
+            LOCK_DATE = NULL,
+            pwd_upt_dt = NOW(),
+            pwd_reset_status = 1
+        WHERE user_no = #{userNo}
+    </update>
+
+    <!-- ==================== Account Lock ==================== -->
+
+    <!-- Lock user account -->
+    <update id="lockUser" parameterType="String">
+        UPDATE pi_user
+        SET
+            lock_status = 1,
+            LOCK_DATE = NOW()
+        WHERE user_no = #{userNo}
+    </update>
+
+    <!-- Unlock user account -->
+    <update id="unlockUser" parameterType="String">
+        UPDATE pi_user
+        SET
+            lock_status = 0,
+            LOCK_DATE = NOW(),
+            FAILED_COUNT = 0,
+            logindate = DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00'), INTERVAL 3 MONTH),
+            unlock_reason = NULL
+        WHERE user_no = #{userNo}
+    </update>
+
+    <!-- ==================== Team Management ==================== -->
+
+    <!-- Select all teams (from pi_group) -->
+    <select id="selectTeamList" resultType="map">
+        SELECT DISTINCT
+            g.insa_code   AS teamCode,
+            g.team_name   AS teamName,
+            g.up_idx      AS parentCode,
+            g.degree      AS sortOrder,
+            g.credate     AS regDt
+        FROM pi_group g
+        WHERE g.team_name IS NOT NULL
+        ORDER BY g.degree ASC, g.team_name ASC
+    </select>
+
+    <!-- Insert a new team (into pi_group) -->
+    <insert id="insertTeam" parameterType="map">
+        INSERT INTO pi_group (
+            insa_code,
+            team_name,
+            up_idx,
+            degree,
+            credate
+        ) VALUES (
+            #{teamCode},
+            #{teamName},
+            #{parentCode},
+            #{sortOrder},
+            NOW()
+        )
+    </insert>
+
+    <!-- ==================== User Logs ==================== -->
+
+    <!-- Select paginated user log list (from pi_userlog) -->
+    <select id="selectUserLogList" parameterType="map" resultMap="UserLogResponseMap">
+        SELECT
+            CONCAT(DATE_FORMAT(l.regdate, '%Y%m%d%H%i%s'), '_', l.millisecond, '_', l.user_no) AS LOG_NO,
+            l.user_no        AS USER_NO,
+            u.user_id        AS USER_ID,
+            u.user_name      AS USER_NAME,
+            l.menu_name      AS MENU_NAME,
+            l.job_info        AS ACTION,
+            l.user_ip        AS IP_ADDR,
+            l.regdate        AS REG_DT
+        FROM pi_userlog l
+        LEFT JOIN pi_user u ON l.user_no = u.user_no
+        WHERE 1=1
+        <include refid="userLogSearchCondition"/>
+        <if test="fromDate != null and toDate != null">
+            AND l.regdate BETWEEN CONCAT(#{fromDate}, ' 00:00:00') AND CONCAT(#{toDate}, ' 23:59:59')
+        </if>
+        <if test="logFlag != null and logFlag != ''">
+            AND l.log_flag = #{logFlag}
+        </if>
+        ORDER BY l.regdate DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count total user logs matching search filters -->
+    <select id="selectUserLogListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_userlog l
+        LEFT JOIN pi_user u ON l.user_no = u.user_no
+        WHERE 1=1
+        <include refid="userLogSearchCondition"/>
+        <if test="fromDate != null and toDate != null">
+            AND l.regdate BETWEEN CONCAT(#{fromDate}, ' 00:00:00') AND CONCAT(#{toDate}, ' 23:59:59')
+        </if>
+        <if test="logFlag != null and logFlag != ''">
+            AND l.log_flag = #{logFlag}
+        </if>
+    </select>
+
+    <!-- ==================== Account Policy ==================== -->
+
+    <!-- Select current account policy (from pi_login_policy) -->
+    <select id="selectAccountPolicy" resultType="map">
+        SELECT
+            IDX                AS idx,
+            `ENABLE`           AS enable,
+            UPDATE_LENGTH_CHK  AS lengthChk,
+            UPDATE_LENGTH      AS passwordMinLength,
+            PWD_COMPLICATION   AS passwordComplexYn,
+            UPDATE_PWD_CHK     AS changeChk,
+            UPDATE_PWD         AS passwordExpireDays,
+            USE_ID_LOCK_CHK    AS useIdLockChk,
+            USE_ID_LOCK        AS accountLockDays,
+            PWD_FAIL_CHK       AS pwdFailChk,
+            PWD_FAIL           AS loginFailLimit,
+            INCLUDE_PWD_ID     AS includePwdId,
+            PWD_CHANGE_CHK     AS pwdChangeChk,
+            PWD_CHANGE         AS pwdChangeLimit,
+            REGDATE            AS regDt
+        FROM pi_login_policy
+        WHERE IDX = 0
+    </select>
+
+    <!-- Save account policy (update pi_login_policy) -->
+    <update id="saveAccountPolicy" parameterType="map">
+        UPDATE pi_login_policy
+        SET
+            `ENABLE`          = #{enable},
+            UPDATE_LENGTH_CHK = #{lengthChk},
+            UPDATE_LENGTH     = #{passwordMinLength},
+            PWD_COMPLICATION  = #{passwordComplexYn},
+            UPDATE_PWD_CHK    = #{changeChk},
+            UPDATE_PWD        = #{passwordExpireDays},
+            USE_ID_LOCK_CHK   = #{useIdLockChk},
+            USE_ID_LOCK       = #{accountLockDays},
+            PWD_FAIL_CHK      = #{pwdFailChk},
+            PWD_FAIL          = #{loginFailLimit},
+            INCLUDE_PWD_ID    = #{includePwdId},
+            PWD_CHANGE_CHK    = #{pwdChangeChk},
+            PWD_CHANGE        = #{pwdChangeLimit},
+            REGDATE           = NOW()
+        WHERE IDX = 0
+    </update>
+
+</mapper>

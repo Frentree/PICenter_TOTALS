@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.ScanMapper">
+
+    <!-- ==================== Result Maps ==================== -->
+
+    <!--
+        Actual pi_schedules columns:
+            schedule_id(PK varchar50), ap_no(PK int), schedule_status, schedule_label,
+            schedule_repeat_days, schedule_repeat_months, schedule_datatype_profiles,
+            schedule_next_scan, schedule_target_id, schedule_target_name,
+            schedule_cpu, schedule_capture, schedule_trace,
+            schedule_pause_days, schedule_pause_from, schedule_pause_to,
+            regdate, DRM_STATUS
+
+        Actual pi_scan_history columns (ONLY these):
+            target_id(PK varchar50), ap_no(PK int), started(varchar50), status(varchar50), regdate(PK date)
+
+        Actual pi_scan_policy columns (NO pi_policies table):
+            idx(PK auto), policy_name, policy_version, regdate, comment(text),
+            datatype_id, std_id, start_dtm, cycle, schedule_label,
+            schedule_cpu, schedule_data, schedule_memory, schedule_trace,
+            ENABLED, ENABLE, policy_type
+
+        Actual pi_locations columns:
+            group_id, target_id(PK), location_id(PK), AP_NO(PK), LOCATION_USE,
+            path, protocol, search_status, description, regdate
+
+        Actual pi_datatypes columns:
+            datatype_id(PK varchar40), std_id, datatype(longtext), datatype_label,
+            version, owner, modified, defaults, disabled, global, sealed, ocr,
+            recent, extension
+    -->
+
+    <resultMap id="scheduleResponseMap" type="com.org.iopts.dto.response.ScheduleResponse">
+        <id property="scheduleId" column="SCHEDULE_ID"/>
+        <result property="scheduleName" column="SCHEDULE_NAME"/>
+        <result property="scheduleType" column="SCHEDULE_TYPE"/>
+        <result property="cronExpression" column="CRON_EXPRESSION"/>
+        <result property="policyId" column="POLICY_ID"/>
+        <result property="targetGroupId" column="TARGET_GROUP_ID"/>
+        <result property="statusYn" column="STATUS_YN"/>
+        <result property="description" column="DESCRIPTION"/>
+        <result property="lastRunDt" column="LAST_RUN_DT"/>
+        <result property="nextRunDt" column="NEXT_RUN_DT"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="regUser" column="REG_USER"/>
+        <result property="modDt" column="MOD_DT"/>
+        <result property="policyName" column="POLICY_NAME"/>
+    </resultMap>
+
+    <resultMap id="locationResponseMap" type="com.org.iopts.dto.response.LocationResponse">
+        <id property="locationId" column="LOCATION_ID"/>
+        <result property="locationName" column="LOCATION_NAME"/>
+        <result property="locationPath" column="LOCATION_PATH"/>
+        <result property="locationType" column="LOCATION_TYPE"/>
+        <result property="useYn" column="USE_YN"/>
+    </resultMap>
+
+    <!-- ==================== Schedule Queries ==================== -->
+
+    <!-- List schedules with pagination.
+         schedule_label -> SCHEDULE_NAME, schedule_repeat_days -> SCHEDULE_TYPE,
+         schedule_datatype_profiles -> CRON_EXPRESSION (closest available),
+         schedule_target_id -> TARGET_GROUP_ID, schedule_status -> STATUS_YN,
+         schedule_target_name -> DESCRIPTION, schedule_next_scan -> NEXT_RUN_DT
+    -->
+    <select id="selectScheduleList" resultMap="scheduleResponseMap">
+        SELECT
+            s.SCHEDULE_ID,
+            s.SCHEDULE_LABEL              AS SCHEDULE_NAME,
+            s.SCHEDULE_REPEAT_DAYS        AS SCHEDULE_TYPE,
+            s.SCHEDULE_DATATYPE_PROFILES  AS CRON_EXPRESSION,
+            NULL                          AS POLICY_ID,
+            s.SCHEDULE_TARGET_ID          AS TARGET_GROUP_ID,
+            s.SCHEDULE_STATUS             AS STATUS_YN,
+            s.SCHEDULE_TARGET_NAME        AS DESCRIPTION,
+            NULL                          AS LAST_RUN_DT,
+            s.SCHEDULE_NEXT_SCAN          AS NEXT_RUN_DT,
+            s.REGDATE                     AS REG_DT,
+            NULL                          AS REG_USER,
+            NULL                          AS MOD_DT,
+            (SELECT d.DATATYPE_LABEL FROM pi_datatypes d
+             WHERE d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES LIMIT 1) AS POLICY_NAME
+        FROM pi_schedules s
+        ORDER BY s.REGDATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countScheduleList" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_schedules
+    </select>
+
+    <select id="selectScheduleDetail" resultMap="scheduleResponseMap">
+        SELECT
+            s.SCHEDULE_ID,
+            s.SCHEDULE_LABEL              AS SCHEDULE_NAME,
+            s.SCHEDULE_REPEAT_DAYS        AS SCHEDULE_TYPE,
+            s.SCHEDULE_DATATYPE_PROFILES  AS CRON_EXPRESSION,
+            NULL                          AS POLICY_ID,
+            s.SCHEDULE_TARGET_ID          AS TARGET_GROUP_ID,
+            s.SCHEDULE_STATUS             AS STATUS_YN,
+            s.SCHEDULE_TARGET_NAME        AS DESCRIPTION,
+            NULL                          AS LAST_RUN_DT,
+            s.SCHEDULE_NEXT_SCAN          AS NEXT_RUN_DT,
+            s.REGDATE                     AS REG_DT,
+            NULL                          AS REG_USER,
+            NULL                          AS MOD_DT,
+            (SELECT d.DATATYPE_LABEL FROM pi_datatypes d
+             WHERE d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES LIMIT 1) AS POLICY_NAME
+        FROM pi_schedules s
+        WHERE s.SCHEDULE_ID = #{scheduleId}
+    </select>
+
+    <insert id="insertSchedule">
+        INSERT INTO pi_schedules (
+            SCHEDULE_ID, AP_NO, SCHEDULE_LABEL, SCHEDULE_STATUS,
+            SCHEDULE_REPEAT_DAYS, SCHEDULE_REPEAT_MONTHS,
+            SCHEDULE_TARGET_ID, SCHEDULE_TARGET_NAME,
+            SCHEDULE_DATATYPE_PROFILES, SCHEDULE_NEXT_SCAN,
+            SCHEDULE_CPU, SCHEDULE_CAPTURE, SCHEDULE_TRACE,
+            REGDATE
+        ) VALUES (
+            #{scheduleName}, 0, #{scheduleName}, 'scheduled',
+            #{scheduleType}, NULL,
+            #{targetGroupId}, #{description},
+            #{cronExpression}, NULL,
+            NULL, NULL, NULL,
+            NOW()
+        )
+    </insert>
+
+    <update id="updateSchedule">
+        UPDATE pi_schedules
+        SET SCHEDULE_LABEL              = #{scheduleName},
+            SCHEDULE_REPEAT_DAYS        = #{scheduleType},
+            SCHEDULE_DATATYPE_PROFILES  = #{cronExpression},
+            SCHEDULE_TARGET_ID          = #{targetGroupId},
+            SCHEDULE_TARGET_NAME        = #{description},
+            SCHEDULE_STATUS             = #{statusYn}
+        WHERE SCHEDULE_ID = #{scheduleId}
+    </update>
+
+    <delete id="deleteSchedule">
+        DELETE FROM pi_schedules
+        WHERE SCHEDULE_ID = #{scheduleId}
+    </delete>
+
+    <update id="updateScheduleStatus">
+        UPDATE pi_schedules
+        SET SCHEDULE_STATUS = #{statusYn}
+        WHERE SCHEDULE_ID = #{scheduleId}
+    </update>
+
+    <update id="updateScheduleLastRun">
+        UPDATE pi_schedules
+        SET SCHEDULE_NEXT_SCAN = UNIX_TIMESTAMP(NOW())
+        WHERE SCHEDULE_ID = #{scheduleId}
+    </update>
+
+    <!-- ==================== Scan History Queries ==================== -->
+
+    <!--
+        pi_scan_history actual columns (ONLY these):
+            target_id (PK varchar50), ap_no (PK int), started (varchar50),
+            status (varchar50), regdate (PK date)
+        There is NO: scan_id, schedule_id, started_at, finished_at,
+                     total_files, found_count, error_msg, reg_dt
+    -->
+    <insert id="insertScanHistory">
+        INSERT INTO pi_scan_history (TARGET_ID, AP_NO, STARTED, STATUS, REGDATE)
+        VALUES (#{targetId}, 0, NOW(), 'RUNNING', CURDATE())
+    </insert>
+
+    <select id="selectScanHistory" resultType="map">
+        SELECT
+            sh.TARGET_ID            AS targetId,
+            t.NAME                  AS targetName,
+            IFNULL(a.AGENT_CONNECTED_IP, '') AS targetIp,
+            sh.STATUS               AS scanStatus,
+            sh.STARTED              AS startDt,
+            sh.REGDATE              AS regDt
+        FROM pi_scan_history sh
+        LEFT JOIN pi_targets t   ON sh.TARGET_ID = t.TARGET_ID AND sh.AP_NO = t.AP_NO
+        LEFT JOIN pi_agents a    ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO
+        <where>
+            <if test="targetId != null and targetId != ''">
+                AND sh.TARGET_ID = #{targetId}
+            </if>
+        </where>
+        ORDER BY sh.REGDATE DESC, sh.STARTED DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countScanHistory" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_scan_history
+        <where>
+            <if test="targetId != null and targetId != ''">
+                AND TARGET_ID = #{targetId}
+            </if>
+        </where>
+    </select>
+
+    <!-- ==================== Location Queries ==================== -->
+
+    <!--
+        pi_locations actual columns:
+            group_id, target_id(PK), location_id(PK), AP_NO(PK), LOCATION_USE,
+            path, protocol, search_status, description, regdate
+    -->
+    <select id="selectLocationList" resultMap="locationResponseMap">
+        SELECT
+            l.LOCATION_ID,
+            l.DESCRIPTION     AS LOCATION_NAME,
+            l.PATH            AS LOCATION_PATH,
+            l.PROTOCOL        AS LOCATION_TYPE,
+            l.LOCATION_USE    AS USE_YN
+        FROM pi_locations l
+        ORDER BY l.DESCRIPTION
+    </select>
+
+    <!-- ==================== Datatype Queries ==================== -->
+
+    <!--
+        pi_datatypes actual columns:
+            datatype_id(PK varchar40), std_id, datatype(longtext), datatype_label,
+            version, owner, modified, defaults, disabled, global, sealed, ocr,
+            recent, extension
+    -->
+    <select id="selectDatatypeList" resultType="map">
+        SELECT
+            DATATYPE_ID      AS datatypeId,
+            DATATYPE_LABEL   AS datatypeName,
+            VERSION          AS version,
+            DATATYPE         AS datatypePattern,
+            NULL             AS description,
+            CASE WHEN DISABLED = 0 THEN 'Y' ELSE 'N' END AS useYn
+        FROM pi_datatypes
+        ORDER BY DATATYPE_LABEL
+    </select>
+
+    <!-- ==================== Policy Queries ==================== -->
+
+    <!--
+        There is NO pi_policies table. Use pi_scan_policy instead.
+        pi_scan_policy actual columns:
+            idx(PK auto), policy_name, policy_version, regdate, comment(text),
+            datatype_id, std_id, start_dtm, cycle, schedule_label,
+            schedule_cpu, schedule_data, schedule_memory, schedule_trace,
+            ENABLED, ENABLE, policy_type
+    -->
+    <select id="selectPolicyList" resultType="map">
+        SELECT
+            sp.IDX              AS policyId,
+            sp.POLICY_NAME      AS policyName,
+            sp.DATATYPE_ID      AS datatypeIds,
+            NULL                AS locationIds,
+            sp.COMMENT          AS description,
+            CASE WHEN sp.ENABLE = 1 THEN 'Y' ELSE 'N' END AS useYn,
+            sp.REGDATE          AS regDt,
+            NULL                AS regUser,
+            NULL                AS modDt,
+            sp.SCHEDULE_CPU     AS cpuLimit,
+            sp.POLICY_VERSION   AS scanDepth,
+            0                   AS scheduleCount
+        FROM pi_scan_policy sp
+        WHERE sp.ENABLE = 1
+        ORDER BY sp.REGDATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPolicyList" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_scan_policy
+        WHERE ENABLE = 1
+    </select>
+
+    <insert id="insertPolicy">
+        INSERT INTO pi_scan_policy (
+            POLICY_NAME, POLICY_VERSION, REGDATE, COMMENT,
+            DATATYPE_ID, SCHEDULE_LABEL, SCHEDULE_CPU,
+            SCHEDULE_DATA, SCHEDULE_MEMORY, SCHEDULE_TRACE,
+            ENABLE
+        ) VALUES (
+            #{policyName}, '1.0', NOW(), #{description},
+            #{datatypeIds}, #{policyName}, NULL,
+            NULL, NULL, NULL,
+            1
+        )
+    </insert>
+
+    <update id="updatePolicy">
+        UPDATE pi_scan_policy
+        SET POLICY_NAME     = #{policyName},
+            COMMENT         = #{description},
+            DATATYPE_ID     = #{datatypeIds},
+            ENABLE          = CASE WHEN #{useYn} = 'Y' THEN 1 ELSE 0 END,
+            REGDATE         = NOW()
+        WHERE IDX = #{policyId}
+    </update>
+
+    <delete id="deletePolicy">
+        UPDATE pi_scan_policy
+        SET ENABLE = 0
+        WHERE IDX = #{policyId}
+    </delete>
+
+    <!--
+        pi_schedules does not have a POLICY_ID column.
+        pi_scan_policy links to schedules indirectly via datatype_id.
+        Return 0 as safe default since direct FK relationship does not exist.
+    -->
+    <select id="countSchedulesByPolicyId" resultType="int">
+        SELECT COUNT(*)
+        FROM pi_schedules s
+        WHERE s.SCHEDULE_DATATYPE_PROFILES = (
+            SELECT sp.DATATYPE_ID
+            FROM pi_scan_policy sp
+            WHERE sp.IDX = #{policyId}
+            LIMIT 1
+        )
+    </select>
+
+</mapper>

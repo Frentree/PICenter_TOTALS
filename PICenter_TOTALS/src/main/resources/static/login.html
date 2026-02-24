@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>PICenter - 개인정보 검출관리 센터</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" type="text/css" href="/css/common.css">
+    <style>
+        /* ======= Login Page Layout ======= */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .wrap_login {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* --- Left dark area (50%) --- */
+        .img_logo {
+            width: 50%;
+            background: #262c38;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .img_logo h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 2px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .img_logo h1 .logo_sub {
+            display: block;
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 12px;
+            letter-spacing: 1px;
+        }
+
+        /* --- Right login form area (50%) --- */
+        .container_login {
+            width: 50%;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .login_box {
+            width: 100%;
+            max-width: 460px;
+            padding: 40px 40px 30px 40px;
+            overflow-y: auto;
+        }
+
+        /* Text box (product name + description) */
+        .text_box {
+            margin-bottom: 30px;
+        }
+
+        .text_box h1 {
+            font-size: 36px;
+            font-weight: 700;
+            color: #2f353a;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .text_box p {
+            padding-top: 10px;
+            padding-left: 3px;
+            font-size: 13px;
+            color: #9a9da3;
+        }
+
+        /* Input box */
+        .input_box {
+            width: 375px;
+        }
+
+        .input_box h2 {
+            text-align: left;
+            font-size: 24px;
+            font-weight: 700;
+            color: #2f353a;
+            margin-bottom: 0;
+        }
+
+        .input_box h2 span {
+            font-size: 14px;
+            color: #ccc;
+            font-weight: 400;
+        }
+
+        .input_box .field_label {
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            margin-top: 20px;
+        }
+
+        .input_box .field_label:first-of-type {
+            padding-top: 40px;
+        }
+
+        .input_box input[type="text"],
+        .input_box input[type="password"] {
+            width: 335px;
+            height: 50px;
+            line-height: 48px;
+            padding-left: 15px;
+            margin: 5px 0 0 0;
+            color: #444;
+            font-size: 15px;
+            border: none;
+            border-bottom: 1px solid #444;
+            background: transparent;
+            outline: none;
+            border-radius: 0;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+        }
+
+        .input_box input[type="text"]:focus,
+        .input_box input[type="password"]:focus {
+            border-bottom-color: #0c4da2;
+        }
+
+        .input_box input::placeholder {
+            color: #b1b3b5;
+        }
+
+        /* IE placeholder */
+        .input_box input:-ms-input-placeholder {
+            color: #b1b3b5 !important;
+        }
+
+        /* ID save checkbox */
+        .id_save {
+            margin-top: 15px;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .id_save input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+
+        .id_save label {
+            font-size: 12px;
+            color: #2f353a;
+            cursor: pointer;
+        }
+
+        /* Login button - override common.css btn_login for this page */
+        .input_box .btn_login {
+            width: 335px;
+            height: 55px;
+            line-height: 53px;
+            margin-top: 30px;
+            background: #000;
+            color: #fff;
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            display: block;
+            text-align: center;
+            padding: 0;
+        }
+
+        .input_box .btn_login:hover {
+            background: #23282c;
+        }
+
+        .input_box .btn_login:active {
+            background: #1a1f23;
+        }
+
+        .input_box .btn_login:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        /* Error message */
+        .login_error {
+            background: #fff0f0;
+            color: #d32f2f;
+            padding: 8px 12px;
+            font-size: 12px;
+            margin-top: 10px;
+            border-left: 3px solid #d32f2f;
+            border-radius: 4px;
+            display: none;
+            width: 335px;
+        }
+
+        /* Footer copyright */
+        .footer_copyright {
+            margin-top: 40px;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+        }
+
+        /* ======= Password Change Popup ======= */
+        .popup_layer {
+            position: fixed;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .popup_box {
+            background: #f9f9f9;
+            width: 400px;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .popup_top {
+            background: #f9f9f9;
+            padding: 8px 0;
+        }
+
+        .popup_top h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #222;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .popup_content {
+            margin-top: 5px;
+        }
+
+        .popup_content .content-box {
+            background: #fff;
+            border: 1px solid #c8cde3;
+            padding: 10px;
+        }
+
+        .popup_tbl {
+            border-top: 2px solid #2f353a;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .popup_tbl tbody tr {
+            border-bottom: 1px solid #eee;
+        }
+
+        .popup_tbl tbody th {
+            text-align: center;
+            font-weight: 500;
+            font-size: 12px;
+            padding: 8px 5px;
+            white-space: nowrap;
+            width: 30%;
+            color: #333;
+        }
+
+        .popup_tbl tbody td {
+            text-align: left;
+            height: 45px;
+            padding-left: 10px;
+        }
+
+        .popup_tbl tbody td input {
+            padding-left: 5px;
+            width: 230px;
+            height: 28px;
+            border: 1px solid #c8ced3;
+            border-radius: 4px;
+            font-size: 12px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .popup_tbl tbody td input:focus {
+            border-color: #0c4da2;
+        }
+
+        .popup_btn {
+            padding: 10px 0;
+        }
+
+        .btn_area {
+            text-align: right;
+            padding: 5px 0;
+        }
+
+        .btn_area button {
+            font-size: 12px;
+            font-weight: 500;
+            height: 27px;
+            padding: 0 20px;
+            border-radius: 4px;
+            background: #fff;
+            border: 1px solid #c8ced3;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s ease;
+        }
+
+        .btn_area button:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+
+        /* ======= Responsive ======= */
+        @media (max-width: 960px) {
+            .wrap_login {
+                flex-direction: column;
+            }
+
+            .img_logo {
+                width: 100%;
+                height: 200px;
+                min-height: 200px;
+            }
+
+            .container_login {
+                width: 100%;
+                flex: 1;
+            }
+
+            .login_box {
+                max-width: 400px;
+                padding: 20px;
+            }
+
+            .input_box {
+                width: 100%;
+            }
+
+            .input_box input[type="text"],
+            .input_box input[type="password"],
+            .input_box .btn_login,
+            .login_error {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- wrap -->
+    <div class="wrap_login">
+        <!-- Left: dark logo area -->
+        <div class="img_logo">
+            <h1>
+                개인정보 검출관리 센터
+                <span class="logo_sub">Personal Information Center</span>
+            </h1>
+        </div>
+
+        <!-- Right: login form area -->
+        <div class="container_login">
+            <div class="login_box">
+                <div class="text_box">
+                    <h1>PICenter</h1>
+                    <p>개인정보보호법 준수를 위한 개인정보 검출 및 관리 시스템</p>
+                </div>
+
+                <div class="input_box">
+                    <h2>Login<span>/로그인</span></h2>
+
+                    <div id="error_msg" class="login_error"></div>
+
+                    <p class="field_label" style="padding-top: 40px;">ID</p>
+                    <input type="text" id="user_id" value="" placeholder="아이디를 입력하세요." autocomplete="username">
+
+                    <p class="field_label">PASSWORD</p>
+                    <input type="password" id="user_pw" value="" placeholder="패스워드를 입력하세요." autocomplete="current-password">
+
+                    <div class="id_save">
+                        <input type="checkbox" id="saveId" name="save">
+                        <label for="saveId">아이디 저장</label>
+                    </div>
+
+                    <button type="button" id="loginID" class="btn_login">Login</button>
+
+                    <div class="footer_copyright">
+                        &copy; 2026 Frentree. All rights reserved.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password Change Popup -->
+            <div id="passwordChangePopup" class="popup_layer" style="display:none">
+                <div class="popup_box">
+                    <div class="popup_top">
+                        <h1>비밀번호 변경</h1>
+                    </div>
+                    <div class="popup_content">
+                        <div class="content-box">
+                            <table class="popup_tbl">
+                                <colgroup>
+                                    <col width="30%">
+                                    <col width="*">
+                                </colgroup>
+                                <tbody>
+                                    <tr>
+                                        <th>현재비밀번호</th>
+                                        <td><input type="password" id="oldPasswd" value="" autocomplete="current-password"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>변경비밀번호</th>
+                                        <td><input type="password" id="newPasswd" value="" autocomplete="new-password"></td>
+                                    </tr>
+                                    <tr>
+                                        <th>변경비밀번호확인</th>
+                                        <td><input type="password" id="newPasswd2" value="" autocomplete="new-password"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="popup_btn">
+                        <div class="btn_area">
+                            <button type="button" id="btnPasswordChangeSave">저장</button>
+                            <button type="button" id="btnPasswordChangeCancel">취소</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+(function() {
+    'use strict';
+
+    var API_BASE = '';
+    var passwordRules = /(?=.*\d{1,50})(?=.*[~`!@#$%\^&*()-+=]{1,50})(?=.*[a-zA-Z]{1,50}).{8,50}$/;
+    var invalidPassword = 0;
+
+    // =============================================
+    // Cookie Utility Functions
+    // =============================================
+    function setCookie(name, value, days) {
+        var expires = '';
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            expires = '; expires=' + date.toUTCString();
+        }
+        document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/';
+    }
+
+    function getCookie(name) {
+        var nameEQ = name + '=';
+        var ca = document.cookie.split(';');
+        for (var i = 0; i < ca.length; i++) {
+            var c = ca[i].trim();
+            if (c.indexOf(nameEQ) === 0) {
+                return decodeURIComponent(c.substring(nameEQ.length));
+            }
+        }
+        return '';
+    }
+
+    function deleteCookie(name) {
+        document.cookie = name + '=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    }
+
+    // =============================================
+    // Initialization
+    // =============================================
+
+    // Already logged in check - redirect to dashboard
+    var existingToken = localStorage.getItem('picenter_token');
+    if (existingToken) {
+        fetch(API_BASE + '/api/v1/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + existingToken }
+        }).then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) window.location.href = '/picenter_dashboard';
+        }).catch(function() {
+            localStorage.removeItem('picenter_token');
+        });
+    }
+
+    // Load saved ID from cookie
+    var savedId = getCookie('PiBoardUserNo');
+    if (savedId) {
+        document.getElementById('user_id').value = savedId;
+        document.getElementById('saveId').checked = true;
+    }
+
+    // =============================================
+    // Error Display
+    // =============================================
+    function showError(msg) {
+        var el = document.getElementById('error_msg');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function hideError() {
+        document.getElementById('error_msg').style.display = 'none';
+    }
+
+    // =============================================
+    // Enter Key Events
+    // =============================================
+
+    // ID field: Enter -> focus password
+    document.getElementById('user_id').addEventListener('keyup', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            if (this.value.trim() === '') {
+                this.focus();
+                return;
+            }
+            document.getElementById('user_pw').focus();
+        }
+    });
+
+    // Password field: Enter -> login
+    document.getElementById('user_pw').addEventListener('keyup', function(e) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+            if (this.value.trim() === '') {
+                this.focus();
+                return;
+            }
+            document.getElementById('loginID').click();
+        }
+    });
+
+    // =============================================
+    // Login Button Click
+    // =============================================
+    document.getElementById('loginID').addEventListener('click', function() {
+        if (invalidPassword >= 5) {
+            showError('비밀번호 오입력 횟수가 5회를 초과했습니다.');
+            return;
+        }
+
+        var userId = document.getElementById('user_id').value.trim();
+        var userPw = document.getElementById('user_pw').value.trim();
+
+        hideError();
+
+        if (!userId) {
+            document.getElementById('user_id').focus();
+            showError('아이디를 입력하세요.');
+            return;
+        }
+
+        if (!userPw) {
+            document.getElementById('user_pw').focus();
+            showError('패스워드를 입력하세요.');
+            return;
+        }
+
+        // Disable button during request
+        var btn = this;
+        btn.disabled = true;
+        btn.textContent = 'Login...';
+
+        fetch(API_BASE + '/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: userId, password: userPw })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success && data.data) {
+                // Check if password change is required (same as id or first login)
+                if (data.data.passwordChangeRequired) {
+                    // Store temporary token for password change
+                    if (data.data.accessToken) {
+                        localStorage.setItem('picenter_token', data.data.accessToken);
+                    }
+                    openPasswordChangePopup();
+                    return;
+                }
+
+                // Store JWT token
+                localStorage.setItem('picenter_token', data.data.accessToken);
+                if (data.data.refreshToken) {
+                    localStorage.setItem('picenter_refresh_token', data.data.refreshToken);
+                }
+                localStorage.setItem('picenter_user', JSON.stringify({
+                    userNo: data.data.userNo,
+                    userId: data.data.userId,
+                    userName: data.data.userName,
+                    userGrade: data.data.userGrade
+                }));
+
+                // Save or delete cookie based on checkbox
+                successLogin();
+            } else {
+                var msg = (data.error && data.error.message) ? data.error.message : '로그인에 실패했습니다.';
+                showError(msg);
+                invalidPassword++;
+            }
+        })
+        .catch(function(err) {
+            showError('서버 연결에 실패했습니다.');
+            console.error('Login error:', err);
+        })
+        .finally(function() {
+            btn.disabled = false;
+            btn.textContent = 'Login';
+        });
+    });
+
+    // =============================================
+    // Login Success
+    // =============================================
+    function successLogin() {
+        var userId = document.getElementById('user_id').value.trim();
+
+        if (document.getElementById('saveId').checked) {
+            setCookie('PiBoardUserNo', userId, 7); // 7-day cookie
+        } else {
+            deleteCookie('PiBoardUserNo');
+        }
+
+        // Redirect to dashboard
+        window.location.href = '/picenter_dashboard';
+    }
+
+    // =============================================
+    // Password Change Popup
+    // =============================================
+    function openPasswordChangePopup() {
+        document.getElementById('oldPasswd').value = '';
+        document.getElementById('newPasswd').value = '';
+        document.getElementById('newPasswd2').value = '';
+        document.getElementById('passwordChangePopup').style.display = 'flex';
+    }
+
+    function closePasswordChangePopup() {
+        document.getElementById('passwordChangePopup').style.display = 'none';
+    }
+
+    // Save password change
+    document.getElementById('btnPasswordChangeSave').addEventListener('click', function() {
+        var oldPassword = document.getElementById('oldPasswd').value;
+        var newPasswd = document.getElementById('newPasswd').value;
+        var newPasswd2 = document.getElementById('newPasswd2').value;
+
+        if (oldPassword === '') {
+            document.getElementById('oldPasswd').focus();
+            alert('현재 패스워드를 입력하십시오.');
+            return;
+        }
+
+        if (newPasswd === '') {
+            document.getElementById('newPasswd').focus();
+            alert('변경 패스워드를 입력하십시오.');
+            return;
+        }
+
+        if (newPasswd2 === '') {
+            document.getElementById('newPasswd2').focus();
+            alert('변경 패스워드확인을 입력하십시오.');
+            return;
+        }
+
+        if (oldPassword === newPasswd) {
+            document.getElementById('newPasswd').focus();
+            alert('현재 패스워드와 변경 패스워드를 다르게 입력하십시오.');
+            return;
+        }
+
+        if (newPasswd !== newPasswd2) {
+            document.getElementById('newPasswd').focus();
+            alert('변경 패스워드와 패스워드확인이 일치하지 않습니다.');
+            return;
+        }
+
+        if (!passwordRules.test(newPasswd)) {
+            document.getElementById('newPasswd').focus();
+            alert('패스워드는 숫자/영문자/특수문자를 1개 이상, 8자 이상 입력하십시오.');
+            return;
+        }
+
+        var token = localStorage.getItem('picenter_token') || '';
+
+        fetch(API_BASE + '/api/v1/auth/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                oldPassword: oldPassword,
+                newPassword: newPasswd
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                alert('패스워드가 변경되었습니다. 다시 로그인 해주세요.');
+                closePasswordChangePopup();
+                // Clear token so user must re-login
+                localStorage.removeItem('picenter_token');
+                localStorage.removeItem('picenter_refresh_token');
+                localStorage.removeItem('picenter_user');
+                document.getElementById('user_pw').value = '';
+                document.getElementById('user_pw').focus();
+            } else {
+                var msg = (data.error && data.error.message) ? data.error.message : '패스워드 변경에 실패했습니다.';
+                alert(msg);
+            }
+        })
+        .catch(function(err) {
+            alert('패스워드 변경 중 오류가 발생했습니다.');
+            console.error('Password change error:', err);
+        });
+    });
+
+    // Cancel password change
+    document.getElementById('btnPasswordChangeCancel').addEventListener('click', function() {
+        closePasswordChangePopup();
+        // Clear session/token since user cancelled
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+    });
+
+})();
+</script>
+</body>
+</html>

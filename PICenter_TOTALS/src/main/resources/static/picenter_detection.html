@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>PICenter - 결과 조회</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        /* ===== Page-specific styles (Legacy PICenter_RM detection) ===== */
+        .detection_wrap {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        /* Left sidebar */
+        .left_sidebar {
+            width: 320px;
+            flex-shrink: 0;
+        }
+
+        .sidebar_search_table {
+            display: table;
+            width: 320px;
+            border: 1px solid #c8ced3;
+            border-collapse: collapse;
+            background: #fff;
+            margin-bottom: 8px;
+        }
+        .sidebar_search_table th {
+            background: #e8eef4;
+            text-align: center;
+            width: 80px;
+            padding: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            border-radius: 0.25rem 0 0 0.25rem;
+        }
+        .sidebar_search_table td {
+            height: 31.5px;
+            padding: 5px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            color: #555;
+        }
+        .sidebar_search_table td input[type="text"] {
+            width: 100%;
+            height: 27px;
+            padding: 0 5px;
+            border: 1px solid #c8ced3;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #555;
+            font-family: inherit;
+            outline: none;
+        }
+        .sidebar_search_table td input[type="text"]:focus {
+            border-color: #0c4da2;
+        }
+        .sidebar_search_table td input[type="text"]::placeholder {
+            color: #bbb;
+        }
+        .sidebar_search_table .td_btn {
+            width: 35px;
+            text-align: center;
+            padding: 5px 3px;
+        }
+
+        /* Tree area */
+        .left_tree_box {
+            border: 1px solid #c8ced3;
+            background: #fff;
+            height: 680px;
+            max-height: 680px;
+            overflow-y: auto;
+            overflow-x: auto;
+            white-space: nowrap;
+            border-radius: 0.25rem;
+        }
+
+        /* Tree item styles */
+        .tree_group {
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        .tree_group .tree_group {
+            padding-left: 18px;
+        }
+        .tree_item {
+            padding: 0;
+            margin: 0;
+        }
+        .tree_item_label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 5px 8px;
+            font-size: 12px;
+            color: #333;
+            cursor: pointer;
+            transition: background 0.12s ease;
+            border-bottom: 1px solid #f5f5f5;
+            white-space: nowrap;
+        }
+        .tree_item_label:hover {
+            background: #e8f0fe;
+        }
+        .tree_item_label.selected {
+            background: #d4e4f7;
+            font-weight: 600;
+            color: #0c4da2;
+        }
+        .tree_toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            font-size: 10px;
+            color: #999;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+            user-select: none;
+        }
+        .tree_toggle.open {
+            transform: rotate(90deg);
+        }
+        .tree_icon {
+            width: 16px;
+            height: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #999;
+            flex-shrink: 0;
+        }
+        .tree_icon.folder { color: #e6a817; }
+        .tree_icon.host { color: #0c4da2; }
+        .tree_text {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tree_ip {
+            font-size: 11px;
+            color: #888;
+            margin-left: 4px;
+        }
+
+        /* Right content area */
+        .main_content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Detail search area (above grid) */
+        .detail_search_row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .detail_search_table {
+            display: inline-table;
+            width: 420px;
+            border: 1px solid #c8ced3;
+            border-collapse: collapse;
+            background: #fff;
+        }
+        .detail_search_table th {
+            background: #e8eef4;
+            text-align: center;
+            width: 100px;
+            padding: 5px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            border-radius: 0.25rem 0 0 0.25rem;
+        }
+        .detail_search_table td {
+            height: 31.5px;
+            padding: 5px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            color: #555;
+        }
+        .detail_search_table input[type="text"] {
+            width: 280px;
+            height: 27px;
+            padding: 0 5px;
+            border: 1px solid #c8ced3;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #555;
+            font-family: inherit;
+            outline: none;
+        }
+        .detail_search_table input[type="text"]:focus {
+            border-color: #0c4da2;
+        }
+        .detail_search_table input[type="text"]::placeholder {
+            color: #bbb;
+        }
+
+        /* Data grid area */
+        .grid_area {
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .grid_container {
+            height: 660px;
+            max-height: 660px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+            overflow: auto;
+        }
+
+        /* Detection data table */
+        .det_table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            table-layout: auto;
+        }
+        .det_table thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .det_table th {
+            background: #e8eef4;
+            border: 1px solid #c8ced3;
+            padding: 8px 5px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #333;
+            text-align: center;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .det_table td {
+            border: 1px solid #e0e0e0;
+            padding: 6px 5px;
+            font-size: 12px;
+            color: #333;
+            text-align: center;
+        }
+        .det_table tbody tr {
+            cursor: pointer;
+            transition: background 0.12s ease;
+        }
+        .det_table tbody tr:hover {
+            background: #f5f8fc;
+        }
+        .det_table tbody tr.sub_row {
+            background: #fafafa;
+        }
+        .det_table tbody tr.sub_row:hover {
+            background: #f0f4f8;
+        }
+        .det_table td.td_path {
+            text-align: left;
+            max-width: 420px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+        }
+        .det_table td.td_left {
+            text-align: left;
+        }
+        .det_table td.td_right {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+        .det_table td .sub_arrow {
+            color: #0c4da2;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* Pagination area below grid */
+        .grid_pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            padding: 8px 0;
+        }
+        .grid_pagination button {
+            min-width: 28px;
+            height: 26px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .grid_pagination button:hover {
+            background: #e8eef4;
+        }
+        .grid_pagination button.active {
+            background: #0c4da2;
+            color: #fff;
+            border-color: #0c4da2;
+            font-weight: 700;
+        }
+        .grid_pagination button:disabled {
+            color: #ccc;
+            cursor: default;
+            background: #f9f9f9;
+        }
+        .grid_pagination .page_info {
+            font-size: 12px;
+            color: #888;
+            margin: 0 8px;
+        }
+
+        /* Empty state */
+        .grid_empty {
+            text-align: center;
+            color: #999;
+            padding: 80px 0;
+            font-size: 12px;
+        }
+
+        /* ===== Popup: overlay + content ===== */
+        .popup_overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .popup_overlay.show {
+            display: flex;
+        }
+        .popup_container {
+            background: #f9f9f9;
+            border-radius: 0.25rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            max-height: 90vh;
+        }
+        .popup_header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: #f9f9f9;
+        }
+        .popup_title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #222;
+        }
+        .popup_close_btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #999;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+        .popup_close_btn:hover {
+            background: #eee;
+            color: #333;
+        }
+        .popup_body {
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #c8ced3;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        /* Sub-path popup */
+        .subpath_popup { width: 70%; min-width: 600px; max-width: 1100px; }
+        .subpath_tree {
+            padding: 5px;
+            min-height: 200px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+        .subpath_tree ul {
+            list-style: none;
+            padding-left: 18px;
+            margin: 0;
+        }
+        .subpath_tree > ul {
+            padding-left: 0;
+        }
+        .subpath_tree li {
+            padding: 3px 0;
+            font-size: 12px;
+            color: #333;
+        }
+        .subpath_tree li a {
+            color: #0c4da2;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .subpath_tree li a:hover {
+            color: #0a3f8a;
+        }
+
+        /* Detection detail popup */
+        .detail_popup { width: 60%; min-width: 600px; max-width: 900px; height: 420px; }
+        .detail_layout {
+            display: flex;
+            height: 100%;
+            gap: 0;
+        }
+        .detail_left {
+            width: 245px;
+            min-width: 245px;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #c8ced3;
+        }
+        .detail_match_count {
+            padding: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #0c4da2;
+            border-bottom: 1px solid #c8ced3;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        .detail_match_data {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: 12px;
+            color: #333;
+        }
+        .detail_match_data ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .detail_match_data li {
+            padding: 3px 0;
+        }
+        .detail_match_data .match_type_header {
+            cursor: pointer;
+            font-weight: 600;
+            color: #333;
+            padding: 4px 0;
+        }
+        .detail_match_data .match_type_header:hover {
+            color: #0c4da2;
+        }
+        .detail_match_data .match_items {
+            padding-left: 15px;
+            display: none;
+        }
+        .detail_match_data .match_items.open {
+            display: block;
+        }
+        .detail_right {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 12px;
+            color: #333;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+        .detail_right .highlight {
+            color: #f02533;
+            font-weight: 700;
+        }
+        .detail_right strong {
+            color: #222;
+        }
+
+        /* Download button style */
+        .btn_down {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 0 16px;
+            height: 30px;
+            border: 1px solid #cdcdcd;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            background: #fff;
+            color: #000;
+            font-family: inherit;
+            transition: background 0.2s ease;
+            margin-top: 2px;
+        }
+        .btn_down:hover {
+            background: #f5f5f5;
+            border-color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="header_left">
+        <a href="/picenter_dashboard" class="logo">개인정보 검출관리 센터</a>
+    </div>
+    <div class="header_center">
+        <nav class="nav">
+            <a href="/picenter_dashboard" class="nav_item">대시보드</a>
+            <a href="/picenter_target" class="nav_item">타겟</a>
+            <a href="/picenter_detection" class="nav_item active">검출</a>
+            <a href="/picenter_scan" class="nav_item">스캔</a>
+            <a href="/picenter_report" class="nav_item">보고서</a>
+            <a href="/picenter_statistics" class="nav_item">통계</a>
+            <a href="/picenter_user" class="nav_item">사용자</a>
+            <a href="/picenter_notice" class="nav_item">공지사항</a>
+            <a href="/picenter_setting" class="nav_item">설정</a>
+        </nav>
+    </div>
+    <div class="header_right">
+        <span class="user_info" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
+
+<!-- Content -->
+<div class="container">
+    <h3 class="detection_list_title" style="display: inline-block; margin-top: 15px; font-size: 16px; font-weight: 400; color: #0c4da2;">결과 조회</h3>
+
+    <div class="detection_wrap">
+        <!-- Left sidebar: target tree -->
+        <div class="left_sidebar">
+            <table class="sidebar_search_table">
+                <tbody>
+                    <tr>
+                        <th>대상조회</th>
+                        <td>
+                            <input type="text" id="targetSearch" placeholder="호스트명을 입력하세요.">
+                        </td>
+                        <td class="td_btn">
+                            <button class="btn_search" id="btnTargetSearch" title="검색"></button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="left_tree_box" id="treeArea">
+                <div class="grid_empty">대상 목록을 불러오는 중...</div>
+            </div>
+        </div>
+
+        <!-- Main content area (right) -->
+        <div class="main_content">
+            <!-- Detail search + download -->
+            <div class="detail_search_row">
+                <table class="detail_search_table">
+                    <tbody>
+                        <tr>
+                            <th>상세조회</th>
+                            <td>
+                                <input type="text" id="searchLocation" placeholder="대상을 지정 후 경로 또는 파일명을 입력하세요.">
+                                <input type="hidden" id="hostSelect" value="">
+                                <input type="hidden" id="selectedTargetName" value="">
+                            </td>
+                            <td class="td_btn" style="width:35px; text-align:center; padding:5px 3px; border:1px solid #c8ced3;">
+                                <button class="btn_search" id="btnSearch" title="검색"></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="btn_down" id="btnDownloadExcel">다운로드</button>
+            </div>
+
+            <!-- Data grid -->
+            <div class="grid_area">
+                <div class="grid_container" id="gridContainer">
+                    <table class="det_table" id="detTable">
+                        <thead id="detHead">
+                            <tr>
+                                <th style="width:35px;"></th>
+                                <th>경로</th>
+                                <th style="width:150px;">소유주</th>
+                                <th style="width:100px;">검출일</th>
+                                <th style="width:110px;">합계</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detBody">
+                            <tr><td colspan="5" class="grid_empty">대상을 선택하고 조회해주세요</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="grid_pagination" id="pagination"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Popup: 하위 경로 정보 -->
+<div class="popup_overlay" id="pathPopup">
+    <div class="popup_container subpath_popup">
+        <div class="popup_header">
+            <span class="popup_title">하위 경로 정보</span>
+            <button class="popup_close_btn" id="pathPopupClose">&times;</button>
+        </div>
+        <div class="popup_body">
+            <div class="subpath_tree" id="subpathContent">
+                <div class="grid_empty">로딩중...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Popup: 개인정보검출 상세정보 -->
+<div class="popup_overlay" id="detailPopup">
+    <div class="popup_container detail_popup">
+        <div class="popup_header">
+            <span class="popup_title">개인정보검출 상세정보</span>
+            <button class="popup_close_btn" id="detailPopupClose">&times;</button>
+        </div>
+        <div class="popup_body" style="padding:0;">
+            <div class="detail_layout">
+                <div class="detail_left">
+                    <div class="detail_match_count" id="detailMatchCount">0 Matches</div>
+                    <div class="detail_match_data" id="detailMatchData"></div>
+                </div>
+                <div class="detail_right" id="detailBodyContents">
+                    <div class="grid_empty">상세 정보를 불러오는 중...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var PAGE_SIZE = 1000;
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+    var currentPage = 0;
+    var totalPages = 1;
+    var selectedTargetId = null;
+    var selectedTargetName = '';
+    var allTreeData = [];
+    var patternColumns = [];
+
+    // ========== Auth guard ==========
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Display user info
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            document.getElementById('userInfo').innerHTML =
+                escHtml(user.userName || '') + '(' + escHtml(user.userId || '') + ')';
+        } catch(e) {}
+    }
+
+    // Logout
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    // ========== API Helper ==========
+    function api(url, options) {
+        var opts = options || {};
+        var headers = {
+            'Authorization': 'Bearer ' + token,
+            'Content-Type': 'application/json'
+        };
+        return fetch(url, {
+            method: opts.method || 'GET',
+            headers: headers,
+            body: opts.body ? JSON.stringify(opts.body) : undefined
+        }).then(function(r) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return r.json();
+        });
+    }
+
+    // ========== TREE (Left Sidebar) ==========
+    function loadTreeData() {
+        api('/api/v1/targets/groups').then(function(data) {
+            if (!data) return;
+            var items = [];
+            if (data.success && data.data) {
+                items = data.data;
+            } else if (Array.isArray(data)) {
+                items = data;
+            } else if (data.content) {
+                items = data.content;
+            }
+            allTreeData = items;
+            renderTree(items);
+        }).catch(function() {
+            document.getElementById('treeArea').innerHTML =
+                '<div class="grid_empty">대상 목록을 불러올 수 없습니다.</div>';
+        });
+    }
+
+    function renderTree(items) {
+        var area = document.getElementById('treeArea');
+        if (!items || items.length === 0) {
+            area.innerHTML = '<div class="grid_empty">등록된 대상이 없습니다.</div>';
+            return;
+        }
+        var html = buildTreeHtml(items);
+        area.innerHTML = html;
+        bindTreeEvents(area);
+    }
+
+    function buildTreeHtml(items) {
+        var html = '<ul class="tree_group">';
+        if (Array.isArray(items)) {
+            for (var i = 0; i < items.length; i++) {
+                html += buildTreeNode(items[i]);
+            }
+        }
+        html += '</ul>';
+        return html;
+    }
+
+    function buildTreeNode(node) {
+        var children = node.children || [];
+        var hasChildren = children.length > 0;
+        var isLeaf = !hasChildren && (node.type === 1 || node.type === 'host' || node.data && node.data.type === 1);
+        var id = node.id || node.targetId || '';
+        var text = node.text || node.name || node.targetName || node.hostName || '';
+        var ip = node.ip || node.targetIp || '';
+        var apNo = (node.data && node.data.ap) || node.ap || node.apNo || '';
+
+        var html = '<li class="tree_item" data-id="' + escAttr(id) + '" data-type="' + (isLeaf ? '1' : '0') + '" data-ap="' + escAttr(apNo) + '" data-name="' + escAttr(text) + '">';
+
+        html += '<div class="tree_item_label">';
+        if (hasChildren) {
+            html += '<span class="tree_toggle">&#9654;</span>';
+            html += '<span class="tree_icon folder">&#128193;</span>';
+        } else if (isLeaf) {
+            html += '<span class="tree_toggle" style="visibility:hidden;">&#9654;</span>';
+            html += '<span class="tree_icon host">&#128187;</span>';
+        } else {
+            html += '<span class="tree_toggle">&#9654;</span>';
+            html += '<span class="tree_icon folder">&#128193;</span>';
+        }
+        html += '<span class="tree_text">' + escHtml(text) + '</span>';
+        if (ip) {
+            html += '<span class="tree_ip">(' + escHtml(ip) + ')</span>';
+        }
+        html += '</div>';
+
+        if (hasChildren) {
+            html += '<ul class="tree_group" style="display:none;">';
+            for (var i = 0; i < children.length; i++) {
+                html += buildTreeNode(children[i]);
+            }
+            html += '</ul>';
+        }
+
+        html += '</li>';
+        return html;
+    }
+
+    function bindTreeEvents(area) {
+        // Toggle expand/collapse
+        area.querySelectorAll('.tree_toggle').forEach(function(toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                var li = this.closest('.tree_item');
+                var subGroup = li.querySelector(':scope > .tree_group');
+                if (subGroup) {
+                    var isOpen = subGroup.style.display !== 'none';
+                    subGroup.style.display = isOpen ? 'none' : 'block';
+                    this.classList.toggle('open', !isOpen);
+                }
+            });
+        });
+
+        // Click on leaf node (host) to load detections
+        area.querySelectorAll('.tree_item_label').forEach(function(label) {
+            label.addEventListener('click', function() {
+                var li = this.closest('.tree_item');
+                var type = li.dataset.type;
+                if (type === '1') {
+                    // Select this host
+                    area.querySelectorAll('.tree_item_label').forEach(function(l) {
+                        l.classList.remove('selected');
+                    });
+                    this.classList.add('selected');
+
+                    selectedTargetId = li.dataset.id;
+                    selectedTargetName = li.dataset.name;
+                    document.getElementById('hostSelect').value = selectedTargetId;
+                    document.getElementById('selectedTargetName').value = selectedTargetName;
+                    document.getElementById('searchLocation').value = '';
+
+                    loadDetections(0);
+                }
+            });
+        });
+    }
+
+    // Target search filter
+    document.getElementById('btnTargetSearch').addEventListener('click', filterTree);
+    document.getElementById('targetSearch').addEventListener('keyup', function(e) {
+        if (e.keyCode === 13) filterTree();
+    });
+
+    function filterTree() {
+        var keyword = document.getElementById('targetSearch').value.trim().toLowerCase();
+        if (!keyword) {
+            renderTree(allTreeData);
+            return;
+        }
+        var filtered = filterTreeNodes(allTreeData, keyword);
+        renderTree(filtered);
+        // Expand all after filter
+        var area = document.getElementById('treeArea');
+        area.querySelectorAll('.tree_group').forEach(function(g) { g.style.display = 'block'; });
+        area.querySelectorAll('.tree_toggle').forEach(function(t) { t.classList.add('open'); });
+    }
+
+    function filterTreeNodes(nodes, keyword) {
+        if (!nodes || !Array.isArray(nodes)) return [];
+        var result = [];
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            var text = (node.text || node.name || node.targetName || node.hostName || '').toLowerCase();
+            var ip = (node.ip || node.targetIp || '').toLowerCase();
+            var children = node.children || [];
+            var filteredChildren = filterTreeNodes(children, keyword);
+            var matches = text.indexOf(keyword) >= 0 || ip.indexOf(keyword) >= 0;
+            if (matches || filteredChildren.length > 0) {
+                var copy = Object.assign({}, node);
+                if (filteredChildren.length > 0) {
+                    copy.children = filteredChildren;
+                }
+                result.push(copy);
+            }
+        }
+        return result;
+    }
+
+    // ========== DETECTIONS (Right Grid) ==========
+    function loadDetections(page) {
+        currentPage = page;
+        if (!selectedTargetId) {
+            renderEmptyGrid('대상을 선택하고 조회해주세요');
+            return;
+        }
+
+        var location = document.getElementById('searchLocation').value.trim();
+        var url = '/api/v1/detections?targetId=' + encodeURIComponent(selectedTargetId);
+        url += '&page=' + page + '&size=' + PAGE_SIZE;
+        if (location) {
+            url += '&location=' + encodeURIComponent(location);
+        }
+
+        api(url).then(function(data) {
+            if (!data) return;
+            var result = null;
+            if (data.success && data.data) {
+                result = data.data;
+            } else if (data.content || data.list) {
+                result = data;
+            } else if (Array.isArray(data)) {
+                result = { content: data, totalElements: data.length, totalPages: 1 };
+            }
+
+            if (result) {
+                renderDetections(result, page);
+            } else {
+                renderEmptyGrid('검색된 데이터가 없습니다');
+            }
+        }).catch(function() {
+            renderEmptyGrid('데이터를 불러오는데 실패했습니다.');
+        });
+    }
+
+    function renderDetections(pageData, page) {
+        var items = pageData.content || pageData.list || [];
+        var total = pageData.totalElements || pageData.totalCount || 0;
+        totalPages = pageData.totalPages || Math.ceil(total / PAGE_SIZE) || 1;
+
+        if (items.length === 0) {
+            renderEmptyGrid('검색된 데이터가 없습니다');
+            return;
+        }
+
+        // Detect dynamic pattern columns from first item
+        detectPatternColumns(items[0]);
+        renderTableHeader();
+
+        var tbody = document.getElementById('detBody');
+        var html = '';
+
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var isSubRow = item.CHK === '1' || item.chk === '1';
+            var rowClass = isSubRow ? ' class="sub_row"' : '';
+
+            html += '<tr' + rowClass + ' data-id="' + escAttr(item.ID || item.id || '') + '"';
+            html += ' data-pid="' + escAttr(item.PID || item.pid || '') + '"';
+            html += ' data-chk="' + escAttr(item.CHK_C || item.chkC || item.chk_c || '0') + '">';
+
+            // Sub-file indicator
+            html += '<td>';
+            if (isSubRow) {
+                html += '<span class="sub_arrow"> &gt; </span>';
+            }
+            html += '</td>';
+
+            // Path (SHORTNAME)
+            var path = item.SHORTNAME || item.shortName || item.filePath || item.path || '';
+            if (path.indexOf('_decrypted') !== -1) {
+                path = path.replace(/_decrypted/g, '');
+            }
+            html += '<td class="td_path" title="' + escAttr(path) + '">' + escHtml(path) + '</td>';
+
+            // Owner
+            html += '<td class="td_left">' + escHtml(item.OWNER || item.owner || '') + '</td>';
+
+            // Detection date
+            var createDt = item.CREATE_DT || item.createDt || item.detectionDate || '';
+            var displayDt = createDt ? createDt.substring(0, 10) : '';
+            html += '<td title="' + escAttr(createDt) + '">' + escHtml(displayDt) + '</td>';
+
+            // Total (TYPE)
+            var typeVal = item.TYPE || item.type || item.total || 0;
+            html += '<td class="td_right">' + formatNumber(typeVal) + '</td>';
+
+            // Dynamic pattern columns
+            for (var p = 0; p < patternColumns.length; p++) {
+                var colField = patternColumns[p].field;
+                var val = item[colField] || 0;
+                html += '<td class="td_right">' + formatNumber(val) + '</td>';
+            }
+
+            html += '</tr>';
+        }
+
+        tbody.innerHTML = html;
+
+        // Row click events
+        tbody.querySelectorAll('tr').forEach(function(tr) {
+            tr.addEventListener('click', function() {
+                var id = this.dataset.id;
+                var pid = this.dataset.pid;
+                var chkC = this.dataset.chk;
+
+                if (chkC === '0' || !chkC) {
+                    // Open detection detail popup
+                    openDetailPopup(id, pid);
+                } else {
+                    // Open sub-path popup
+                    openSubpathPopup(id, pid);
+                }
+            });
+        });
+
+        renderPagination(page, totalPages);
+    }
+
+    function detectPatternColumns(item) {
+        if (!item) return;
+        patternColumns = [];
+        // Known fixed fields
+        var fixedFields = ['ID', 'id', 'PID', 'pid', 'LEVEL', 'level', 'SHORTNAME', 'shortName',
+            'OWNER', 'owner', 'CREATE_DT', 'createDt', 'TYPE', 'type', 'total',
+            'CHK', 'chk', 'CHK_C', 'chkC', 'chk_c', 'SUBFILE', 'subFile',
+            'USER_NO', 'USER_NAME', 'TEAM', 'HOST', 'FILENAME', 'NOTEPAD', 'IDX',
+            'APPROVAL_STATUS', 'APPROVAL_DT', 'APPROVAL_STATUS_PRINT_NAME',
+            'PROCESSING_FLAG', 'PROCESSING_FLAG_NAME', 'LINK_APPROVAL_STATUS',
+            'LINK_PROCESSING_FLAG', 'POLICY_ID', 'ENABLE', 'POLICY_NM', 'DATATYPE_ID',
+            'RRN', 'RRN_CNT', 'RRN_DUP', 'FOREIGNER', 'FOREIGNER_CNT', 'FOREIGNER_DUP',
+            'DRIVER', 'DRIVER_CNT', 'DRIVER_DUP', 'PASSPORT', 'PASSPORT_CNT', 'PASSPORT_DUP',
+            'ACCOUNT', 'ACCOUNT_CNT', 'ACCOUNT_DUP', 'CARD', 'CARD_CNT', 'CARD_DUP',
+            'PHONE', 'PHONE_CNT', 'PHONE_DUP', 'MOBILE_PHONE', 'MOBILE_PHONE_CNT', 'MOBILE_PHONE_DUP',
+            'LOCAL_PHONE', 'LOCAL_PHONE_CNT', 'LOCAL_PHONE_DUP', 'EMAIL', 'EMAIL_CNT', 'EMAIL_DUP',
+            'RECENT', 'filePath', 'path', 'detectionDate', 'targetName', 'hostName',
+            'ap_no', 'apNo', 'onedriveChk'];
+
+        var fixedSet = {};
+        fixedFields.forEach(function(f) { fixedSet[f] = true; });
+
+        // Pattern columns from response metadata
+        if (item._patternColumns && Array.isArray(item._patternColumns)) {
+            item._patternColumns.forEach(function(col) {
+                patternColumns.push({ headerName: col.name || col.headerName, field: col.field });
+            });
+        }
+
+        // Fallback: detect numeric fields that are not fixed
+        if (patternColumns.length === 0) {
+            var keys = Object.keys(item);
+            for (var k = 0; k < keys.length; k++) {
+                var key = keys[k];
+                if (!fixedSet[key] && typeof item[key] === 'number') {
+                    patternColumns.push({ headerName: key, field: key });
+                }
+            }
+        }
+    }
+
+    function renderTableHeader() {
+        var thead = document.getElementById('detHead');
+        var html = '<tr>';
+        html += '<th style="width:35px;"></th>';
+        html += '<th style="min-width:300px;">경로</th>';
+        html += '<th style="width:150px;">소유주</th>';
+        html += '<th style="width:100px;">검출일</th>';
+        html += '<th style="width:110px;">합계</th>';
+        for (var p = 0; p < patternColumns.length; p++) {
+            html += '<th style="width:110px;">' + escHtml(patternColumns[p].headerName) + '</th>';
+        }
+        html += '</tr>';
+        thead.innerHTML = html;
+    }
+
+    function renderEmptyGrid(msg) {
+        var colCount = 5 + patternColumns.length;
+        document.getElementById('detBody').innerHTML =
+            '<tr><td colspan="' + colCount + '" class="grid_empty">' + escHtml(msg) + '</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+    }
+
+    // ========== PAGINATION ==========
+    function renderPagination(current, total) {
+        var el = document.getElementById('pagination');
+        if (total <= 1) { el.innerHTML = ''; return; }
+
+        var html = '';
+        var start = Math.max(0, current - 4);
+        var end = Math.min(total, start + 10);
+        if (end - start < 10) start = Math.max(0, end - 10);
+
+        html += '<button' + (current > 0 ? '' : ' disabled') + ' data-page="0">&laquo;</button>';
+        html += '<button' + (current > 0 ? '' : ' disabled') + ' data-page="' + Math.max(0, current - 1) + '">&lsaquo;</button>';
+
+        for (var i = start; i < end; i++) {
+            html += '<button class="' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        }
+
+        html += '<button' + (current < total - 1 ? '' : ' disabled') + ' data-page="' + Math.min(total - 1, current + 1) + '">&rsaquo;</button>';
+        html += '<button' + (current < total - 1 ? '' : ' disabled') + ' data-page="' + (total - 1) + '">&raquo;</button>';
+
+        el.innerHTML = html;
+        el.querySelectorAll('button:not([disabled])').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                loadDetections(parseInt(this.dataset.page));
+            });
+        });
+    }
+
+    // ========== POPUP: Sub-path ==========
+    function openSubpathPopup(id, tid) {
+        var popup = document.getElementById('pathPopup');
+        var content = document.getElementById('subpathContent');
+        content.innerHTML = '<div class="grid_empty">로딩중...</div>';
+        popup.classList.add('show');
+
+        var url = '/api/v1/detections/subpaths/' + encodeURIComponent(selectedTargetId);
+        url += '?hashId=' + encodeURIComponent(id);
+        if (tid) url += '&tid=' + encodeURIComponent(tid);
+
+        api(url).then(function(data) {
+            if (!data) {
+                content.innerHTML = '<div class="grid_empty">하위 경로를 불러올 수 없습니다.</div>';
+                return;
+            }
+            var items = [];
+            if (data.success && data.data) {
+                items = data.data;
+            } else if (Array.isArray(data)) {
+                items = data;
+            }
+            renderSubpathTree(items, content);
+        }).catch(function() {
+            content.innerHTML = '<div class="grid_empty">하위 경로를 불러올 수 없습니다.</div>';
+        });
+    }
+
+    function renderSubpathTree(items, container) {
+        if (!items || items.length === 0) {
+            container.innerHTML = '<div class="grid_empty">하위 경로가 없습니다.</div>';
+            return;
+        }
+
+        // If items are tree-structured (with children)
+        if (items[0] && items[0].children) {
+            container.innerHTML = buildSubpathTreeHtml(items);
+        } else {
+            // Flat list
+            var html = '<ul>';
+            for (var i = 0; i < items.length; i++) {
+                var path = items[i].PATH || items[i].path || items[i].SHORTNAME || items[i].shortName || '';
+                var oid = items[i].OID || items[i].oid || items[i].id || '';
+                if (oid) {
+                    html += '<li><a data-id="' + escAttr(oid) + '">' + escHtml(path) + '</a></li>';
+                } else {
+                    html += '<li>' + escHtml(path) + '</li>';
+                }
+            }
+            html += '</ul>';
+            container.innerHTML = html;
+
+            // Bind click on links
+            container.querySelectorAll('a[data-id]').forEach(function(a) {
+                a.addEventListener('click', function() {
+                    var detId = this.dataset.id;
+                    openDetailPopup(detId, selectedTargetId);
+                });
+            });
+        }
+    }
+
+    function buildSubpathTreeHtml(nodes) {
+        var html = '<ul>';
+        for (var i = 0; i < nodes.length; i++) {
+            var node = nodes[i];
+            var text = node.text || node.PATH || node.path || '';
+            var children = node.children || [];
+            var oid = node.OID || node.oid || node.id || '';
+            html += '<li>';
+            if (oid && children.length === 0) {
+                html += '<a data-id="' + escAttr(oid) + '">' + escHtml(text) + '</a>';
+            } else {
+                html += escHtml(text);
+            }
+            if (children.length > 0) {
+                html += buildSubpathTreeHtml(children);
+            }
+            html += '</li>';
+        }
+        html += '</ul>';
+        return html;
+    }
+
+    document.getElementById('pathPopupClose').addEventListener('click', function() {
+        document.getElementById('pathPopup').classList.remove('show');
+    });
+    document.getElementById('pathPopup').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+
+    // ========== POPUP: Detection Detail ==========
+    function openDetailPopup(id, tid) {
+        var popup = document.getElementById('detailPopup');
+        var matchCountEl = document.getElementById('detailMatchCount');
+        var matchDataEl = document.getElementById('detailMatchData');
+        var bodyEl = document.getElementById('detailBodyContents');
+
+        matchCountEl.textContent = '0 Matches';
+        matchDataEl.innerHTML = '';
+        bodyEl.innerHTML = '<div class="grid_empty">상세 정보를 불러오는 중...</div>';
+        popup.classList.add('show');
+
+        var url = '/api/v1/detections/' + encodeURIComponent(id);
+        if (tid) url += '?tid=' + encodeURIComponent(tid);
+
+        api(url).then(function(data) {
+            if (!data) {
+                bodyEl.innerHTML = '<div class="grid_empty">상세 정보를 불러올 수 없습니다.</div>';
+                return;
+            }
+
+            var detail = data.success ? data.data : data;
+            if (!detail) {
+                bodyEl.innerHTML = '<div class="grid_empty">상세 정보가 없습니다.</div>';
+                return;
+            }
+
+            // Render match count
+            var totalCount = detail.totalCount || detail.matchCount || 0;
+            matchCountEl.textContent = formatNumber(totalCount) + (totalCount === 1 ? ' Match' : ' Matches');
+
+            // Render match data (left panel)
+            var matchTypes = detail.matchTypes || detail.patterns || [];
+            var matchHtml = '<ul>';
+            for (var m = 0; m < matchTypes.length; m++) {
+                var mt = matchTypes[m];
+                var mtName = mt.name || mt.patternName || '';
+                var mtCount = mt.count || 0;
+                var mtItems = mt.items || mt.matches || [];
+                matchHtml += '<li>';
+                matchHtml += '<div class="match_type_header" data-idx="' + m + '">';
+                matchHtml += escHtml(mtName) + ' (' + formatNumber(mtCount) + ')';
+                matchHtml += '</div>';
+                matchHtml += '<div class="match_items" data-idx="' + m + '">';
+                for (var mi = 0; mi < mtItems.length; mi++) {
+                    matchHtml += '<div>' + escHtml(mtItems[mi].value || mtItems[mi].content || mtItems[mi]) + '</div>';
+                }
+                matchHtml += '</div>';
+                matchHtml += '</li>';
+            }
+            matchHtml += '</ul>';
+            matchDataEl.innerHTML = matchHtml;
+
+            // Bind toggle on match type headers
+            matchDataEl.querySelectorAll('.match_type_header').forEach(function(hdr) {
+                hdr.addEventListener('click', function() {
+                    var idx = this.dataset.idx;
+                    var items = matchDataEl.querySelector('.match_items[data-idx="' + idx + '"]');
+                    if (items) items.classList.toggle('open');
+                });
+            });
+
+            // Render body contents (right panel)
+            var bodyContent = detail.bodyContents || detail.content || detail.body || '';
+            var filePath = detail.path || detail.filePath || '';
+            var html = '';
+            if (filePath) {
+                html += '<strong>' + escHtml(filePath) + '</strong><br>';
+            }
+
+            // Render metadata
+            var metas = detail.metas || detail.metadata || [];
+            for (var mi2 = 0; mi2 < metas.length; mi2++) {
+                var meta = metas[mi2];
+                html += '<strong>' + escHtml(meta.label || '') + ' : </strong>';
+                if (meta.is_aggregate) {
+                    html += formatNumber(meta.value);
+                } else {
+                    html += escHtml(String(meta.value || ''));
+                }
+                html += '<br>';
+            }
+            html += '<br>';
+
+            if (bodyContent) {
+                html += bodyContent;
+            } else if (detail.chunks) {
+                // Render chunks with highlighting
+                for (var c = 0; c < detail.chunks.length; c++) {
+                    var chunk = detail.chunks[c];
+                    var text = escHtml(chunk.content || '');
+                    html += text + '<br>';
+                }
+            }
+
+            bodyEl.innerHTML = html || '<div class="grid_empty">컨텐츠가 없습니다.</div>';
+
+        }).catch(function() {
+            bodyEl.innerHTML = '<div class="grid_empty">상세 정보를 불러올 수 없습니다.</div>';
+        });
+    }
+
+    document.getElementById('detailPopupClose').addEventListener('click', function() {
+        document.getElementById('detailPopup').classList.remove('show');
+    });
+    document.getElementById('detailPopup').addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+
+    // ========== SEARCH ==========
+    document.getElementById('btnSearch').addEventListener('click', function() {
+        loadDetections(0);
+    });
+    document.getElementById('searchLocation').addEventListener('keyup', function(e) {
+        if (e.keyCode === 13) loadDetections(0);
+    });
+
+    // ========== DOWNLOAD ==========
+    document.getElementById('btnDownloadExcel').addEventListener('click', function() {
+        downloadCsv();
+    });
+
+    function downloadCsv() {
+        var tbody = document.getElementById('detBody');
+        var rows = tbody.querySelectorAll('tr');
+        if (!rows.length || rows[0].querySelector('.grid_empty')) {
+            alert('다운로드할 데이터가 없습니다.');
+            return;
+        }
+
+        // Build CSV
+        var headers = ['경로', '소유주', '검출일', '합계'];
+        for (var p = 0; p < patternColumns.length; p++) {
+            headers.push(patternColumns[p].headerName);
+        }
+
+        var csvContent = '\uFEFF'; // BOM for Excel
+        csvContent += headers.join(',') + '\n';
+
+        rows.forEach(function(tr) {
+            var tds = tr.querySelectorAll('td');
+            if (tds.length < 4) return;
+            var line = [];
+            // Skip first column (sub-arrow), start from index 1
+            for (var i = 1; i < tds.length; i++) {
+                var val = tds[i].textContent.trim().replace(/"/g, '""');
+                line.push('"' + val + '"');
+            }
+            csvContent += line.join(',') + '\n';
+        });
+
+        var hostname = selectedTargetName || 'detection';
+        var name = hostname.replace(/:/g, '-');
+        var today = new Date();
+        var dd = String(today.getDate()).padStart(2, '0');
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var yyyy = today.getFullYear();
+        var dateStr = yyyy + mm + dd;
+
+        var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = '검출_리스트_' + name + '_' + dateStr + '.csv';
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    // ========== UTILITIES ==========
+    function escHtml(str) {
+        if (str === null || str === undefined) return '';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(String(str)));
+        return div.innerHTML;
+    }
+
+    function escAttr(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatNumber(val) {
+        if (val === null || val === undefined || val === '') return '0';
+        var num = parseInt(val);
+        return isNaN(num) ? '0' : num.toLocaleString();
+    }
+
+    // ========== INITIAL LOAD ==========
+    loadTreeData();
+
+})();
+</script>
+</body>
+</html>

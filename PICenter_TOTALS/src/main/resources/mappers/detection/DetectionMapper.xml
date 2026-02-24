@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.DetectionMapper">
+
+    <!--
+        Actual DB schema (remote):
+        pi_find: hash_id(PK varchar100), group_id(varchar100), target_id(PK varchar100),
+                 ap_no(PK int), path(text), encode_path, fid, remediation_status,
+                 account(varchar100), owner(varchar200), regdate, credate, deldate,
+                 column, process_chk, personal_info(longtext), personal_data(longtext),
+                 personal_location(longtext), personal_metas(longtext), modified
+        pi_data_processing: data_processing_idx(PK auto), ap_no, target_id, hash_id(text),
+                 approval_status(varchar50 default 'W'), approval_type, global_type, regdate,
+                 user_no, data_processing_group_id, processing_flag(int),
+                 data_processing_group_idx, notepad(text), add_content(text)
+        pi_subpath: group_id, target_id(PK), parent_id(PK), node_id(PK), ap_no(PK),
+                 account, owner, path, remediation_status
+        pi_targets: target_id(PK), ap_no(PK), name, platform, regdate, group_idx, TARGET_USE
+        pi_path_data: CHK, TARGET_ID, AP_NO, PATH, HASH_ID, FID, OWNER, ACCOUNT,
+                 APPROVAL_STATUS, PROCESSING_FLAG, DATA_TYPE, MATCH_COUNT, FILENAME, NOTEPAD
+    -->
+
+    <!-- Result Map for DetectionResponse -->
+    <resultMap id="detectionResultMap" type="com.org.iopts.dto.response.DetectionResponse">
+        <id property="findId" column="FIND_ID"/>
+        <result property="targetId" column="TARGET_ID"/>
+        <result property="targetName" column="TARGET_NAME"/>
+        <result property="filePath" column="FILE_PATH"/>
+        <result property="fileName" column="FILE_NAME"/>
+        <result property="datatypeName" column="DATATYPE_NAME"/>
+        <result property="patternName" column="PATTERN_NAME"/>
+        <result property="matchData" column="MATCH_DATA"/>
+        <result property="matchCount" column="MATCH_COUNT"/>
+        <result property="processStatus" column="PROCESS_STATUS"/>
+        <result property="processType" column="PROCESS_TYPE"/>
+        <result property="processUser" column="PROCESS_USER"/>
+        <result property="processDt" column="PROCESS_DT"/>
+        <result property="findDt" column="FIND_DT"/>
+        <result property="regDt" column="REG_DT"/>
+        <result property="processStatusLabel" column="PROCESS_STATUS_LABEL"/>
+        <result property="datatypeLabel" column="DATATYPE_LABEL"/>
+    </resultMap>
+
+    <!-- Common WHERE clause for search filters -->
+    <sql id="searchCondition">
+        <where>
+            <if test="targetId != null and targetId != ''">
+                AND f.TARGET_ID = #{targetId}
+            </if>
+            <if test="processStatus != null and processStatus != ''">
+                AND IFNULL(dp_latest.APPROVAL_STATUS, 'NONE') = #{processStatus}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND f.CREDATE &gt;= CONCAT(#{startDate}, ' 00:00:00')
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND f.CREDATE &lt;= CONCAT(#{endDate}, ' 23:59:59')
+            </if>
+            <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
+                <choose>
+                    <when test="searchType == 'TARGET_NAME'">
+                        AND t.NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+                    </when>
+                    <when test="searchType == 'FILE_PATH'">
+                        AND f.PATH LIKE CONCAT('%', #{searchKeyword}, '%')
+                    </when>
+                    <when test="searchType == 'OWNER'">
+                        AND f.OWNER LIKE CONCAT('%', #{searchKeyword}, '%')
+                    </when>
+                    <when test="searchType == 'HASH_ID'">
+                        AND f.HASH_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+                    </when>
+                </choose>
+            </if>
+        </where>
+    </sql>
+
+    <!-- Select detection list with pagination -->
+    <select id="selectDetectionList" parameterType="map" resultMap="detectionResultMap">
+        SELECT
+            f.HASH_ID                                       AS FIND_ID,
+            f.TARGET_ID                                     AS TARGET_ID,
+            t.NAME                                          AS TARGET_NAME,
+            f.PATH                                          AS FILE_PATH,
+            SUBSTRING_INDEX(f.PATH, '/', -1)                AS FILE_NAME,
+            pd.DATA_TYPE                                    AS DATATYPE_NAME,
+            pd.DATA_TYPE                                    AS PATTERN_NAME,
+            f.PERSONAL_INFO                                 AS MATCH_DATA,
+            pd.MATCH_COUNT                                  AS MATCH_COUNT,
+            IFNULL(dp_latest.APPROVAL_STATUS, 'NONE')       AS PROCESS_STATUS,
+            dp_latest.PROCESSING_FLAG                       AS PROCESS_TYPE,
+            dp_latest.USER_NO                               AS PROCESS_USER,
+            dp_latest.REGDATE                               AS PROCESS_DT,
+            f.CREDATE                                       AS FIND_DT,
+            f.REGDATE                                       AS REG_DT,
+            CASE IFNULL(dp_latest.APPROVAL_STATUS, 'NONE')
+                WHEN 'W' THEN '대기'
+                WHEN 'Y' THEN '승인'
+                WHEN 'N' THEN '반려'
+                ELSE '미처리'
+            END                                             AS PROCESS_STATUS_LABEL,
+            pd.DATA_TYPE                                    AS DATATYPE_LABEL
+        FROM pi_find f
+        LEFT JOIN pi_targets t
+            ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_path_data pd
+            ON pd.TARGET_ID = f.TARGET_ID AND pd.AP_NO = f.AP_NO AND pd.HASH_ID = f.HASH_ID
+        LEFT JOIN pi_data_processing dp_latest
+            ON dp_latest.TARGET_ID = f.TARGET_ID
+               AND dp_latest.HASH_ID = f.HASH_ID
+               AND dp_latest.DATA_PROCESSING_IDX = (
+                   SELECT MAX(dp2.DATA_PROCESSING_IDX)
+                   FROM pi_data_processing dp2
+                   WHERE dp2.TARGET_ID = f.TARGET_ID
+                     AND dp2.HASH_ID = f.HASH_ID
+               )
+        <include refid="searchCondition"/>
+        ORDER BY f.CREDATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count total detections matching filters -->
+    <select id="selectDetectionListCount" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_find f
+        LEFT JOIN pi_targets t
+            ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_data_processing dp_latest
+            ON dp_latest.TARGET_ID = f.TARGET_ID
+               AND dp_latest.HASH_ID = f.HASH_ID
+               AND dp_latest.DATA_PROCESSING_IDX = (
+                   SELECT MAX(dp2.DATA_PROCESSING_IDX)
+                   FROM pi_data_processing dp2
+                   WHERE dp2.TARGET_ID = f.TARGET_ID
+                     AND dp2.HASH_ID = f.HASH_ID
+               )
+        <include refid="searchCondition"/>
+    </select>
+
+    <!-- Select detection detail by HASH_ID (used as findId) -->
+    <select id="selectDetectionDetail" parameterType="string" resultMap="detectionResultMap">
+        SELECT
+            f.HASH_ID                                       AS FIND_ID,
+            f.TARGET_ID                                     AS TARGET_ID,
+            t.NAME                                          AS TARGET_NAME,
+            f.PATH                                          AS FILE_PATH,
+            SUBSTRING_INDEX(f.PATH, '/', -1)                AS FILE_NAME,
+            pd.DATA_TYPE                                    AS DATATYPE_NAME,
+            pd.DATA_TYPE                                    AS PATTERN_NAME,
+            f.PERSONAL_INFO                                 AS MATCH_DATA,
+            pd.MATCH_COUNT                                  AS MATCH_COUNT,
+            IFNULL(dp_latest.APPROVAL_STATUS, 'NONE')       AS PROCESS_STATUS,
+            dp_latest.PROCESSING_FLAG                       AS PROCESS_TYPE,
+            dp_latest.USER_NO                               AS PROCESS_USER,
+            dp_latest.REGDATE                               AS PROCESS_DT,
+            f.CREDATE                                       AS FIND_DT,
+            f.REGDATE                                       AS REG_DT,
+            CASE IFNULL(dp_latest.APPROVAL_STATUS, 'NONE')
+                WHEN 'W' THEN '대기'
+                WHEN 'Y' THEN '승인'
+                WHEN 'N' THEN '반려'
+                ELSE '미처리'
+            END                                             AS PROCESS_STATUS_LABEL,
+            pd.DATA_TYPE                                    AS DATATYPE_LABEL
+        FROM pi_find f
+        LEFT JOIN pi_targets t
+            ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
+        LEFT JOIN pi_path_data pd
+            ON pd.TARGET_ID = f.TARGET_ID AND pd.AP_NO = f.AP_NO AND pd.HASH_ID = f.HASH_ID
+        LEFT JOIN pi_data_processing dp_latest
+            ON dp_latest.TARGET_ID = f.TARGET_ID
+               AND dp_latest.HASH_ID = f.HASH_ID
+               AND dp_latest.DATA_PROCESSING_IDX = (
+                   SELECT MAX(dp2.DATA_PROCESSING_IDX)
+                   FROM pi_data_processing dp2
+                   WHERE dp2.TARGET_ID = f.TARGET_ID
+                     AND dp2.HASH_ID = f.HASH_ID
+               )
+        WHERE f.HASH_ID = #{findId}
+        LIMIT 1
+    </select>
+
+    <!-- Select process history for a detection (by HASH_ID) using pi_data_processing -->
+    <select id="selectProcessHistory" parameterType="string" resultType="map">
+        SELECT
+            dp.DATA_PROCESSING_IDX      AS processId,
+            dp.HASH_ID                  AS findId,
+            dp.PROCESSING_FLAG          AS processType,
+            dp.APPROVAL_STATUS          AS processResult,
+            dp.USER_NO                  AS processUser,
+            dp.NOTEPAD                  AS processComment,
+            dp.REGDATE                  AS processDt
+        FROM pi_data_processing dp
+        WHERE dp.HASH_ID = #{findId}
+        ORDER BY dp.REGDATE DESC
+    </select>
+
+    <!-- Select subpaths for a target -->
+    <select id="selectSubpaths" parameterType="string" resultType="map">
+        SELECT
+            sp.NODE_ID       AS subpathId,
+            sp.TARGET_ID     AS targetId,
+            sp.PARENT_ID     AS parentId,
+            sp.PATH          AS filePath,
+            sp.PATH          AS fileName,
+            sp.OWNER         AS owner,
+            sp.GROUP_ID      AS groupId,
+            sp.AP_NO         AS apNo,
+            sp.ACCOUNT       AS account
+        FROM pi_subpath sp
+        WHERE sp.TARGET_ID = #{targetId}
+        ORDER BY sp.PATH ASC
+    </select>
+
+    <!-- Insert a new process record into pi_data_processing (approval workflow) -->
+    <insert id="insertProcess" parameterType="map">
+        INSERT INTO pi_data_processing (
+            TARGET_ID,
+            HASH_ID,
+            AP_NO,
+            PROCESSING_FLAG,
+            APPROVAL_STATUS,
+            APPROVAL_TYPE,
+            USER_NO,
+            NOTEPAD,
+            REGDATE
+        )
+        SELECT
+            f.TARGET_ID,
+            f.HASH_ID,
+            f.AP_NO,
+            #{processType},
+            'W',
+            #{processType},
+            #{processUser},
+            #{processComment},
+            NOW()
+        FROM pi_find f
+        WHERE f.HASH_ID = #{findId}
+        LIMIT 1
+    </insert>
+
+    <!-- Update detection remediation_status in pi_find -->
+    <update id="updateDetectionStatus" parameterType="map">
+        UPDATE pi_find
+        SET
+            REMEDIATION_STATUS = #{processStatus},
+            MODIFIED = NOW()
+        WHERE HASH_ID = #{findId}
+          AND TARGET_ID = #{targetId}
+    </update>
+
+    <!-- Insert a remediation record into pi_data_processing -->
+    <insert id="insertRemediation" parameterType="map">
+        INSERT INTO pi_data_processing (
+            TARGET_ID,
+            HASH_ID,
+            AP_NO,
+            PROCESSING_FLAG,
+            APPROVAL_STATUS,
+            APPROVAL_TYPE,
+            USER_NO,
+            NOTEPAD,
+            REGDATE
+        )
+        SELECT
+            f.TARGET_ID,
+            f.HASH_ID,
+            f.AP_NO,
+            #{remediationType},
+            'W',
+            #{remediationType},
+            #{processUser},
+            #{processComment},
+            NOW()
+        FROM pi_find f
+        WHERE f.HASH_ID = #{findId}
+        LIMIT 1
+    </insert>
+
+</mapper>

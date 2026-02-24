@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="Cache-Control" content="no-cache">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>PICenter - 스캔 관리</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        /* ===== Legacy PICenter_RM Override ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            font-size: 12px;
+            color: #333;
+            background: #f0f0f0;
+            min-height: 100vh;
+        }
+
+        /* ===== Header (white, 55px, fixed top) ===== */
+        .rm_header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 55px;
+            background: #fff;
+            border-bottom: 2px solid #0c4da2;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+        }
+        .rm_header .logo_area {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+        .rm_header .logo_area .logo_text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0c4da2;
+            letter-spacing: -0.5px;
+        }
+        .rm_header .logo_area .logo_text span {
+            font-weight: 400;
+            font-size: 11px;
+            color: #888;
+            margin-left: 6px;
+        }
+
+        /* Navigation */
+        .rm_nav {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .rm_nav a {
+            display: inline-block;
+            padding: 0 14px;
+            line-height: 53px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s;
+        }
+        .rm_nav a:hover {
+            color: #0c4da2;
+        }
+        .rm_nav a.on {
+            color: #0c4da2;
+            font-weight: 700;
+            border-bottom: 2px solid #0c4da2;
+        }
+
+        /* Header right */
+        .rm_header_right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rm_header_right .user_name {
+            font-size: 12px;
+            color: #555;
+        }
+        .rm_header_right .user_name strong {
+            color: #333;
+        }
+        .rm_header_right .btn_logout {
+            padding: 4px 12px;
+            font-size: 11px;
+            color: #666;
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .rm_header_right .btn_logout:hover {
+            background: #e8e8e8;
+        }
+
+        /* ===== Content wrapper ===== */
+        .rm_content {
+            margin-top: 55px;
+            padding: 15px;
+            min-height: calc(100vh - 55px);
+        }
+
+        /* Page title */
+        .page_title_bar {
+            margin-bottom: 10px;
+        }
+        .page_title_bar h2 {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        /* ===== Search table (legacy table-based) ===== */
+        .search_table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1px solid #c8ced3;
+            margin-bottom: 12px;
+        }
+        .search_table th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 0 10px;
+            height: 31.5px;
+            text-align: left;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            width: 80px;
+        }
+        .search_table td {
+            height: 31.5px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+        }
+        .search_table td input[type="text"] {
+            height: 24px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            color: #333;
+            width: 180px;
+        }
+        .search_table td select {
+            height: 24px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            color: #333;
+            background: #fff;
+            width: 140px;
+        }
+        .btn_search_rm {
+            height: 26px;
+            padding: 0 16px;
+            background: #0c4da2;
+            color: #fff;
+            border: none;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+        .btn_search_rm:hover {
+            background: #0a3f8a;
+        }
+
+        /* ===== Tab Bar (Legacy underline style) ===== */
+        .legacy_tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 15px;
+            list-style: none;
+        }
+        .legacy_tabs li a {
+            display: inline-block;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #888;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .legacy_tabs li a:hover {
+            color: #333;
+        }
+        .legacy_tabs li a.active {
+            color: #0c4da2;
+            font-weight: 600;
+            border-bottom-color: #0c4da2;
+        }
+
+        /* ===== Tab Panels ===== */
+        .tab_panel { display: none; }
+        .tab_panel.active { display: block; }
+
+        /* ===== Data Table ===== */
+        .rm_data_table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .rm_data_table thead th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 7px 8px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+        }
+        .rm_data_table tbody td {
+            font-size: 12px;
+            color: #333;
+            padding: 6px 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            background: #fff;
+        }
+        .rm_data_table tbody tr:hover {
+            background: #f5f8fc;
+        }
+        .rm_data_table tbody td.td_left {
+            text-align: left;
+        }
+        .rm_data_table tbody td.td_right {
+            text-align: right;
+        }
+
+        /* Grid scroll */
+        .grid_scroll {
+            max-height: 600px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #c8ced3;
+        }
+
+        /* ===== Status Badge ===== */
+        .badge_status {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .badge_active { background: #e8f5e9; color: #2e7d32; }
+        .badge_inactive { background: #fce4ec; color: #c62828; }
+        .badge_pending { background: #fff3e0; color: #e65100; }
+        .badge_running { background: #e3f2fd; color: #1565c0; }
+        .badge_complete { background: #e8f5e9; color: #2e7d32; }
+        .badge_error { background: #fce4ec; color: #c62828; }
+        .badge_default { background: #f5f5f5; color: #666; }
+        .badge_yes { background: #e8f5e9; color: #2e7d32; }
+        .badge_no { background: #f5f5f5; color: #999; }
+
+        /* ===== Pagination ===== */
+        .legacy_pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 2px;
+            padding: 10px 0;
+            margin-top: 5px;
+        }
+        .legacy_pagination button {
+            min-width: 28px;
+            height: 28px;
+            padding: 0 6px;
+            border: 1px solid #cdcdcd;
+            border-radius: 0.25rem;
+            background: #fff;
+            color: #333;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .legacy_pagination button:hover { background: #e4e4e4; }
+        .legacy_pagination button.active {
+            background: #0c4da2;
+            color: #fff;
+            border-color: #0c4da2;
+            font-weight: 600;
+        }
+        .legacy_pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* ===== Empty Message ===== */
+        .rm_empty {
+            text-align: center;
+            color: #999;
+            padding: 30px 0;
+            font-size: 12px;
+        }
+
+        /* ===== Error Box ===== */
+        .error_box_legacy {
+            padding: 10px 14px;
+            background: #fff0f0;
+            color: #d32f2f;
+            border: 1px solid #ffcccc;
+            border-radius: 0.25rem;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        /* ===== Footer ===== */
+        .rm_footer {
+            text-align: center;
+            font-size: 11px;
+            color: #aaa;
+            padding: 10px 0;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="rm_header">
+    <div class="logo_area">
+        <span class="logo_text"><a href="/picenter_dashboard" style="color:inherit;text-decoration:none;">개인정보 검출관리 센터</a></span>
+    </div>
+    <div class="rm_nav">
+        <a href="/picenter_dashboard">대시보드</a>
+        <a href="/picenter_target">타겟</a>
+        <a href="/picenter_detection">검출</a>
+        <a href="/picenter_scan" class="on">스캔</a>
+        <a href="/picenter_report">보고서</a>
+        <a href="/picenter_statistics">통계</a>
+        <a href="/picenter_user">사용자</a>
+        <a href="/picenter_notice">공지사항</a>
+        <a href="/picenter_setting">설정</a>
+    </div>
+    <div class="rm_header_right">
+        <span class="user_name" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
+
+<!-- Content -->
+<div class="rm_content">
+    <div class="page_title_bar">
+        <h2>스캔 관리</h2>
+    </div>
+
+    <!-- Search Area -->
+    <table class="search_table">
+        <tr>
+            <th>호스트명</th>
+            <td>
+                <input type="text" id="schHost" placeholder="호스트명 입력">
+            </td>
+            <th>상태</th>
+            <td>
+                <select id="schStatus">
+                    <option value="">전체</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="running">Running</option>
+                    <option value="complete">Complete</option>
+                    <option value="error">Error</option>
+                    <option value="pending">Pending</option>
+                </select>
+            </td>
+            <td style="width:60px; text-align:center;">
+                <button class="btn_search_rm" id="btnSearch">검색</button>
+            </td>
+        </tr>
+    </table>
+
+    <!-- Tab Bar -->
+    <ul class="legacy_tabs" id="tabBar">
+        <li><a href="#" class="active" data-tab="schedules">스케줄</a></li>
+        <li><a href="#" data-tab="history">스캔이력</a></li>
+        <li><a href="#" data-tab="policies">스캔정책</a></li>
+    </ul>
+
+    <!-- ============================================ -->
+    <!-- SCHEDULES TAB -->
+    <!-- ============================================ -->
+    <div id="tab_schedules" class="tab_panel active">
+        <div class="grid_scroll">
+            <table class="rm_data_table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">No</th>
+                        <th style="width:180px;">스케줄명</th>
+                        <th style="width:150px;">호스트</th>
+                        <th style="width:90px;">상태</th>
+                        <th style="width:160px;">시작일</th>
+                        <th style="width:160px;">종료일</th>
+                        <th style="width:140px;">정책명</th>
+                    </tr>
+                </thead>
+                <tbody id="schedulesBody">
+                    <tr><td colspan="7" class="rm_empty">데이터를 불러오는 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="legacy_pagination" id="schedules_pagination"></div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- HISTORY TAB -->
+    <!-- ============================================ -->
+    <div id="tab_history" class="tab_panel">
+        <div class="grid_scroll">
+            <table class="rm_data_table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">No</th>
+                        <th style="width:180px;">스케줄명</th>
+                        <th style="width:150px;">호스트</th>
+                        <th style="width:90px;">상태</th>
+                        <th style="width:160px;">시작일</th>
+                        <th style="width:160px;">종료일</th>
+                        <th style="width:140px;">정책명</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr><td colspan="7" class="rm_empty">스캔이력 탭을 선택하면 데이터가 조회됩니다.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="legacy_pagination" id="history_pagination"></div>
+    </div>
+
+    <!-- ============================================ -->
+    <!-- POLICIES TAB -->
+    <!-- ============================================ -->
+    <div id="tab_policies" class="tab_panel">
+        <div class="grid_scroll">
+            <table class="rm_data_table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">No</th>
+                        <th style="width:180px;">정책명</th>
+                        <th style="width:100px;">버전</th>
+                        <th style="width:90px;">CPU제한</th>
+                        <th style="width:80px;">활성화</th>
+                        <th style="width:140px;">등록일</th>
+                    </tr>
+                </thead>
+                <tbody id="policiesBody">
+                    <tr><td colspan="6" class="rm_empty">스캔정책 탭을 선택하면 데이터가 조회됩니다.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorMsg" class="error_box_legacy" style="display:none;"></div>
+</div>
+
+<!-- Footer -->
+<div class="rm_footer">Copyright &copy; PICenter. All Rights Reserved.</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var PAGE_SIZE = 20;
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+    var activeTab = 'schedules';
+    var tabLoaded = { schedules: false, history: false, policies: false };
+
+    // ---------- Auth guard ----------
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // ---------- Display user info ----------
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            document.getElementById('userInfo').innerHTML =
+                '<strong>' + escHtml(user.userName || '') + '</strong> (' + escHtml(user.userId || '') + ')';
+        } catch (e) { /* ignore */ }
+    }
+
+    // ---------- Logout ----------
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    // ---------- Search ----------
+    document.getElementById('btnSearch').addEventListener('click', function() {
+        tabLoaded[activeTab] = false;
+        loadTabData(activeTab, 0);
+    });
+
+    var schHostEl = document.getElementById('schHost');
+    schHostEl.addEventListener('keydown', function(e) {
+        if (e.keyCode === 13) {
+            tabLoaded[activeTab] = false;
+            loadTabData(activeTab, 0);
+        }
+    });
+
+    // ======================================================================
+    // Tab switching
+    // ======================================================================
+    var tabLinks = document.querySelectorAll('#tabBar a');
+    var tabPanels = document.querySelectorAll('.tab_panel');
+
+    for (var t = 0; t < tabLinks.length; t++) {
+        tabLinks[t].addEventListener('click', function(e) {
+            e.preventDefault();
+            var tabName = this.getAttribute('data-tab');
+            if (tabName === activeTab) return;
+
+            for (var i = 0; i < tabLinks.length; i++) {
+                tabLinks[i].classList.remove('active');
+            }
+            this.classList.add('active');
+
+            for (var j = 0; j < tabPanels.length; j++) {
+                tabPanels[j].classList.remove('active');
+            }
+            document.getElementById('tab_' + tabName).classList.add('active');
+
+            activeTab = tabName;
+            document.getElementById('errorMsg').style.display = 'none';
+
+            if (!tabLoaded[tabName]) {
+                loadTabData(tabName, 0);
+            }
+        });
+    }
+
+    // ======================================================================
+    // API helper
+    // ======================================================================
+    function api(url) {
+        return fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        }).then(function(r) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return r.json();
+        });
+    }
+
+    // ======================================================================
+    // Build query params
+    // ======================================================================
+    function buildQuery(page) {
+        var params = 'page=' + page + '&size=' + PAGE_SIZE;
+        var host = document.getElementById('schHost').value;
+        var status = document.getElementById('schStatus').value;
+        if (host) params += '&hostName=' + encodeURIComponent(host);
+        if (status) params += '&status=' + encodeURIComponent(status);
+        return params;
+    }
+
+    // ======================================================================
+    // Data loader
+    // ======================================================================
+    function loadTabData(tabName, page) {
+        var urlMap = {
+            schedules: '/api/v1/scans/schedules?' + buildQuery(page),
+            history:   '/api/v1/scans/history?' + buildQuery(page),
+            policies:  '/api/v1/scans/policies?' + buildQuery(page)
+        };
+
+        document.getElementById('errorMsg').style.display = 'none';
+
+        api(urlMap[tabName]).then(function(data) {
+            if (!data) return;
+            if (data.success && data.data) {
+                tabLoaded[tabName] = true;
+                renderTabTable(tabName, data.data, page);
+            } else if (Array.isArray(data)) {
+                tabLoaded[tabName] = true;
+                renderTabTable(tabName, { content: data, totalPages: 1 }, page);
+            } else {
+                showError(data.error ? data.error.message : tabName + ' 데이터를 불러오는데 실패했습니다.');
+                renderEmptyTab(tabName);
+            }
+        }).catch(function() {
+            showError('서버 연결에 실패했습니다.');
+            renderEmptyTab(tabName);
+        });
+    }
+
+    // ======================================================================
+    // Render table per tab
+    // ======================================================================
+    function renderTabTable(tabName, pageData, page) {
+        var items = pageData.content || pageData.list || [];
+        if (Array.isArray(pageData) && !pageData.content) {
+            items = pageData;
+        }
+        var totalPages = pageData.totalPages || 1;
+
+        var tbodyId, colCount;
+        if (tabName === 'schedules') { tbodyId = 'schedulesBody'; colCount = 7; }
+        else if (tabName === 'history') { tbodyId = 'historyBody'; colCount = 7; }
+        else { tbodyId = 'policiesBody'; colCount = 6; }
+
+        var tbody = document.getElementById(tbodyId);
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="rm_empty">조회된 데이터가 없습니다.</td></tr>';
+            if (tabName !== 'policies') {
+                document.getElementById(tabName + '_pagination').innerHTML = '';
+            }
+            return;
+        }
+
+        var html = '';
+
+        if (tabName === 'schedules') {
+            for (var i = 0; i < items.length; i++) {
+                var s = items[i];
+                var sNo = page * PAGE_SIZE + i + 1;
+                var sBadge = getStatusBadge(s.status || s.STATUS);
+                html += '<tr>' +
+                    '<td>' + sNo + '</td>' +
+                    '<td class="td_left">' + escHtml(s.scheduleLabel || s.schedule_label || s.label || s.SCHEDULE_LABEL || '-') + '</td>' +
+                    '<td>' + escHtml(s.targetName || s.target_name || s.hostName || s.TARGET_NAME || '-') + '</td>' +
+                    '<td>' + sBadge + '</td>' +
+                    '<td>' + (s.startDate || s.start_date || s.startedAt || s.START_DATE || '-') + '</td>' +
+                    '<td>' + (s.endDate || s.end_date || s.endedAt || s.END_DATE || '-') + '</td>' +
+                    '<td>' + escHtml(s.policyName || s.policy_name || s.POLICY_NAME || '-') + '</td>' +
+                    '</tr>';
+            }
+        } else if (tabName === 'history') {
+            for (var j = 0; j < items.length; j++) {
+                var h = items[j];
+                var hNo = page * PAGE_SIZE + j + 1;
+                var hBadge = getStatusBadge(h.status || h.STATUS);
+                html += '<tr>' +
+                    '<td>' + hNo + '</td>' +
+                    '<td class="td_left">' + escHtml(h.scheduleLabel || h.schedule_label || h.label || h.SCHEDULE_LABEL || '-') + '</td>' +
+                    '<td>' + escHtml(h.targetName || h.target_name || h.hostName || h.TARGET_NAME || '-') + '</td>' +
+                    '<td>' + hBadge + '</td>' +
+                    '<td>' + (h.startDate || h.start_date || h.startedAt || h.START_DATE || '-') + '</td>' +
+                    '<td>' + (h.endDate || h.end_date || h.endedAt || h.END_DATE || '-') + '</td>' +
+                    '<td>' + escHtml(h.policyName || h.policy_name || h.POLICY_NAME || '-') + '</td>' +
+                    '</tr>';
+            }
+        } else if (tabName === 'policies') {
+            for (var k = 0; k < items.length; k++) {
+                var p = items[k];
+                var pNo = page * PAGE_SIZE + k + 1;
+                var enabled = p.enabled != null ? p.enabled :
+                              p.useYn === 'Y' || p.useYn === true;
+                var enableBadge = enabled
+                    ? '<span class="badge_status badge_yes">Y</span>'
+                    : '<span class="badge_status badge_no">N</span>';
+                html += '<tr>' +
+                    '<td>' + pNo + '</td>' +
+                    '<td class="td_left">' + escHtml(p.policyName || p.policy_name || p.name || p.POLICY_NAME || '-') + '</td>' +
+                    '<td>' + escHtml(p.policyVersion || p.policy_version || p.version || p.POLICY_VERSION || '-') + '</td>' +
+                    '<td>' + escHtml(p.cpuLimit || p.cpu_limit || p.CPU_LIMIT || '-') + '</td>' +
+                    '<td>' + enableBadge + '</td>' +
+                    '<td>' + (p.regdate || p.regDate || p.createdAt || p.REGDATE || '-') + '</td>' +
+                    '</tr>';
+            }
+        }
+
+        tbody.innerHTML = html;
+
+        // Pagination
+        if (tabName !== 'policies') {
+            renderPagination(tabName, page, totalPages);
+        }
+    }
+
+    function renderEmptyTab(tabName) {
+        var tbodyId, colCount;
+        if (tabName === 'schedules') { tbodyId = 'schedulesBody'; colCount = 7; }
+        else if (tabName === 'history') { tbodyId = 'historyBody'; colCount = 7; }
+        else { tbodyId = 'policiesBody'; colCount = 6; }
+
+        document.getElementById(tbodyId).innerHTML =
+            '<tr><td colspan="' + colCount + '" class="rm_empty">데이터 없음</td></tr>';
+
+        if (tabName !== 'policies') {
+            document.getElementById(tabName + '_pagination').innerHTML = '';
+        }
+    }
+
+    // ======================================================================
+    // Pagination
+    // ======================================================================
+    function renderPagination(tabName, current, total) {
+        var el = document.getElementById(tabName + '_pagination');
+        if (total <= 1) { el.innerHTML = ''; return; }
+
+        var html = '';
+        var blockSize = 10;
+        var startPage = Math.floor(current / blockSize) * blockSize;
+        var endPage = Math.min(startPage + blockSize, total);
+
+        html += '<button ' + (current === 0 ? 'disabled' : '') + ' data-page="0">&laquo;</button>';
+        html += '<button ' + (current === 0 ? 'disabled' : '') + ' data-page="' + (current - 1) + '">&lsaquo;</button>';
+
+        for (var i = startPage; i < endPage; i++) {
+            html += '<button class="' + (i === current ? 'active' : '') + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        }
+
+        html += '<button ' + (current >= total - 1 ? 'disabled' : '') + ' data-page="' + (current + 1) + '">&rsaquo;</button>';
+        html += '<button ' + (current >= total - 1 ? 'disabled' : '') + ' data-page="' + (total - 1) + '">&raquo;</button>';
+
+        el.innerHTML = html;
+
+        var btns = el.querySelectorAll('button');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].addEventListener('click', function() {
+                if (this.disabled) return;
+                loadTabData(tabName, parseInt(this.getAttribute('data-page')));
+            });
+        }
+    }
+
+    // ======================================================================
+    // Status badges
+    // ======================================================================
+    function getStatusBadge(status) {
+        if (!status) return '<span class="badge_status badge_default">-</span>';
+        var s = status.toLowerCase();
+        var cls = 'badge_default';
+        if (s === 'active' || s === 'complete' || s === 'completed' || s === 'success' || s === 'enabled') cls = 'badge_active';
+        else if (s === 'inactive' || s === 'stopped' || s === 'disabled' || s === 'failed' || s === 'error' || s === 'timeout') cls = 'badge_error';
+        else if (s === 'running' || s === 'in_progress' || s === 'scanning') cls = 'badge_running';
+        else if (s === 'pending' || s === 'waiting' || s === 'scheduled') cls = 'badge_pending';
+        return '<span class="badge_status ' + cls + '">' + escHtml(status) + '</span>';
+    }
+
+    // ======================================================================
+    // Utilities
+    // ======================================================================
+    function escHtml(str) {
+        if (!str || str === '-') return str || '-';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function showError(msg) {
+        var el = document.getElementById('errorMsg');
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    // ======================================================================
+    // Initial load
+    // ======================================================================
+    loadTabData('schedules', 0);
+
+})();
+</script>
+</body>
+</html>

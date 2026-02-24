@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>PICenter - 보고서/통계</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <style>
+        /* ===== Legacy PICenter_RM Override ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            font-size: 12px;
+            color: #333;
+            background: #f0f0f0;
+            min-height: 100vh;
+        }
+
+        /* ===== Header (white, 55px, fixed top) ===== */
+        .rm_header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 55px;
+            background: #fff;
+            border-bottom: 2px solid #0c4da2;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            z-index: 1000;
+        }
+        .rm_header .logo_area {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+        .rm_header .logo_area .logo_text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #0c4da2;
+            letter-spacing: -0.5px;
+        }
+        .rm_header .logo_area .logo_text span {
+            font-weight: 400;
+            font-size: 11px;
+            color: #888;
+            margin-left: 6px;
+        }
+
+        /* Navigation */
+        .rm_nav {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .rm_nav a {
+            display: inline-block;
+            padding: 0 14px;
+            line-height: 53px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: color 0.2s;
+        }
+        .rm_nav a:hover {
+            color: #0c4da2;
+        }
+        .rm_nav a.on {
+            color: #0c4da2;
+            font-weight: 700;
+            border-bottom: 2px solid #0c4da2;
+        }
+
+        /* Header right */
+        .rm_header_right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rm_header_right .user_name {
+            font-size: 12px;
+            color: #555;
+        }
+        .rm_header_right .user_name strong {
+            color: #333;
+        }
+        .rm_header_right .btn_logout {
+            padding: 4px 12px;
+            font-size: 11px;
+            color: #666;
+            background: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .rm_header_right .btn_logout:hover {
+            background: #e8e8e8;
+        }
+
+        /* ===== Content wrapper ===== */
+        .rm_content {
+            margin-top: 55px;
+            padding: 15px;
+            min-height: calc(100vh - 55px);
+        }
+
+        /* Page title */
+        .page_title_bar {
+            margin-bottom: 10px;
+        }
+        .page_title_bar h3 {
+            font-size: 20px;
+            font-weight: 400;
+            color: #222;
+            padding-top: 10px;
+        }
+
+        /* ===== Search table ===== */
+        .search_table {
+            width: auto;
+            min-width: 240px;
+            border-collapse: collapse;
+            border: 1px solid #c8ced3;
+            margin-bottom: 10px;
+        }
+        .search_table th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 10px 10px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+            width: 80px;
+            border-radius: 0.25rem;
+        }
+        .search_table td {
+            height: 31.5px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            background: #fff;
+        }
+        .search_table td input[type="date"] {
+            height: 27px;
+            padding: 0 6px;
+            border: 1px solid #c8ced3;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            color: #333;
+            text-align: center;
+            width: 175px;
+        }
+        .date_sep {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            color: #000;
+            font-size: 13px;
+        }
+        .btn_search_rm {
+            height: 26px;
+            padding: 0 16px;
+            background: #0c4da2;
+            color: #fff;
+            border: none;
+            font-size: 12px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            cursor: pointer;
+            border-radius: 2px;
+            margin-top: 0;
+        }
+        .btn_search_rm:hover {
+            background: #0a3f8a;
+        }
+
+        /* ===== 2-column layout ===== */
+        .stat_wrap {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .stat_left {
+            width: 50%;
+            flex-shrink: 0;
+        }
+        .stat_right {
+            width: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Chart area */
+        .chart_area {
+            background: #fff;
+            border: 1px solid #c8ced3;
+            padding: 15px;
+            margin-bottom: 12px;
+            min-height: 360px;
+        }
+        #chart_top_div {
+            width: 100%;
+            height: 634px;
+        }
+        .chart_title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #0c4da2;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #0c4da2;
+            padding-bottom: 6px;
+        }
+        .chart_total_text {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #333;
+        }
+        .stat_summary_text {
+            font-size: 12px;
+            color: #333;
+            line-height: 1.8;
+            margin-bottom: 8px;
+        }
+
+        /* Section title */
+        .section_title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #0c4da2;
+            padding: 8px 0;
+            border-bottom: 1px solid #0c4da2;
+            margin-bottom: 0;
+        }
+
+        /* ===== Data Tables ===== */
+        .top5_table_wrap {
+            margin-bottom: 12px;
+        }
+        .rm_data_table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .rm_data_table thead th {
+            background: #e8eef4;
+            color: #333;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 7px 8px;
+            text-align: center;
+            border: 1px solid #c8ced3;
+            white-space: nowrap;
+        }
+        .rm_data_table tbody td {
+            font-size: 12px;
+            color: #333;
+            padding: 6px 8px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            background: #fff;
+        }
+        .rm_data_table tbody tr:hover {
+            background: #f5f8fc;
+        }
+        .rm_data_table tbody td.td_left {
+            text-align: left;
+        }
+        .rm_data_table tbody td.td_right {
+            text-align: right;
+        }
+
+        /* ===== Full width sections ===== */
+        .full_section {
+            width: 100%;
+            margin-bottom: 12px;
+        }
+
+        /* Chart box (bar + pie) */
+        .chart_box {
+            width: 100%;
+            height: 345px;
+            margin: 10px 0;
+            background: #fff;
+            border: 1px solid #c8ced3;
+            display: flex;
+        }
+        .chart_box .chart_half {
+            width: 50%;
+            height: 100%;
+        }
+
+        /* ===== Empty ===== */
+        .rm_empty {
+            text-align: center;
+            color: #999;
+            padding: 30px 0;
+            font-size: 12px;
+        }
+
+        /* ===== Error Box ===== */
+        .error_box_legacy {
+            padding: 10px 14px;
+            background: #fff0f0;
+            color: #d32f2f;
+            border: 1px solid #ffcccc;
+            border-radius: 0.25rem;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        /* ===== Footer ===== */
+        .rm_footer {
+            text-align: center;
+            font-size: 11px;
+            color: #aaa;
+            padding: 10px 0;
+            margin-top: 20px;
+        }
+
+        /* Grid scroll for tall tables */
+        .grid_scroll_sm {
+            max-height: 235px;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #c8ced3;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="rm_header">
+    <div class="logo_area">
+        <span class="logo_text"><a href="/picenter_dashboard" style="color:inherit;text-decoration:none;">개인정보 검출관리 센터</a></span>
+    </div>
+    <div class="rm_nav">
+        <a href="/picenter_dashboard">대시보드</a>
+        <a href="/picenter_target">타겟</a>
+        <a href="/picenter_detection">검출</a>
+        <a href="/picenter_scan">스캔</a>
+        <a href="/picenter_report">보고서</a>
+        <a href="/picenter_statistics" class="on">통계</a>
+        <a href="/picenter_user">사용자</a>
+        <a href="/picenter_notice">공지사항</a>
+        <a href="/picenter_setting">설정</a>
+    </div>
+    <div class="rm_header_right">
+        <span class="user_name" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
+
+<!-- Content -->
+<div class="rm_content">
+    <div class="page_title_bar">
+        <h3>보고서</h3>
+    </div>
+
+    <!-- Search bar -->
+    <table class="search_table">
+        <tr>
+            <th>검색기간</th>
+            <td>
+                <input type="date" id="dateFrom">
+                <span class="date_sep">~</span>
+                <input type="date" id="dateTo">
+                <button class="btn_search_rm" id="btnSearch">검색</button>
+            </td>
+        </tr>
+    </table>
+
+    <!-- 2-column layout: Chart left + TOP5 right -->
+    <div class="stat_wrap">
+        <!-- LEFT: Donut chart -->
+        <div class="stat_left">
+            <div class="chart_area">
+                <div id="statSummaryText" class="stat_summary_text"></div>
+                <div id="chart_top_div"></div>
+                <p class="chart_total_text" id="chartTotalText"></p>
+            </div>
+        </div>
+
+        <!-- RIGHT: TOP5 tables -->
+        <div class="stat_right">
+            <!-- TOP5 (전체서비스) -->
+            <div class="top5_table_wrap">
+                <div class="section_title">TOP5 (전체서비스)</div>
+                <table class="rm_data_table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">No</th>
+                            <th>서비스명</th>
+                            <th>호스트명</th>
+                            <th style="width:90px;">검출 파일 수</th>
+                            <th style="width:100px;">검출 개인정보 수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topAllBody">
+                        <tr><td colspan="5" class="rm_empty">로딩중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TOP5 (정탐 기준) -->
+            <div class="top5_table_wrap">
+                <div class="section_title">TOP5 (정탐 기준)</div>
+                <table class="rm_data_table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">No</th>
+                            <th>서비스명</th>
+                            <th>호스트명</th>
+                            <th style="width:90px;">검출 파일 수</th>
+                            <th style="width:100px;">검출 개인정보 수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topTpBody">
+                        <tr><td colspan="5" class="rm_empty">로딩중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- TOP5 (오탐 기준) -->
+            <div class="top5_table_wrap">
+                <div class="section_title">TOP5 (오탐 기준)</div>
+                <table class="rm_data_table">
+                    <thead>
+                        <tr>
+                            <th style="width:40px;">No</th>
+                            <th>서비스명</th>
+                            <th>호스트명</th>
+                            <th style="width:90px;">검출 파일 수</th>
+                            <th style="width:100px;">검출 개인정보 수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="topFpBody">
+                        <tr><td colspan="5" class="rm_empty">로딩중...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 전체 서버 점검 결과(의심 건수) -->
+    <div class="full_section">
+        <div class="section_title">전체 서버 점검 결과(의심 건수)</div>
+        <table class="rm_data_table">
+            <thead>
+                <tr id="totalGridHeader">
+                    <th style="width:80px;">월</th>
+                    <th style="width:90px;">검출 서버</th>
+                    <th style="width:90px;">검출 파일 수</th>
+                    <th style="width:100px;">검출 개인정보 수</th>
+                </tr>
+            </thead>
+            <tbody id="totalGridBody">
+                <tr><td colspan="4" class="rm_empty">로딩중...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Charts: bar chart (left) + bar chart (right) -->
+    <div class="chart_box">
+        <div class="chart_half" id="barChartLeft"></div>
+        <div class="chart_half" id="barChartRight"></div>
+    </div>
+
+    <!-- 이행점검 현황 -->
+    <div class="full_section">
+        <div class="section_title">이행점검 현황</div>
+        <div class="grid_scroll_sm">
+            <table class="rm_data_table">
+                <thead>
+                    <tr>
+                        <th>호스트명</th>
+                        <th>현재 검출파일</th>
+                        <th>현재 검출건</th>
+                        <th>최초 검출파일</th>
+                        <th>최초 검출건</th>
+                        <th>최초 검출일</th>
+                        <th>증감률</th>
+                        <th>이행점검 횟수</th>
+                        <th>최근 실행일자</th>
+                    </tr>
+                </thead>
+                <tbody id="impleBody">
+                    <tr><td colspan="9" class="rm_empty">로딩중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Error -->
+    <div id="errorMsg" class="error_box_legacy" style="display:none;"></div>
+</div>
+
+<!-- Footer -->
+<div class="rm_footer">Copyright &copy; PICenter. All Rights Reserved.</div>
+
+<script>
+(function() {
+    'use strict';
+
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+
+    // Auth guard
+    if (!token) {
+        window.location.href = '/login.html';
+        return;
+    }
+
+    // Display user info
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            document.getElementById('userInfo').innerHTML =
+                '<strong>' + escHtml(user.userName || '') + '</strong> (' + escHtml(user.userId || '') + ')';
+        } catch(e) {}
+    }
+
+    // Logout
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    // Set default date range (last 30 days)
+    var today = new Date();
+    var thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+    document.getElementById('dateTo').value = formatDate(today);
+    document.getElementById('dateFrom').value = formatDate(thirtyDaysAgo);
+
+    // Search button
+    document.getElementById('btnSearch').addEventListener('click', function() {
+        var from = document.getElementById('dateFrom').value;
+        var to = document.getElementById('dateTo').value;
+        if (from && to && from > to) {
+            alert('입력한 끝 날짜가 시작 날짜 보다 빠릅니다.');
+            return;
+        }
+        loadAll();
+    });
+
+    // API helper
+    function api(url) {
+        return fetch(url, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        }).then(function(r) {
+            if (r.status === 401 || r.status === 403) {
+                localStorage.removeItem('picenter_token');
+                window.location.href = '/login.html';
+                return null;
+            }
+            return r.json();
+        });
+    }
+
+    function buildDateParams() {
+        var dateFrom = document.getElementById('dateFrom').value;
+        var dateTo = document.getElementById('dateTo').value;
+        var params = '';
+        if (dateFrom) params += '&dateFrom=' + encodeURIComponent(dateFrom);
+        if (dateTo) params += '&dateTo=' + encodeURIComponent(dateTo);
+        return params;
+    }
+
+    // ========================================================================
+    // PIE / DONUT CHART (using echarts)
+    // ========================================================================
+    var pieChart = null;
+
+    function loadStatistics() {
+        var params = buildDateParams();
+        api('/api/v1/statistics?' + params.replace(/^&/, '')).then(function(data) {
+            if (!data) return;
+            var d = null;
+            if (data.success && data.data) {
+                d = data.data;
+            } else if (data.totalDetections !== undefined || data.TOTAL !== undefined) {
+                d = data;
+            }
+
+            if (d) {
+                renderPieChart(d);
+            } else {
+                document.getElementById('chartTotalText').textContent = '';
+                renderEmptyPie();
+            }
+        }).catch(function() {
+            renderEmptyPie();
+        });
+    }
+
+    function renderPieChart(d) {
+        var chartDom = document.getElementById('chart_top_div');
+        if (pieChart) { pieChart.dispose(); }
+        pieChart = echarts.init(chartDom);
+
+        // Try to extract data from various response formats
+        var chartData = [];
+        var totalCount = d.TOTAL || d.totalDetections || d.totalCount || 0;
+        var countTargetId = d.COUNT_TARGET_ID || d.serverCount || d.countTargetId || 0;
+
+        // If the response contains datatype-level breakdown
+        if (d.datatypes && Array.isArray(d.datatypes)) {
+            for (var i = 0; i < d.datatypes.length; i++) {
+                var dt = d.datatypes[i];
+                chartData.push({
+                    name: dt.name || dt.patternName || dt.PATTERN_NAME || ('Type ' + (i + 1)),
+                    value: dt.value || dt.count || dt.TOTAL || 0
+                });
+            }
+        } else {
+            // Fallback: use truePositive/falsePositive/unprocessed
+            var truePositive = d.truePositive || d.truePositiveCount || 0;
+            var falsePositive = d.falsePositive || d.falsePositiveCount || 0;
+            var unprocessed = d.unprocessed || d.unprocessedCount || 0;
+            if (unprocessed === 0 && totalCount > 0) {
+                unprocessed = totalCount - truePositive - falsePositive;
+                if (unprocessed < 0) unprocessed = 0;
+            }
+            if (truePositive > 0) chartData.push({ name: '정탐', value: truePositive });
+            if (falsePositive > 0) chartData.push({ name: '오탐', value: falsePositive });
+            if (unprocessed > 0) chartData.push({ name: '미처리', value: unprocessed });
+        }
+
+        if (chartData.length === 0) {
+            chartData.push({ name: '데이터 없음', value: 1 });
+        }
+
+        // Summary text
+        var summaryHtml = '';
+        if (countTargetId > 0) {
+            summaryHtml = Number(countTargetId).toLocaleString() + '대 서버(약 ' +
+                Number(totalCount).toLocaleString() + '건)내 개인정보 정탐 확인';
+        }
+        document.getElementById('statSummaryText').textContent = summaryHtml;
+
+        // Total detection text
+        if (countTargetId > 0) {
+            document.getElementById('chartTotalText').textContent =
+                '[' + Number(countTargetId).toLocaleString() + '대 서버 검출 결과]';
+        } else {
+            document.getElementById('chartTotalText').textContent =
+                '총 검출건수: ' + Number(totalCount).toLocaleString();
+        }
+
+        var option = {
+            tooltip: {
+                trigger: 'item',
+                formatter: '{b}: {c} ({d}%)'
+            },
+            legend: {
+                orient: 'horizontal',
+                bottom: 10,
+                data: chartData.map(function(item) { return item.name; })
+            },
+            series: [{
+                name: '검출 현황',
+                type: 'pie',
+                radius: ['30%', '65%'],
+                center: ['50%', '45%'],
+                avoidLabelOverlap: true,
+                itemStyle: {
+                    borderRadius: 4,
+                    borderColor: '#fff',
+                    borderWidth: 2
+                },
+                label: {
+                    show: true,
+                    formatter: '{b}\n{d}%',
+                    fontSize: 12
+                },
+                labelLine: {
+                    show: true,
+                    length: 30,
+                    length2: 20
+                },
+                data: chartData
+            }],
+            color: ['#0070C0', '#f02533', '#cccccc', '#4CAF50', '#FF9800', '#9C27B0', '#00BCD4', '#795548']
+        };
+
+        pieChart.setOption(option);
+        window.addEventListener('resize', function() {
+            if (pieChart) pieChart.resize();
+        });
+    }
+
+    function renderEmptyPie() {
+        var chartDom = document.getElementById('chart_top_div');
+        if (pieChart) { pieChart.dispose(); }
+        pieChart = echarts.init(chartDom);
+        pieChart.setOption({
+            series: [{
+                type: 'pie',
+                radius: ['30%', '65%'],
+                center: ['50%', '45%'],
+                data: [{ name: '데이터 없음', value: 1 }],
+                label: { show: true, formatter: '{b}' },
+                itemStyle: { color: '#e0e0e0' }
+            }]
+        });
+    }
+
+    // ========================================================================
+    // TOP5 TABLES
+    // ========================================================================
+    function loadTopAll() {
+        var params = buildDateParams();
+        api('/api/v1/statistics/detections?' + params.replace(/^&/, '')).then(function(data) {
+            renderTop5('topAllBody', data);
+        }).catch(function() {
+            document.getElementById('topAllBody').innerHTML =
+                '<tr><td colspan="5" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+        });
+    }
+
+    function loadTopTp() {
+        var params = buildDateParams();
+        api('/api/v1/statistics/true-positives?' + params.replace(/^&/, '')).then(function(data) {
+            renderTop5('topTpBody', data);
+        }).catch(function() {
+            document.getElementById('topTpBody').innerHTML =
+                '<tr><td colspan="5" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+        });
+    }
+
+    function loadTopFp() {
+        var params = buildDateParams();
+        api('/api/v1/statistics/false-positives?' + params.replace(/^&/, '')).then(function(data) {
+            renderTop5('topFpBody', data);
+        }).catch(function() {
+            document.getElementById('topFpBody').innerHTML =
+                '<tr><td colspan="5" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+        });
+    }
+
+    function renderTop5(tbodyId, data) {
+        var tbody = document.getElementById(tbodyId);
+        if (!data) {
+            tbody.innerHTML = '<tr><td colspan="5" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+            return;
+        }
+
+        var items = [];
+        if (data.success && data.data) {
+            items = Array.isArray(data.data) ? data.data : (data.data.content || data.data.list || []);
+        } else if (Array.isArray(data)) {
+            items = data;
+        } else if (data.content) {
+            items = data.content;
+        }
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="rm_empty">데이터가 없습니다.</td></tr>';
+            return;
+        }
+
+        var topItems = items.slice(0, 5);
+        var html = '';
+        topItems.forEach(function(item, i) {
+            html += '<tr>';
+            html += '<td>' + (i + 1) + '</td>';
+            html += '<td class="td_left">' + escHtml(item.serviceName || item.SERVICE_NM || item.groupName || '-') + '</td>';
+            html += '<td class="td_left">' + escHtml(item.targetName || item.hostName || item.TARGET_NAME || item.NAME || '-') + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.pathCount || item.PATH_CNT || item.fileCount || 0) + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.total || item.TOTAL || item.count || item.detectionCount || 0) + '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+
+    // ========================================================================
+    // TOTAL GRID (전체 서버 점검 결과)
+    // ========================================================================
+    function loadTotalGrid() {
+        var params = buildDateParams();
+        api('/api/v1/statistics/monthly?' + params.replace(/^&/, '')).then(function(data) {
+            renderTotalGrid(data);
+        }).catch(function() {
+            document.getElementById('totalGridBody').innerHTML =
+                '<tr><td colspan="4" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+        });
+    }
+
+    function renderTotalGrid(data) {
+        var tbody = document.getElementById('totalGridBody');
+        if (!data) {
+            tbody.innerHTML = '<tr><td colspan="4" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+            return;
+        }
+
+        var items = [];
+        if (data.success && data.data) {
+            items = Array.isArray(data.data) ? data.data : (data.data.content || data.data.list || []);
+        } else if (Array.isArray(data)) {
+            items = data;
+        } else if (data.content) {
+            items = data.content;
+        }
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="rm_empty">데이터가 없습니다.</td></tr>';
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            html += '<tr>';
+            html += '<td>' + escHtml(item.month_day || item.monthDay || item.month || '-') + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.host_cnt || item.hostCount || item.serverCount || 0) + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.match_locations || item.matchLocations || item.fileCount || 0) + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.match || item.matchCount || item.totalCount || 0) + '</td>';
+            html += '</tr>';
+        }
+        tbody.innerHTML = html;
+
+        // Render bar charts
+        renderBarCharts(items);
+    }
+
+    // ========================================================================
+    // BAR CHARTS (echarts)
+    // ========================================================================
+    var barLeftChart = null;
+    var barRightChart = null;
+
+    function renderBarCharts(items) {
+        var months = [];
+        var hostCnts = [];
+        var matchLocations = [];
+        var totals = [];
+
+        for (var i = 0; i < items.length; i++) {
+            months.push(items[i].month_day || items[i].monthDay || items[i].month || '');
+            hostCnts.push(items[i].host_cnt || items[i].hostCount || items[i].serverCount || 0);
+            matchLocations.push(items[i].match_locations || items[i].matchLocations || items[i].fileCount || 0);
+            totals.push(items[i].match || items[i].matchCount || items[i].totalCount || 0);
+        }
+
+        // Left chart: 검출 서버 + 검출 파일 수
+        var leftDom = document.getElementById('barChartLeft');
+        if (barLeftChart) { barLeftChart.dispose(); }
+        barLeftChart = echarts.init(leftDom);
+        barLeftChart.setOption({
+            legend: {
+                bottom: 10,
+                data: ['검출 서버', '검출 파일 수']
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            xAxis: [{
+                type: 'category',
+                data: months,
+                axisTick: { alignWithLabel: true }
+            }],
+            yAxis: [{ type: 'value' }],
+            series: [
+                {
+                    name: '검출 서버',
+                    type: 'bar',
+                    color: '#006eb6',
+                    barMaxWidth: 50,
+                    data: hostCnts,
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#000',
+                        formatter: function(params) {
+                            return Number(params.value).toLocaleString();
+                        }
+                    }
+                },
+                {
+                    name: '검출 파일 수',
+                    type: 'bar',
+                    color: '#dc143c',
+                    barMaxWidth: 50,
+                    data: matchLocations,
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#000',
+                        formatter: function(params) {
+                            return Number(params.value).toLocaleString();
+                        }
+                    }
+                }
+            ]
+        });
+
+        // Right chart: 검출 개인정보 수
+        var rightDom = document.getElementById('barChartRight');
+        if (barRightChart) { barRightChart.dispose(); }
+        barRightChart = echarts.init(rightDom);
+        barRightChart.setOption({
+            legend: {
+                bottom: 10,
+                data: ['검출 개인정보 수']
+            },
+            tooltip: {
+                trigger: 'axis',
+                axisPointer: { type: 'shadow' }
+            },
+            xAxis: [{
+                type: 'category',
+                data: months,
+                axisTick: { alignWithLabel: true }
+            }],
+            yAxis: [{ type: 'value' }],
+            series: [{
+                name: '검출 개인정보 수',
+                type: 'bar',
+                color: '#006eb6',
+                barMaxWidth: 50,
+                data: totals,
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#000',
+                    formatter: function(params) {
+                        return Number(params.value).toLocaleString();
+                    }
+                }
+            }]
+        });
+
+        window.addEventListener('resize', function() {
+            if (barLeftChart) barLeftChart.resize();
+            if (barRightChart) barRightChart.resize();
+        });
+    }
+
+    // ========================================================================
+    // IMPLEMENTATION CHECK (이행점검 현황)
+    // ========================================================================
+    function loadImple() {
+        var params = buildDateParams();
+        api('/api/v1/statistics/datatypes?' + params.replace(/^&/, '')).then(function(data) {
+            renderImple(data);
+        }).catch(function() {
+            document.getElementById('impleBody').innerHTML =
+                '<tr><td colspan="9" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+        });
+    }
+
+    function renderImple(data) {
+        var tbody = document.getElementById('impleBody');
+        if (!data) {
+            tbody.innerHTML = '<tr><td colspan="9" class="rm_empty">데이터를 불러올 수 없습니다.</td></tr>';
+            return;
+        }
+
+        var items = [];
+        if (data.success && data.data) {
+            items = Array.isArray(data.data) ? data.data : (data.data.content || data.data.list || []);
+        } else if (Array.isArray(data)) {
+            items = data;
+        } else if (data.content) {
+            items = data.content;
+        }
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="rm_empty">데이터가 없습니다.</td></tr>';
+            return;
+        }
+
+        var html = '';
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            html += '<tr>';
+            html += '<td class="td_left">' + escHtml(item.target_name || item.targetName || item.hostName || '-') + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.max_match_locations || item.currentFileCount || 0) + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.max_match || item.currentDetectionCount || 0) + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.min_match_locations || item.initialFileCount || 0) + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.min_match || item.initialDetectionCount || 0) + '</td>';
+            html += '<td>' + escHtml(item.min_report_id || item.initialDate || '-') + '</td>';
+            html += '<td class="td_right">' + escHtml(item.rate || item.changeRate || '-') + '</td>';
+            html += '<td class="td_right">' + fmtNum(item.serach_cnt || item.checkCount || 0) + '</td>';
+            html += '<td>' + escHtml(item.max_report_id || item.lastExecutionDate || '-') + '</td>';
+            html += '</tr>';
+        }
+        tbody.innerHTML = html;
+    }
+
+    // ========================================================================
+    // LOAD ALL
+    // ========================================================================
+    function loadAll() {
+        loadStatistics();
+        loadTopAll();
+        loadTopTp();
+        loadTopFp();
+        loadTotalGrid();
+        loadImple();
+    }
+
+    // ========================================================================
+    // UTILITIES
+    // ========================================================================
+    function escHtml(str) {
+        if (!str || str === '-') return str || '-';
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+    }
+
+    function fmtNum(n) {
+        if (n === null || n === undefined || n === '') return '0';
+        return Number(n).toLocaleString();
+    }
+
+    function formatDate(d) {
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return y + '-' + m + '-' + day;
+    }
+
+    // ========================================================================
+    // INITIAL LOAD
+    // ========================================================================
+    loadAll();
+})();
+</script>
+</body>
+</html>

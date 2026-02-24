@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.SettingMapper">
+
+    <!--
+        Actual remote DB schema:
+
+        pi_setting: idx(int), name(varchar50), detail_name(varchar50),
+            status(varchar50 default 'N'), type(int default 1), seq(int)
+            NO PK defined
+
+        NOTE: There is NO pi_page_settings table. Use pi_setting instead.
+    -->
+
+    <!-- Select all settings (replaces the old selectPageSettings that referenced non-existent pi_page_settings) -->
+    <select id="selectPageSettings" resultType="map">
+        SELECT
+            s.idx         AS pageId,
+            s.name        AS pageName,
+            s.detail_name AS pageUrl,
+            s.type        AS gradeNo,
+            s.status      AS useYn,
+            s.seq         AS sortOrder
+        FROM pi_setting s
+        WHERE s.status = 'Y'
+        ORDER BY s.seq ASC, s.idx ASC
+    </select>
+
+    <!-- Save (insert or update) a setting entry -->
+    <insert id="savePageSettings" parameterType="map">
+        INSERT INTO pi_setting (
+            name, detail_name, type, status, seq
+        ) VALUES (
+            #{pageName}, #{pageUrl}, #{gradeNo},
+            #{useYn}, #{sortOrder}
+        )
+        ON DUPLICATE KEY UPDATE
+            name        = #{pageName},
+            detail_name = #{pageUrl},
+            type        = #{gradeNo},
+            status      = #{useYn},
+            seq         = #{sortOrder}
+    </insert>
+
+</mapper>
