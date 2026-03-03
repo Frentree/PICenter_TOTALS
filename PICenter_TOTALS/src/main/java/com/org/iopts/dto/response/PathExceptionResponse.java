@@ -31,7 +31,7 @@ public class PathExceptionResponse {
     private String description;
 
     /** Target ID */
-    private Long targetId;
+    private String targetId;
 
     /** Use flag */
     private Character useYn;

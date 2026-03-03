@@ -53,6 +53,21 @@ public class FaqController {
     }
 
     /**
+     * Get FAQ detail
+     *
+     * New: GET /api/v1/faqs/{faqId}
+     */
+    @Operation(summary = "Get FAQ detail", description = "Get FAQ detail by FAQ ID")
+    @GetMapping("/{faqId}")
+    public ApiResponse<FaqResponse> getFaqDetail(
+            @Parameter(description = "FAQ ID", example = "1") @PathVariable Long faqId) {
+
+        log.debug("GET /api/v1/faqs/{}", faqId);
+        FaqResponse response = faqService.getFaqDetail(faqId);
+        return ApiResponse.success(response);
+    }
+
+    /**
      * Create a new FAQ
      *
      * Legacy: POST /faqInsert

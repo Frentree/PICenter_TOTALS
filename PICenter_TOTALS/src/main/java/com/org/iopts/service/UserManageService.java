@@ -44,7 +44,7 @@ public interface UserManageService {
      * @param searchKeyword search value
      * @return paginated user response
      */
-    PageResponse<UserResponse> getUserList(int page, int size, String searchType, String searchKeyword);
+    PageResponse<UserResponse> getUserList(int page, int size, Map<String, String> searchParams);
 
     /**
      * Get user detail by userNo
@@ -133,7 +133,7 @@ public interface UserManageService {
      * @param searchKeyword search value
      * @return paginated user log response
      */
-    PageResponse<UserLogResponse> getUserLogList(int page, int size, String searchType, String searchKeyword);
+    PageResponse<UserLogResponse> getUserLogList(int page, int size, Map<String, String> searchParams);
 
     /**
      * Get current account policy
@@ -148,4 +148,20 @@ public interface UserManageService {
      * @param request account policy data
      */
     void saveAccountPolicy(AccountPolicyRequest request);
+
+    /**
+     * Get paginated list of locked user accounts
+     *
+     * @param page page number (0-based)
+     * @param size page size
+     * @return paginated locked user response
+     */
+    PageResponse<UserResponse> getLockedUsers(int page, int size, String searchKeyword);
+
+    /**
+     * Unlock multiple user accounts
+     *
+     * @param userNos list of user numbers to unlock
+     */
+    void batchUnlockUsers(java.util.List<String> userNos);
 }

@@ -60,4 +60,39 @@ public interface DashboardMapper {
      * Select ranking data (top targets/groups by detection count)
      */
     List<Map<String, Object>> selectRankingData(Map<String, Object> params);
+
+    /**
+     * Select detailed agent status (connected/disconnected/total)
+     */
+    Map<String, Object> selectSystemAgents();
+
+    /**
+     * Select todo items (pending approvals, scheduled scans)
+     */
+    Map<String, Object> selectTodoItems();
+
+    /**
+     * Select implementation/remediation progress
+     */
+    Map<String, Object> selectImplementationStatus();
+
+    /**
+     * Select last scan information
+     */
+    Map<String, Object> selectLastScan();
+
+    /**
+     * Select completion statistics
+     */
+    Map<String, Object> selectCompletionStats();
+
+    /**
+     * Select detection file status (total, processed, inaccessible)
+     */
+    Map<String, Object> selectDetectionStatus();
+
+    /**
+     * Select approval processing status (owned, false positive)
+     */
+    Map<String, Object> selectApprovalStatus();
 }

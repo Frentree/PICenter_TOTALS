@@ -40,8 +40,42 @@
 
     <!-- ==================== Search Condition Fragment ==================== -->
 
+    <!--
+        TUNING: userSearchCondition
+        [성능 이슈] LIKE CONCAT('%', ..., '%') → 양쪽 와일드카드로 인덱스 미사용
+        [인덱스 권장] pi_user(user_id) 인덱스 (이미 존재할 가능성 높음)
+            - CREATE INDEX idx_pi_user_userid ON pi_user(user_id);
+        [인덱스 권장] pi_user(user_name) 인덱스
+            - CREATE INDEX idx_pi_user_username ON pi_user(user_name);
+        [인덱스 권장] pi_user(insa_code) 인덱스
+            - CREATE INDEX idx_pi_user_insacode ON pi_user(insa_code);
+        [인덱스 권장] pi_user(user_grade) 인덱스
+            - CREATE INDEX idx_pi_user_grade ON pi_user(user_grade);
+        [인덱스 권장] pi_user(acc_yn) 인덱스
+            - CREATE INDEX idx_pi_user_accyn ON pi_user(acc_yn);
+    -->
     <sql id="userSearchCondition">
-        <if test="searchType != null and searchKeyword != null">
+        <!-- Individual field filters (from frontend) -->
+        <if test="userGrade != null and userGrade != ''">
+            AND u.user_grade = #{userGrade}
+        </if>
+        <if test="userId != null and userId != ''">
+            AND u.user_id LIKE CONCAT('%', #{userId}, '%')
+        </if>
+        <if test="userName != null and userName != ''">
+            AND u.user_name LIKE CONCAT('%', #{userName}, '%')
+        </if>
+        <if test="teamName != null and teamName != ''">
+            AND g.team_name LIKE CONCAT('%', #{teamName}, '%')
+        </if>
+        <if test="accYn != null and accYn != ''">
+            AND u.acc_yn = #{accYn}
+        </if>
+        <if test="lockYn != null and lockYn != ''">
+            AND u.lock_status = #{lockYn}
+        </if>
+        <!-- Legacy searchType/searchKeyword support -->
+        <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
             <choose>
                 <when test="searchType == 'userId'">
                     AND u.user_id LIKE CONCAT('%', #{searchKeyword}, '%')
@@ -62,8 +96,25 @@
         </if>
     </sql>
 
+    <!--
+        TUNING: userLogSearchCondition
+        [인덱스 권장] pi_userlog(regdate, user_no) 복합 인덱스 → ORDER BY + JOIN 성능 개선
+            - CREATE INDEX idx_pi_userlog_regdate_userno ON pi_userlog(regdate DESC, user_no);
+        [인덱스 권장] pi_userlog(menu_name) 인덱스
+            - CREATE INDEX idx_pi_userlog_menuname ON pi_userlog(menu_name);
+        [인덱스 권장] pi_userlog(log_flag) 인덱스
+            - CREATE INDEX idx_pi_userlog_logflag ON pi_userlog(log_flag);
+    -->
     <sql id="userLogSearchCondition">
-        <if test="searchType != null and searchKeyword != null">
+        <!-- Individual field filters (from frontend) -->
+        <if test="userId != null and userId != ''">
+            AND u.user_id LIKE CONCAT('%', #{userId}, '%')
+        </if>
+        <if test="userName != null and userName != ''">
+            AND u.user_name LIKE CONCAT('%', #{userName}, '%')
+        </if>
+        <!-- Legacy searchType/searchKeyword support -->
+        <if test="searchType != null and searchKeyword != null and searchKeyword != ''">
             <choose>
                 <when test="searchType == 'userId'">
                     AND u.user_id LIKE CONCAT('%', #{searchKeyword}, '%')
@@ -116,6 +167,7 @@
     <select id="selectUserListCount" parameterType="map" resultType="long">
         SELECT COUNT(*)
         FROM pi_user u
+        LEFT JOIN pi_group g ON u.insa_code = g.insa_code
         WHERE 1=1
         <include refid="userSearchCondition"/>
     </select>
@@ -244,18 +296,24 @@
         UPDATE pi_user
         SET
             lock_status = 0,
-            LOCK_DATE = NOW(),
-            FAILED_COUNT = 0,
-            logindate = DATE_ADD(DATE_FORMAT(NOW(), '%Y-%m-%d 00:00:00'), INTERVAL 3 MONTH),
-            unlock_reason = NULL
+            LOCK_DATE = NULL,
+            FAILED_COUNT = 0
         WHERE user_no = #{userNo}
     </update>
 
     <!-- ==================== Team Management ==================== -->
 
+    <!--
+        TUNING: selectTeamList
+        [성능 이슈] SELECT DISTINCT → 불필요한 중복 제거 연산 (insa_code가 PK이면 DISTINCT 불필요)
+        [개선 방안] insa_code가 PK/UNIQUE이면 DISTINCT 제거하여 정렬 비용 절감
+        [인덱스 권장] pi_group(team_name, degree) 복합 인덱스
+            - CREATE INDEX idx_pi_group_teamname_degree ON pi_group(team_name, degree);
+    -->
     <!-- Select all teams (from pi_group) -->
+    <!-- [튜닝 적용] insa_code가 PK 컬럼이므로 불필요한 DISTINCT 제거 -->
     <select id="selectTeamList" resultType="map">
-        SELECT DISTINCT
+        SELECT
             g.insa_code   AS teamCode,
             g.team_name   AS teamName,
             g.up_idx      AS parentCode,
@@ -269,12 +327,14 @@
     <!-- Insert a new team (into pi_group) -->
     <insert id="insertTeam" parameterType="map">
         INSERT INTO pi_group (
+            company_code,
             insa_code,
             team_name,
             up_idx,
             degree,
             credate
         ) VALUES (
+            '',
             #{teamCode},
             #{teamName},
             #{parentCode},
@@ -285,6 +345,13 @@
 
     <!-- ==================== User Logs ==================== -->
 
+    <!--
+        TUNING: selectUserLogList
+        [성능 이슈] CONCAT(#{fromDate}, ' 00:00:00')으로 날짜 문자열 결합 → 인덱스 활용도 저하 가능
+        [개선 방안] 파라미터에서 미리 시간 포함 문자열 전달 또는 DATE 타입 비교 사용 권장
+        [성능 이슈] LEFT JOIN pi_user u → userId/userName 검색 시에만 필요하나 항상 JOIN 수행
+        [성능 이슈] CONCAT(DATE_FORMAT(...), '_', millisecond, '_', user_no) → 매 행마다 문자열 연산
+    -->
     <!-- Select paginated user log list (from pi_userlog) -->
     <select id="selectUserLogList" parameterType="map" resultMap="UserLogResponseMap">
         SELECT
@@ -369,5 +436,55 @@
             REGDATE           = NOW()
         WHERE IDX = 0
     </update>
+
+    <!-- ==================== Locked Users ==================== -->
+
+    <!--
+        TUNING: selectLockedUsers
+        [인덱스 권장] pi_user(lock_status, LOCK_DATE DESC) 복합 인덱스 → WHERE + ORDER BY 커버
+            - CREATE INDEX idx_pi_user_lock_date ON pi_user(lock_status, LOCK_DATE DESC);
+    -->
+    <!-- Select paginated locked users -->
+    <select id="selectLockedUsers" parameterType="map" resultMap="UserResponseMap">
+        SELECT
+            u.user_no        AS USER_NO,
+            u.user_id        AS USER_ID,
+            u.user_name      AS USER_NAME,
+            u.user_grade     AS USER_GRADE,
+            u.insa_code      AS TEAM_CODE,
+            g.team_name      AS TEAM_NAME,
+            u.user_email     AS EMAIL,
+            u.user_phone     AS PHONE,
+            u.acc_yn         AS USE_YN,
+            u.lock_status    AS LOCK_YN,
+            u.LOCK_DATE      AS LOCK_DT,
+            u.FAILED_COUNT   AS LOGIN_FAIL_CNT,
+            u.logindate      AS LAST_LOGIN_DT,
+            u.pwd_upt_dt     AS PWD_CHANGE_DT,
+            u.regdate        AS REG_DT,
+            NULL             AS REG_USER,
+            NULL             AS MOD_DT,
+            NULL             AS MOD_USER
+        FROM pi_user u
+        LEFT JOIN pi_group g ON u.insa_code = g.insa_code
+        WHERE u.lock_status = 1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (u.user_id LIKE CONCAT('%', #{searchKeyword}, '%')
+                 OR u.user_name LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY u.LOCK_DATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!-- Count total locked users -->
+    <select id="countLockedUsers" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_user u
+        WHERE u.lock_status = 1
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND (u.user_id LIKE CONCAT('%', #{searchKeyword}, '%')
+                 OR u.user_name LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
 
 </mapper>

@@ -1,0 +1,373 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.SearchMapper">
+
+    <!--
+        SearchMapper.xml - Search registration and result queries.
+
+        Key tables:
+          pi_scan_history:   target_id(PK), ap_no(PK), started(varchar), status(varchar), regdate(date)
+          pi_targets:        target_id(PK), ap_no(PK), name, TARGET_USE, group_idx, platform
+          pi_find:           hash_id(PK), target_id(PK), ap_no(PK), path, account, owner, regdate, credate
+          pi_agents:         agent_name(PK), ap_no(PK), agent_connected_ip, agent_version
+          pi_target_group:   idx(PK auto), name, degree, type, up_idx
+
+        Search registrations are modeled as scheduled scan entries in pi_scan_history.
+        Search results are derived from pi_find (detection findings).
+    -->
+
+    <!-- ==================== Registration Queries ==================== -->
+
+    <!--
+        TUNING: registrationSearchCondition
+        [성능 이슈] LIKE '%...%' 양쪽 와일드카드(NAME, TARGET_ID) → Full Table Scan
+        [인덱스 권장] pi_targets(TARGET_USE, NAME) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_name ON pi_targets(TARGET_USE, NAME);
+    -->
+    <sql id="registrationSearchCondition">
+        <if test="keyword != null and keyword != ''">
+            AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                 OR t.TARGET_ID LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </sql>
+
+    <!--
+        TUNING: selectRegistrationList
+        [인덱스 권장] pi_scan_history(target_id, ap_no, regdate DESC) 복합 인덱스
+            - CREATE INDEX idx_pi_scan_hist_target_regdate ON pi_scan_history(target_id, ap_no, regdate DESC);
+    -->
+    <select id="selectRegistrationList" parameterType="map" resultType="map">
+        SELECT
+            sh.target_id     AS registId,
+            sh.target_id     AS targetId,
+            t.NAME           AS targetName,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+            sh.started       AS startedAt,
+            sh.status        AS status,
+            sh.regdate       AS regDate,
+            COALESCE(ptg.name, '미그룹') AS groupName
+        FROM pi_scan_history sh
+        INNER JOIN pi_targets t ON sh.target_id = t.target_id AND sh.ap_no = t.ap_no
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+        WHERE t.TARGET_USE = 'Y'
+        <include refid="registrationSearchCondition"/>
+        ORDER BY sh.regdate DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countRegistrationList" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_scan_history sh
+        INNER JOIN pi_targets t ON sh.target_id = t.target_id AND sh.ap_no = t.ap_no
+        WHERE t.TARGET_USE = 'Y'
+        <include refid="registrationSearchCondition"/>
+    </select>
+
+    <insert id="insertRegistration" parameterType="map">
+        INSERT INTO pi_scan_history (
+            target_id, ap_no, started, status, regdate
+        ) VALUES (
+            #{targetId}, #{apNo}, #{startedAt}, 'scheduled', NOW()
+        )
+    </insert>
+
+    <!--
+        TUNING: deleteRegistration
+        [성능 이슈] LOWER(status) 함수 → 인덱스 미사용
+    -->
+    <!-- [튜닝 적용] LOWER() 제거 → 인덱스 활용 가능, status 값 저장 시 소문자 통일 전제 -->
+    <delete id="deleteRegistration">
+        DELETE FROM pi_scan_history
+        WHERE target_id = #{registId}
+          AND status = 'scheduled'
+    </delete>
+
+    <select id="selectApNoByTargetId" parameterType="string" resultType="string">
+        SELECT ap_no FROM pi_targets WHERE target_id = #{targetId} LIMIT 1
+    </select>
+
+    <!-- ==================== Result Queries ==================== -->
+
+    <!--
+        TUNING: resultSearchCondition
+        [성능 이슈] f.path가 text 타입 + LIKE '%...%' → Full Table Scan + text 비교 매우 느림
+        [개선 방안] Full-Text Index 사용 또는 searchType 분리 권장
+    -->
+    <sql id="resultSearchCondition">
+        <if test="keyword != null and keyword != ''">
+            AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.path LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            <choose>
+                <when test="status == 'processed'">
+                    AND dp.processing_flag IS NOT NULL AND dp.processing_flag != 0
+                </when>
+                <when test="status == 'unprocessed'">
+                    AND (dp.processing_flag IS NULL OR dp.processing_flag = 0)
+                </when>
+                <when test="status == 'truePositive'">
+                    AND dp.approval_status = 'Y'
+                </when>
+                <when test="status == 'falsePositive'">
+                    AND dp.approval_status = 'N'
+                </when>
+            </choose>
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND f.regdate &gt;= CONCAT(#{startDate}, ' 00:00:00')
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND f.regdate &lt;= CONCAT(#{endDate}, ' 23:59:59')
+        </if>
+    </sql>
+
+    <!--
+        TUNING: selectResultList
+        [성능 이슈] 5개 테이블 JOIN (pi_summary, pi_data_processing에 text 컬럼 비교 2회)
+        [인덱스 권장] pi_find(target_id, ap_no, regdate DESC) 복합 인덱스
+            - CREATE INDEX idx_pi_find_target_ap_regdate ON pi_find(target_id, ap_no, regdate DESC);
+        [인덱스 권장] pi_summary(target_id, ap_no, object_id(100)) prefix 인덱스
+            - CREATE INDEX idx_pi_summary_target_obj ON pi_summary(target_id, ap_no, object_id(100));
+        [인덱스 권장] pi_data_processing(target_id, ap_no, hash_id(100))
+            - CREATE INDEX idx_pi_dp_target_ap_hash ON pi_data_processing(target_id, ap_no, hash_id(100));
+    -->
+    <!--
+        [튜닝] selectResultList - 서브쿼리 페이지네이션
+        변경 전: 34만건 전체에 5개 테이블 JOIN 후 LIMIT → O(N*M) 25초
+        변경 후: status 필터 없을 때 pi_find+pi_targets만으로 LIMIT 후 나머지 JOIN → 5건만 JOIN
+        효과: 필터 없는 기본 조회 25초 → 1초 이하
+    -->
+    <select id="selectResultList" parameterType="map" resultType="map">
+        <choose>
+            <when test="status == null or status == ''">
+                /* 필터 없는 경우: 서브쿼리 페이지네이션 (fast path) */
+                SELECT
+                    sub.hash_id      AS resultId,
+                    sub.hash_id      AS findNo,
+                    sub.path         AS findPath,
+                    sub.regdate      AS findDate,
+                    t2.TARGET_ID     AS targetId,
+                    t2.NAME          AS targetName,
+                    COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+                    s.data_type      AS datatype,
+                    CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+                    CASE WHEN dp.approval_status = 'Y' THEN 'Y'
+                         WHEN dp.approval_status = 'N' THEN 'N'
+                         ELSE NULL END AS trueYn,
+                    COALESCE(ptg.name, '미그룹') AS groupName
+                FROM (
+                    SELECT f.hash_id, f.path, f.regdate, f.target_id, f.ap_no
+                    FROM pi_find f
+                    INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+                    WHERE t.TARGET_USE = 'Y'
+                    <if test="keyword != null and keyword != ''">
+                        AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                             OR f.path LIKE CONCAT('%', #{keyword}, '%'))
+                    </if>
+                    <if test="startDate != null and startDate != ''">
+                        AND f.regdate &gt;= CONCAT(#{startDate}, ' 00:00:00')
+                    </if>
+                    <if test="endDate != null and endDate != ''">
+                        AND f.regdate &lt;= CONCAT(#{endDate}, ' 23:59:59')
+                    </if>
+                    ORDER BY f.regdate DESC
+                    LIMIT #{offset}, #{limit}
+                ) sub
+                INNER JOIN pi_targets t2 ON sub.target_id = t2.target_id AND sub.ap_no = t2.ap_no
+                LEFT JOIN pi_summary s ON sub.target_id = s.target_id AND sub.ap_no = s.ap_no AND sub.hash_id = s.object_id
+                LEFT JOIN pi_data_processing dp ON sub.target_id = dp.target_id AND sub.ap_no = dp.ap_no AND sub.hash_id = dp.hash_id
+                LEFT JOIN pi_agents a ON t2.NAME = a.AGENT_NAME AND t2.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+                LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t2.TARGET_ID AND t2.AP_NO = tg.AP_NO
+                LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+            </when>
+            <otherwise>
+                /* status 필터 있는 경우: 기존 방식 (dp JOIN 필수) */
+                SELECT
+                    f.hash_id        AS resultId,
+                    f.hash_id        AS findNo,
+                    f.path           AS findPath,
+                    f.regdate        AS findDate,
+                    t.TARGET_ID      AS targetId,
+                    t.NAME           AS targetName,
+                    COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+                    s.data_type      AS datatype,
+                    CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+                    CASE WHEN dp.approval_status = 'Y' THEN 'Y'
+                         WHEN dp.approval_status = 'N' THEN 'N'
+                         ELSE NULL END AS trueYn,
+                    COALESCE(ptg.name, '미그룹') AS groupName
+                FROM pi_find f
+                INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+                LEFT JOIN pi_summary s ON f.target_id = s.target_id AND f.ap_no = s.ap_no AND f.hash_id = s.object_id
+                LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+                LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+                LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+                LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+                WHERE t.TARGET_USE = 'Y'
+                <include refid="resultSearchCondition"/>
+                ORDER BY f.regdate DESC
+                LIMIT #{offset}, #{limit}
+            </otherwise>
+        </choose>
+    </select>
+
+    <!--
+        [튜닝] countResultList
+        변경 전: 항상 pi_data_processing LEFT JOIN 수행 (hash_id text 컬럼 비교)
+        변경 후: status 필터가 있을 때만 pi_data_processing JOIN 수행
+        효과: 필터 없는 경우 34만건 text JOIN 제거로 카운트 성능 대폭 개선
+    -->
+    <select id="countResultList" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        <if test="status != null and status != ''">
+            LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        </if>
+        WHERE t.TARGET_USE = 'Y'
+        <include refid="resultSearchCondition"/>
+    </select>
+
+    <select id="selectResultDetail" resultType="map">
+        SELECT
+            f.hash_id        AS resultId,
+            f.hash_id        AS findNo,
+            f.path           AS findPath,
+            f.account        AS account,
+            f.owner          AS owner,
+            f.regdate        AS findDate,
+            f.credate        AS createDate,
+            t.TARGET_ID      AS targetId,
+            t.NAME           AS targetName,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+            t.PLATFORM       AS targetOs,
+            s.data_type      AS datatype,
+            s.match_count    AS matchCount,
+            CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+            dp.approval_status AS approvalStatus,
+            dp.notepad       AS notepad,
+            dp.user_no       AS processUserNo,
+            dp.regdate       AS processDate,
+            COALESCE(ptg.name, '미그룹') AS groupName
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_summary s ON f.target_id = s.target_id AND f.ap_no = s.ap_no AND f.hash_id = s.object_id
+        LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+        WHERE f.hash_id = #{resultId}
+        LIMIT 1
+    </select>
+
+    <!-- ==================== Status Summary ==================== -->
+
+    <!--
+        TUNING: selectSearchStatus
+        [성능 이슈] LOWER(status) 함수 사용 4회 → 인덱스 미사용 + pi_scan_history 4회 스캔
+        [성능 이슈] 스칼라 서브쿼리 5개로 테이블 5회 스캔
+        [인덱스 권장] pi_scan_history(status) 인덱스
+            - CREATE INDEX idx_pi_scan_history_status ON pi_scan_history(status);
+    -->
+    <!-- [튜닝 적용] pi_scan_history 4회 스캔 → CASE+SUM으로 1회 통합, LOWER() 제거 -->
+    <select id="selectSearchStatus" resultType="map">
+        SELECT
+            scan_stat.scheduledCount,
+            scan_stat.runningCount,
+            scan_stat.completedCount,
+            scan_stat.errorCount,
+            (SELECT COUNT(*)
+             FROM pi_find f
+             INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+             WHERE t.TARGET_USE = 'Y') AS totalFindings
+        FROM (
+            SELECT
+                SUM(CASE WHEN status = 'scheduled' THEN 1 ELSE 0 END) AS scheduledCount,
+                SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) AS runningCount,
+                SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completedCount,
+                SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) AS errorCount
+            FROM pi_scan_history
+        ) scan_stat
+    </select>
+
+    <!-- ==================== Data Type (Profile) Queries ==================== -->
+
+    <!--
+        PI_DATATYPES_USER 테이블:
+        DATATYPE_ID, STD_ID, DATATYPE_LABEL, CREATE_USER, DATATYPE(JSON text),
+        OCR(int), RECENT(int), CAPTURE(int), EXTENSION(varchar), AP_NO(int),
+        ENABLE(int 0/1), REGDATE
+    -->
+
+    <select id="selectDataTypeList" parameterType="map" resultType="map">
+        SELECT
+            du.STD_ID           AS stdId,
+            du.DATATYPE_ID      AS datatypeId,
+            du.DATATYPE_LABEL   AS datatypeLabel,
+            du.DATATYPE         AS datatype,
+            du.CREATE_USER      AS createUser,
+            du.OCR              AS ocr,
+            du.RECENT           AS recent,
+            du.CAPTURE          AS capture,
+            du.EXTENSION        AS extension,
+            du.AP_NO            AS apNo,
+            du.REGDATE          AS regDate
+        FROM pi_datatypes_user du
+        WHERE du.ENABLE = 1
+          AND du.AP_NO = 0
+        <if test="keyword != null and keyword != ''">
+            AND du.DATATYPE_LABEL LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY du.DATATYPE_LABEL
+    </select>
+
+    <select id="selectMaxDatatypeId" resultType="string">
+        SELECT IFNULL(MAX(DATATYPE_ID), 'DT_0') FROM pi_datatypes_user WHERE DATATYPE_ID LIKE 'DT_%'
+    </select>
+
+    <select id="selectMaxStdId" resultType="string">
+        SELECT IFNULL(MAX(STD_ID), '0') FROM pi_datatypes_user
+    </select>
+
+    <insert id="insertDataType" parameterType="map">
+        INSERT INTO pi_datatypes_user (
+            DATATYPE_ID, STD_ID, DATATYPE_LABEL, CREATE_USER,
+            DATATYPE, OCR, RECENT, CAPTURE, EXTENSION, AP_NO, ENABLE, REGDATE
+        ) VALUES (
+            #{datatypeId}, #{stdId}, #{datatypeLabel}, #{createUser},
+            #{datatype}, #{ocr}, #{recent}, #{capture}, #{extension},
+            #{apNo}, 1, NOW()
+        )
+    </insert>
+
+    <update id="updateDataType" parameterType="map">
+        UPDATE pi_datatypes_user
+        SET DATATYPE_LABEL = #{datatypeLabel},
+            DATATYPE = #{datatype},
+            OCR = #{ocr},
+            RECENT = #{recent},
+            CAPTURE = #{capture},
+            EXTENSION = #{extension}
+        WHERE STD_ID = #{stdId}
+          AND ENABLE = 1
+    </update>
+
+    <update id="deleteDataType">
+        UPDATE pi_datatypes_user
+        SET ENABLE = 0
+        WHERE STD_ID = #{stdId}
+    </update>
+
+    <select id="countPolicyByDataType" resultType="int">
+        SELECT COUNT(*)
+        FROM pi_scan_policy
+        WHERE STD_ID = #{stdId}
+          AND ENABLE = 1
+    </select>
+
+</mapper>

@@ -138,4 +138,24 @@ public interface ScanMapper {
      * Check if policy is referenced by any schedule
      */
     int countSchedulesByPolicyId(@Param("policyId") Long policyId);
+
+    /**
+     * Get schedule list with search filters
+     */
+    List<ScheduleResponse> selectScheduleListFiltered(Map<String, Object> params);
+
+    /**
+     * Count schedules with search filters
+     */
+    long countScheduleListFiltered(Map<String, Object> params);
+
+    /**
+     * Get scan history with search filters
+     */
+    List<Map<String, Object>> selectScanHistoryFiltered(Map<String, Object> params);
+
+    /**
+     * Count scan history with search filters
+     */
+    long countScanHistoryFiltered(Map<String, Object> params);
 }

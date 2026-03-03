@@ -63,11 +63,26 @@ public class UserController {
     public ApiResponse<PageResponse<UserResponse>> getUserList(
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Search field (userId, userName, teamCode)", example = "userId") @RequestParam(required = false) String searchType,
-            @Parameter(description = "Search value", example = "admin") @RequestParam(required = false) String searchKeyword) {
+            @Parameter(description = "Search field") @RequestParam(required = false) String searchType,
+            @Parameter(description = "Search value") @RequestParam(required = false) String searchKeyword,
+            @Parameter(description = "User grade filter") @RequestParam(required = false) String userGrade,
+            @Parameter(description = "User ID filter") @RequestParam(required = false) String userId,
+            @Parameter(description = "User name filter") @RequestParam(required = false) String userName,
+            @Parameter(description = "Team name filter") @RequestParam(required = false) String teamName,
+            @Parameter(description = "Account status filter") @RequestParam(required = false) String accYn,
+            @Parameter(description = "Lock status filter") @RequestParam(required = false) String lockYn) {
 
-        log.debug("GET /api/v1/users - page: {}, size: {}, searchType: {}, searchKeyword: {}", page, size, searchType, searchKeyword);
-        PageResponse<UserResponse> result = userManageService.getUserList(page, size, searchType, searchKeyword);
+        log.debug("GET /api/v1/users - page: {}, size: {}", page, size);
+        Map<String, String> searchParams = new java.util.HashMap<>();
+        if (searchType != null && !searchType.isEmpty()) searchParams.put("searchType", searchType);
+        if (searchKeyword != null && !searchKeyword.isEmpty()) searchParams.put("searchKeyword", searchKeyword);
+        if (userGrade != null && !userGrade.isEmpty()) searchParams.put("userGrade", userGrade);
+        if (userId != null && !userId.isEmpty()) searchParams.put("userId", userId);
+        if (userName != null && !userName.isEmpty()) searchParams.put("userName", userName);
+        if (teamName != null && !teamName.isEmpty()) searchParams.put("teamName", teamName);
+        if (accYn != null && !accYn.isEmpty()) searchParams.put("accYn", accYn);
+        if (lockYn != null && !lockYn.isEmpty()) searchParams.put("lockYn", lockYn);
+        PageResponse<UserResponse> result = userManageService.getUserList(page, size, searchParams);
         return ApiResponse.success(result);
     }
 
@@ -233,11 +248,12 @@ public class UserController {
     @Operation(summary = "Create team", description = "Create a new team")
     @PostMapping("/teams")
     public ApiResponse<Void> createTeam(
-            @Parameter(description = "Team code", example = "TEAM001") @RequestParam String teamCode,
-            @Parameter(description = "Team name", example = "개발팀") @RequestParam String teamName,
+            @RequestBody Map<String, String> request,
             Authentication authentication) {
 
         String userNo = (String) authentication.getPrincipal();
+        String teamCode = request.get("teamCode");
+        String teamName = request.get("teamName");
         log.info("POST /api/v1/users/teams - teamCode: {}, by: {}", teamCode, userNo);
         userManageService.createTeam(teamCode, teamName, userNo);
         return ApiResponse.success();
@@ -254,11 +270,22 @@ public class UserController {
     public ApiResponse<PageResponse<UserLogResponse>> getUserLogList(
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Search field (userId, logType)", example = "userId") @RequestParam(required = false) String searchType,
-            @Parameter(description = "Search value", example = "admin") @RequestParam(required = false) String searchKeyword) {
+            @Parameter(description = "Search field") @RequestParam(required = false) String searchType,
+            @Parameter(description = "Search value") @RequestParam(required = false) String searchKeyword,
+            @Parameter(description = "User ID filter") @RequestParam(required = false) String userId,
+            @Parameter(description = "User name filter") @RequestParam(required = false) String userName,
+            @Parameter(description = "Start date (yyyy-MM-dd)") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam(required = false) String endDate) {
 
-        log.debug("GET /api/v1/users/logs - page: {}, size: {}, searchType: {}, searchKeyword: {}", page, size, searchType, searchKeyword);
-        PageResponse<UserLogResponse> result = userManageService.getUserLogList(page, size, searchType, searchKeyword);
+        log.debug("GET /api/v1/users/logs - page: {}, size: {}", page, size);
+        Map<String, String> searchParams = new java.util.HashMap<>();
+        if (searchType != null && !searchType.isEmpty()) searchParams.put("searchType", searchType);
+        if (searchKeyword != null && !searchKeyword.isEmpty()) searchParams.put("searchKeyword", searchKeyword);
+        if (userId != null && !userId.isEmpty()) searchParams.put("userId", userId);
+        if (userName != null && !userName.isEmpty()) searchParams.put("userName", userName);
+        if (startDate != null && !startDate.isEmpty()) searchParams.put("startDate", startDate);
+        if (endDate != null && !endDate.isEmpty()) searchParams.put("endDate", endDate);
+        PageResponse<UserLogResponse> result = userManageService.getUserLogList(page, size, searchParams);
         return ApiResponse.success(result);
     }
 
@@ -290,6 +317,35 @@ public class UserController {
 
         log.info("PUT /api/v1/users/account-policy");
         userManageService.saveAccountPolicy(request);
+        return ApiResponse.success();
+    }
+
+    /**
+     * Get locked users
+     *
+     * New: GET /api/v1/users/locked
+     */
+    @Operation(summary = "Get locked users", description = "Get paginated list of locked user accounts")
+    @GetMapping("/locked")
+    public ApiResponse<PageResponse<UserResponse>> getLockedUsers(
+            @Parameter(description = "Page number") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Search keyword") @RequestParam(required = false) String searchKeyword) {
+        log.debug("GET /api/v1/users/locked - page: {}, size: {}, keyword: {}", page, size, searchKeyword);
+        PageResponse<UserResponse> result = userManageService.getLockedUsers(page, size, searchKeyword);
+        return ApiResponse.success(result);
+    }
+
+    /**
+     * Batch unlock users
+     *
+     * New: PUT /api/v1/users/batch-unlock
+     */
+    @Operation(summary = "Batch unlock users", description = "Unlock multiple user accounts")
+    @PutMapping("/batch-unlock")
+    public ApiResponse<Void> batchUnlockUsers(@RequestBody List<String> userNos) {
+        log.info("PUT /api/v1/users/batch-unlock - count: {}", userNos.size());
+        userManageService.batchUnlockUsers(userNos);
         return ApiResponse.success();
     }
 }

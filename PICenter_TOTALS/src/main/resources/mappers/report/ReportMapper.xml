@@ -42,6 +42,16 @@
         - falsePositives: approval_status = 'N'
         - remediatedCount: not directly trackable (no deldate), so count processed true positives as proxy
     -->
+    <!--
+        TUNING: selectReportSummary
+        [성능 이슈] 스칼라 서브쿼리 2개(totalTargets, scannedTargets) + 메인 쿼리 → 3회 독립 스캔
+        [성능 이슈] 재귀 CTE가 서브쿼리 내에 3번 중복 → 파라미터화된 임시 결과 재사용 불가
+        [인덱스 권장] pi_targets(TARGET_USE, GROUP_IDX) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_grpidx ON pi_targets(TARGET_USE, GROUP_IDX);
+        [인덱스 권장] pi_find(target_id, ap_no, regdate) 복합 인덱스
+            - CREATE INDEX idx_pi_find_target_ap_regdate ON pi_find(target_id, ap_no, regdate);
+        [개선 방안] totalTargets, scannedTargets를 메인 쿼리에 통합하여 서브쿼리 제거 가능
+    -->
     <select id="selectReportSummary" parameterType="map" resultType="map">
         SELECT
             NOW() AS reportDate,
@@ -105,12 +115,27 @@
         <if test="endDate != null and endDate != ''">
             AND f.REGDATE &lt;= #{endDate}
         </if>
+        <if test="hostName != null and hostName != ''">
+            AND t.NAME LIKE CONCAT('%', #{hostName}, '%')
+        </if>
+        <if test="path != null and path != ''">
+            AND f.PATH LIKE CONCAT('%', #{path}, '%')
+        </if>
     </select>
 
     <!-- ==================== Monthly Report ==================== -->
 
     <!--
         Monthly trend data: detections grouped by year-month.
+    -->
+    <!--
+        TUNING: selectMonthlyReport
+        [성능 이슈] pi_find LEFT JOIN pi_data_processing ON hash_id(text) → 대량 text 컬럼 비교
+        [성능 이슈] DATE_FORMAT GROUP BY → 인덱스 미사용, 임시 테이블 정렬 발생
+        [성능 이슈] 날짜 범위 미지정 시 전체 데이터 스캔
+        [인덱스 권장] pi_find(regdate, target_id) 복합 인덱스
+            - CREATE INDEX idx_pi_find_regdate_target ON pi_find(regdate, target_id);
+        [개선 방안] 날짜 범위 기본값(최근 12개월) 추가 권장
     -->
     <select id="selectMonthlyReport" parameterType="map" resultType="map">
         SELECT
@@ -131,6 +156,10 @@
         <if test="endDate != null and endDate != ''">
             AND f.REGDATE &lt;= #{endDate}
         </if>
+        /* [튜닝] 날짜 범위 미지정 시 최근 12개월로 기본 제한 → 전체 테이블 스캔 방지 */
+        <if test="startDate == null or startDate == ''">
+            AND f.REGDATE &gt;= DATE_FORMAT(DATE_SUB(NOW(), INTERVAL 12 MONTH), '%Y-%m-01')
+        </if>
         GROUP BY DATE_FORMAT(f.REGDATE, '%Y-%m')
         ORDER BY month ASC
     </select>
@@ -142,6 +171,15 @@
         pi_find has no fid column: use hash_id as the unique detection identifier.
         pi_find has no deldate column: remediated approximated by approved+processed.
         pi_agents joined via name AND ap_no.
+    -->
+    <!--
+        TUNING: selectDetailedReport
+        [성능 이슈] pi_find LEFT JOIN pi_data_processing ON hash_id(text) → 대량 text 비교
+        [성능 이슈] COUNT(DISTINCT f.HASH_ID) → hash_id text DISTINCT 매우 느림
+        [성능 이슈] GROUP BY 4개 컬럼 + ORDER BY → 임시 테이블 생성
+        [인덱스 권장] pi_find(target_id, ap_no, regdate) 복합 인덱스
+            - CREATE INDEX idx_pi_find_target_ap_regdate ON pi_find(target_id, ap_no, regdate);
+        [개선 방안] hash_id가 text면 varchar(100)으로 타입 변경하여 DISTINCT 성능 개선
     -->
     <select id="selectDetailedReport" parameterType="map" resultType="map">
         SELECT
@@ -222,6 +260,14 @@
         pi_find has no deldate: remediateYn approximated by approval+processing state.
         pi_data_processing has no okdate: use dp.regdate as processDate.
     -->
+    <!--
+        TUNING: selectTargetReport
+        [성능 이슈] pi_summary JOIN ON hash_id=object_id(text) + pi_data_processing JOIN ON hash_id(text) → 이중 text 비교
+        [성능 이슈] LIMIT 10000 고정 → 대량 데이터 시 메모리 부담
+        [인덱스 권장] pi_summary(target_id, ap_no, object_id(100)) prefix 인덱스
+            - CREATE INDEX idx_pi_summary_target_obj ON pi_summary(target_id, ap_no, object_id(100));
+        [개선 방안] 페이지네이션(offset/limit) 적용하여 필요한 만큼만 조회 권장
+    -->
     <select id="selectTargetReport" parameterType="map" resultType="map">
         SELECT
             f.HASH_ID AS findNo,
@@ -256,6 +302,8 @@
             AND t.TARGET_ID = #{targetId}
         </if>
         ORDER BY f.REGDATE DESC
+        /* [튜닝] 무제한 결과 방지: 타겟 리포트 최대 10000건으로 제한 */
+        LIMIT 10000
     </select>
 
     <!-- ==================== Excel Export ==================== -->
@@ -267,12 +315,22 @@
         No okdate column: use dp.regdate.
         No deldate on pi_find: remediateYn approximated.
     -->
+    <!--
+        TUNING: selectExcelData
+        [성능 이슈] 5개 테이블 JOIN (pi_summary, pi_data_processing에 text 컬럼 비교 2회)
+        [성능 이슈] LIMIT 100000 → 대량 메모리 사용 + 네트워크 전송 부담
+        [인덱스 권장] pi_find(target_id, ap_no, regdate) 복합 인덱스
+            - CREATE INDEX idx_pi_find_target_ap_regdate ON pi_find(target_id, ap_no, regdate);
+        [인덱스 권장] pi_data_processing(target_id, hash_id(100), approval_status)
+            - CREATE INDEX idx_pi_dp_target_hash_approval ON pi_data_processing(target_id, hash_id(100), approval_status);
+        [개선 방안] 스트리밍 방식(Cursor/ResultHandler)으로 변경하여 메모리 절약 권장
+    -->
     <select id="selectExcelData" parameterType="map" resultType="map">
         SELECT
             t.NAME AS targetName,
-            IFNULL(a.AGENT_CONNECTED_IP, '') AS targetIp,
-            IFNULL(tg.NAME, '') AS groupName,
-            t.GROUP_IDX AS groupId,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip, '') AS targetIp,
+            COALESCE(ptg.NAME, '미그룹') AS groupName,
+            tg.idx AS groupId,
             f.PATH AS findPath,
             s.DATA_TYPE AS datatype,
             f.REGDATE AS findDate,
@@ -287,8 +345,9 @@
         INNER JOIN pi_targets t ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
         LEFT JOIN pi_summary s ON f.TARGET_ID = s.TARGET_ID AND f.AP_NO = s.AP_NO AND f.HASH_ID = s.OBJECT_ID
         LEFT JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
-        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO
-        LEFT JOIN pi_target_group tg ON t.GROUP_IDX = tg.IDX
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
         WHERE t.TARGET_USE = 'Y'
         <if test="reportType != null and reportType != ''">
             <if test="reportType == 'TRUE_POSITIVE'">
@@ -321,6 +380,66 @@
             AND f.REGDATE &lt;= #{endDate}
         </if>
         ORDER BY t.NAME ASC, f.REGDATE DESC
+        /* [튜닝] Excel 다운로드 시 메모리 보호: 최대 100000건으로 제한 */
+        LIMIT 100000
+    </select>
+
+    <!-- ==================== Exception Report ==================== -->
+
+    <!--
+        Exception report: targets with errors/disconnections and their detection summary.
+        Groups by target showing error status, detection counts, and processing status.
+    -->
+    <!--
+        TUNING: selectExceptionReport
+        [성능 이슈] GROUP BY 9개 컬럼 → 대형 임시 테이블 생성, 정렬 비용 높음
+        [성능 이슈] 페이지네이션 없이 전체 결과 반환 → 대량 데이터 시 메모리 이슈
+        [인덱스 권장] pi_targets(TARGET_USE, SEARCH_STATUS) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_searchstatus ON pi_targets(TARGET_USE, SEARCH_STATUS);
+        [개선 방안] LIMIT/OFFSET 페이지네이션 추가 권장
+    -->
+    <select id="selectExceptionReport" parameterType="map" resultType="map">
+        SELECT
+            t.TARGET_ID AS targetId,
+            t.NAME AS targetName,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip, '') AS targetIp,
+            t.SEARCH_STATUS AS searchStatus,
+            t.PLATFORM AS platform,
+            COALESCE(ptg.NAME, '미그룹') AS groupName,
+            COUNT(DISTINCT f.HASH_ID) AS detectionCount,
+            SUM(CASE WHEN dp.PROCESSING_FLAG IS NOT NULL THEN 1 ELSE 0 END) AS processedCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'Y' THEN 1 ELSE 0 END) AS truePositiveCount,
+            SUM(CASE WHEN dp.APPROVAL_STATUS = 'N' THEN 1 ELSE 0 END) AS falsePositiveCount,
+            MAX(f.REGDATE) AS lastDetectionDate,
+            a.AGENT_VERSION AS agentVersion,
+            CASE WHEN a.agent_connected = 1 THEN 'CONNECTED' ELSE 'DISCONNECTED' END AS connectionStatus
+        FROM pi_targets t
+        LEFT JOIN pi_find f ON t.TARGET_ID = f.TARGET_ID AND t.AP_NO = f.AP_NO
+            <if test="startDate != null and startDate != ''">
+                AND f.REGDATE &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND f.REGDATE &lt;= #{endDate}
+            </if>
+        LEFT JOIN pi_data_processing dp ON f.TARGET_ID = dp.TARGET_ID AND f.HASH_ID = dp.HASH_ID
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+        WHERE t.TARGET_USE = 'Y'
+          AND t.SEARCH_STATUS IN ('ERROR', 'DISCONNECTED', 'TIMEOUT')
+        <if test="groupId != null and groupId != ''">
+            AND t.GROUP_IDX IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg2.IDX FROM pi_target_group tg2 INNER JOIN CTE ON tg2.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        GROUP BY t.TARGET_ID, t.AP_NO, t.NAME, a.AGENT_CONNECTED_IP, tg.connected_ip, t.SEARCH_STATUS,
+                 t.PLATFORM, ptg.NAME, a.AGENT_VERSION, a.agent_connected
+        ORDER BY t.NAME ASC
     </select>
 
 </mapper>

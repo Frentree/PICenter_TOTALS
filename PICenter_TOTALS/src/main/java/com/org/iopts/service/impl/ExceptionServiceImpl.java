@@ -28,15 +28,25 @@ public class ExceptionServiceImpl implements ExceptionService {
     private final ExceptionMapper exceptionMapper;
 
     /**
-     * Get path exception list with pagination
+     * Get path exception list with pagination and search filters
      */
     @Override
-    public PageResponse<PathExceptionResponse> getPathExceptionList(int page, int size) {
-        log.info("Fetching path exception list - page: {}, size: {}", page, size);
+    public PageResponse<PathExceptionResponse> getPathExceptionList(String searchKeyword, String startDate, String endDate, int page, int size) {
+        log.info("Fetching path exception list - keyword: {}, startDate: {}, endDate: {}, page: {}, size: {}",
+                searchKeyword, startDate, endDate, page, size);
 
         Map<String, Object> params = new HashMap<>();
         params.put("offset", page * size);
         params.put("limit", size);
+        if (searchKeyword != null && !searchKeyword.trim().isEmpty()) {
+            params.put("searchKeyword", searchKeyword.trim());
+        }
+        if (startDate != null && !startDate.trim().isEmpty()) {
+            params.put("startDate", startDate.trim());
+        }
+        if (endDate != null && !endDate.trim().isEmpty()) {
+            params.put("endDate", endDate.trim());
+        }
 
         List<PathExceptionResponse> content = exceptionMapper.selectPathExceptionList(params);
         long totalElements = exceptionMapper.selectPathExceptionListCount(params);

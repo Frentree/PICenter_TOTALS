@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8">
+    <title>PICenter - 개인정보 유형</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        .container {
+            width: 100%;
+            display: inline-block;
+            position: relative;
+            padding: 0 65px 20px 65px;
+            background: #f9f9f9;
+            margin-top: 55px;
+        }
+        .page_title_area { padding: 20px 0 10px 0; }
+        .page_title_area h3 { font-size: 16px; font-weight: 600; color: #0c4da2; line-height: 30px; }
+
+        .search_table {
+            width: 500px;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .search_table th {
+            text-align: center; width: 100px; padding: 4px 8px;
+            background: #e8eef4; border: 1px solid #c8ced3;
+            font-size: 12px; font-weight: 600; color: #333;
+            border-radius: 0.25rem; white-space: nowrap;
+        }
+        .search_table td { padding: 4px 6px; border: none; }
+        .search_table input[type="text"] {
+            width: 250px; height: 30px; padding-left: 8px;
+            border: 1px solid #c8ced3; font-size: 12px; outline: none;
+        }
+        .search_table input[type="text"]:focus { border-color: #0c4da2; }
+
+        .action_bar {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px;
+        }
+        .action_bar .left_info { font-size: 12px; color: #666; }
+        .action_bar .right_btns { display: flex; gap: 4px; }
+
+        .data_tbl { width: 100%; border-collapse: collapse; }
+        .data_tbl thead th {
+            padding: 8px 10px; background: #e8eef4;
+            border-bottom: 1px solid #c8ced3; border-right: 1px solid #dde3ea;
+            font-size: 12px; font-weight: 600; color: #333;
+            text-align: center; white-space: nowrap;
+        }
+        .data_tbl thead th:last-child { border-right: none; }
+        .data_tbl tbody td {
+            padding: 7px 10px; border-bottom: 1px solid #e8e8e8;
+            font-size: 12px; color: #444; text-align: center;
+        }
+        .data_tbl tbody tr:hover { background: #f0f4fa; }
+        .data_tbl tbody tr.selected_row { background: #dce7f5; }
+        .td_left { text-align: left !important; }
+
+        .legend_box {
+            border: 1px solid #c8ced3; border-radius: 4px;
+            padding: 10px 16px; margin-bottom: 12px; background: #fff;
+            font-size: 12px; color: #555;
+        }
+        .legend_box strong { color: #0c4da2; }
+        .legend_box .legend_item { display: inline-block; margin-right: 20px; }
+        .legend_box .legend_item span.badge_on { display: inline-block; background: #0c4da2; color: #fff; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+        .legend_box .legend_item span.badge_off { display: inline-block; background: #aaa; color: #fff; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
+
+        .chk_cell { display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .chk_cell input[type="checkbox"] { cursor: pointer; }
+        .chk_cell input[type="number"] { width: 40px; height: 22px; text-align: center; border: 1px solid #ccc; font-size: 11px; }
+
+        .badge_ocr_on { display: inline-block; background: #28a745; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+        .badge_ocr_off { display: inline-block; background: #aaa; color: #fff; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+
+        /* Popup */
+        .popup_layer { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 9999; }
+        .popup_layer.show { display: flex; align-items: center; justify-content: center; }
+        .popup_box { background: #fff; border-radius: 6px; width: 560px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .popup_top { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; background: #0c4da2; color: #fff; border-radius: 6px 6px 0 0; }
+        .popup_top h4 { font-size: 14px; font-weight: 600; }
+        .popup_close_x { cursor: pointer; font-size: 18px; color: #fff; background: none; border: none; }
+        .popup_body { padding: 16px 20px; }
+        .popup_tbl { width: 100%; border-collapse: collapse; }
+        .popup_tbl th { width: 120px; padding: 8px 10px; background: #f0f4fa; border: 1px solid #dde3ea; font-size: 12px; font-weight: 600; color: #333; text-align: left; }
+        .popup_tbl td { padding: 8px 10px; border: 1px solid #dde3ea; font-size: 12px; }
+        .popup_tbl input[type="text"], .popup_tbl input[type="number"] {
+            width: 95%; height: 28px; padding: 0 8px; border: 1px solid #c8ced3; font-size: 12px;
+        }
+        .popup_tbl select { height: 28px; border: 1px solid #c8ced3; font-size: 12px; }
+        .popup_btn { display: flex; justify-content: center; gap: 6px; padding: 12px 20px; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+    <div id="gnb-header"></div>
+
+    <div class="container">
+        <div class="page_title_area">
+            <h3>개인정보 유형</h3>
+        </div>
+
+        <!-- 검색 영역 -->
+        <table class="search_table">
+            <tr>
+                <th>유형명</th>
+                <td>
+                    <input type="text" id="searchKeyword" placeholder="개인정보 유형명을 입력하세요.">
+                </td>
+                <td>
+                    <button class="btn_search_legacy" id="btnSearch">검색</button>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 범례 -->
+        <div class="legend_box">
+            <strong>범례:</strong>
+            <span class="legend_item"><span class="badge_on">OCR</span> 이미지 검사 사용</span>
+            <span class="legend_item"><span class="badge_off">OCR</span> 이미지 검사 미사용</span>
+            <span class="legend_item">임계값: 패턴별 검출 임계치 (0=무제한)</span>
+            <span class="legend_item">증분검색: 지정 일수 이내 파일만 검색</span>
+        </div>
+
+        <!-- 액션 바 -->
+        <div class="action_bar">
+            <div class="left_info">
+                총 <strong id="totalCount">0</strong>건
+            </div>
+            <div class="right_btns">
+                <button class="btn_add" id="btnCreate">개인정보 유형 생성</button>
+                <button class="btn_export" id="btnDownload">다운로드</button>
+            </div>
+        </div>
+
+        <!-- 데이터 테이블 -->
+        <table class="data_tbl" id="dataTable">
+            <thead>
+                <tr>
+                    <th style="width:40px;">No</th>
+                    <th style="min-width:200px;">유형명</th>
+                    <th style="width:80px;">OCR</th>
+                    <th style="width:80px;">증분검색</th>
+                    <th style="width:200px;">확장자</th>
+                    <th style="width:140px;">등록일</th>
+                    <th style="width:100px;">작업</th>
+                </tr>
+            </thead>
+            <tbody id="gridBody">
+                <tr><td colspan="7" class="empty_row">데이터를 불러오는 중...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- 생성/수정 팝업 -->
+    <div class="popup_layer" id="formPopup">
+        <div class="popup_box">
+            <div class="popup_top">
+                <h4 id="popupTitle">개인정보 유형 생성</h4>
+                <button class="popup_close_x" id="popupClose">&times;</button>
+            </div>
+            <div class="popup_body">
+                <table class="popup_tbl">
+                    <tr>
+                        <th>유형명 <span style="color:red">*</span></th>
+                        <td><input type="text" id="popDatatypeLabel" placeholder="유형명을 입력하세요."></td>
+                    </tr>
+                    <tr>
+                        <th>이미지 검사(OCR)</th>
+                        <td>
+                            <select id="popOcr">
+                                <option value="0">미사용</option>
+                                <option value="1">사용</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>증분검색(일)</th>
+                        <td>
+                            <input type="number" id="popRecent" value="0" min="0" style="width:80px;">
+                            <span style="font-size:11px;color:#888;"> (0 = 전체검색)</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>캡쳐</th>
+                        <td>
+                            <select id="popCapture" style="width:100px;">
+                                <option value="0">미사용</option>
+                                <option value="1">사용</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>확장자</th>
+                        <td><input type="text" id="popExtension" placeholder="예: doc,xls,pdf,hwp"></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="popup_btn">
+                <button class="btn_save" id="btnPopupSave">저장</button>
+                <button class="btn_cancel" id="btnPopupCancel">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/common_menu.js"></script>
+    <script src="/js/table_sort.js"></script>
+    <script>
+    (function() {
+        'use strict';
+
+        var dataList = [];
+        var editStdId = null; // null = create, value = update
+
+        function api(url, options) {
+            options = options || {};
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = 'Bearer ' + localStorage.getItem('picenter_token');
+            if (options.method && options.method !== 'GET' && !options.headers['Content-Type']) {
+                options.headers['Content-Type'] = 'application/json';
+            }
+            return fetch(url, options).then(function(res) {
+                if (res.status === 401 || res.status === 403) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                return res.json();
+            });
+        }
+
+        function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+        // ========== 목록 로드 ==========
+        function loadList() {
+            var keyword = document.getElementById('searchKeyword').value.trim();
+            var url = '/api/v1/search/data-types';
+            if (keyword) url += '?keyword=' + encodeURIComponent(keyword);
+
+            document.getElementById('gridBody').innerHTML = '<tr class="loading_row"><td colspan="7"><div class="loading_indicator"><span class="loading_spin"></span> 데이터를 불러오는 중입니다...</div></td></tr>';
+
+            api(url).then(function(data) {
+                if (!data) return;
+                var items = (data.success && data.data) ? data.data : (Array.isArray(data) ? data : []);
+                dataList = items;
+                renderTable(items);
+            }).catch(function() {
+                document.getElementById('gridBody').innerHTML =
+                    '<tr><td colspan="7" class="empty_row">데이터를 불러올 수 없습니다.</td></tr>';
+            });
+        }
+
+        function renderTable(items) {
+            var tbody = document.getElementById('gridBody');
+            document.getElementById('totalCount').textContent = items.length;
+
+            if (!items || items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty_row">등록된 개인정보 유형이 없습니다.</td></tr>';
+                return;
+            }
+
+            var html = '';
+            items.forEach(function(item, idx) {
+                var ocrBadge = (item.ocr == 1 || item.ocr === '1')
+                    ? '<span class="badge_ocr_on">사용</span>'
+                    : '<span class="badge_ocr_off">미사용</span>';
+                var recentVal = (item.recent && item.recent > 0) ? item.recent + '일' : '전체';
+                var ext = item.extension || '-';
+                var regDate = item.regDate ? String(item.regDate).replace('T', ' ').substring(0, 16) : '-';
+
+                html += '<tr data-std-id="' + escHtml(item.stdId || '') + '" data-idx="' + idx + '">';
+                html += '<td>' + (idx + 1) + '</td>';
+                html += '<td class="td_left">' + escHtml(item.datatypeLabel || '-') + '</td>';
+                html += '<td>' + ocrBadge + '</td>';
+                html += '<td>' + escHtml(recentVal) + '</td>';
+                html += '<td class="td_left" style="word-break:break-all;">' + escHtml(ext) + '</td>';
+                html += '<td>' + escHtml(regDate) + '</td>';
+                html += '<td>';
+                html += '<button class="btn_edit btn_edit_row" data-std-id="' + escHtml(item.stdId || '') + '">수정</button> ';
+                html += '<button class="btn_delete btn_delete_row" data-std-id="' + escHtml(item.stdId || '') + '" data-label="' + escHtml(item.datatypeLabel || '') + '">삭제</button>';
+                html += '</td>';
+                html += '</tr>';
+            });
+            tbody.innerHTML = html;
+
+            // 수정 버튼 이벤트
+            tbody.querySelectorAll('.btn_edit_row').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var stdId = this.dataset.stdId;
+                    openEditPopup(stdId);
+                });
+            });
+
+            // 삭제 버튼 이벤트
+            tbody.querySelectorAll('.btn_delete_row').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var stdId = this.dataset.stdId;
+                    var label = this.dataset.label;
+                    deleteDataType(stdId, label);
+                });
+            });
+        }
+
+        // ========== 생성 팝업 ==========
+        document.getElementById('btnCreate').addEventListener('click', function() {
+            editStdId = null;
+            document.getElementById('popupTitle').textContent = '개인정보 유형 생성';
+            document.getElementById('popDatatypeLabel').value = '';
+            document.getElementById('popOcr').value = '0';
+            document.getElementById('popRecent').value = '0';
+            document.getElementById('popCapture').value = '0';
+            document.getElementById('popExtension').value = '';
+            document.getElementById('formPopup').classList.add('show');
+        });
+
+        // ========== 수정 팝업 ==========
+        function openEditPopup(stdId) {
+            var item = dataList.find(function(d) { return d.stdId === stdId || String(d.stdId) === String(stdId); });
+            if (!item) return;
+
+            editStdId = stdId;
+            document.getElementById('popupTitle').textContent = '개인정보 유형 수정';
+            document.getElementById('popDatatypeLabel').value = item.datatypeLabel || '';
+            document.getElementById('popOcr').value = String(item.ocr || 0);
+            document.getElementById('popRecent').value = item.recent || 0;
+            document.getElementById('popCapture').value = String(item.capture || 0);
+            document.getElementById('popExtension').value = item.extension || '';
+            document.getElementById('formPopup').classList.add('show');
+        }
+
+        // ========== 저장 ==========
+        document.getElementById('btnPopupSave').addEventListener('click', function() {
+            var label = document.getElementById('popDatatypeLabel').value.trim();
+            if (!label) {
+                alert('유형명을 입력하세요.');
+                document.getElementById('popDatatypeLabel').focus();
+                return;
+            }
+
+            var payload = {
+                datatypeLabel: label,
+                ocr: parseInt(document.getElementById('popOcr').value) || 0,
+                recent: parseInt(document.getElementById('popRecent').value) || 0,
+                capture: parseInt(document.getElementById('popCapture').value) || 0,
+                extension: document.getElementById('popExtension').value.trim()
+            };
+
+            if (editStdId) {
+                // 수정
+                api('/api/v1/search/data-types/' + encodeURIComponent(editStdId), {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                }).then(function(data) {
+                    if (data && data.success) {
+                        alert('데이터 유형을 변경하였습니다.');
+                        closePopup();
+                        loadList();
+                    } else {
+                        alert('수정에 실패하였습니다.' + ((data && data.error) ? '\n' + data.error.message : ''));
+                    }
+                }).catch(function() { alert('수정 중 오류가 발생하였습니다.'); });
+            } else {
+                // 생성 - ID는 서버에서 자동 생성
+                api('/api/v1/search/data-types', {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                }).then(function(data) {
+                    if (data && data.success) {
+                        alert('개인정보유형이 생성되었습니다.');
+                        closePopup();
+                        loadList();
+                    } else {
+                        alert('생성에 실패하였습니다.' + ((data && data.error) ? '\n' + data.error.message : ''));
+                    }
+                }).catch(function() { alert('생성 중 오류가 발생하였습니다.'); });
+            }
+        });
+
+        // ========== 삭제 ==========
+        function deleteDataType(stdId, label) {
+            if (!confirm('"' + label + '" 유형을 정말 삭제하시겠습니까?')) return;
+
+            api('/api/v1/search/data-types/' + encodeURIComponent(stdId), {
+                method: 'DELETE'
+            }).then(function(data) {
+                if (data && data.success) {
+                    alert('삭제를 완료하였습니다.');
+                    loadList();
+                } else {
+                    alert((data && data.error) ? data.error.message : '삭제를 실패하였습니다.');
+                }
+            }).catch(function() { alert('삭제 중 오류가 발생하였습니다.'); });
+        }
+
+        // ========== 팝업 닫기 ==========
+        function closePopup() {
+            document.getElementById('formPopup').classList.remove('show');
+            editStdId = null;
+        }
+        document.getElementById('popupClose').addEventListener('click', closePopup);
+        document.getElementById('btnPopupCancel').addEventListener('click', closePopup);
+        document.getElementById('formPopup').addEventListener('click', function(e) {
+            if (e.target === this) closePopup();
+        });
+
+        // ========== 다운로드 ==========
+        document.getElementById('btnDownload').addEventListener('click', function() {
+            if (!dataList || dataList.length === 0) {
+                alert('다운로드할 데이터가 없습니다.');
+                return;
+            }
+            var csv = '\uFEFF유형명,OCR,증분검색(일),확장자,등록일\n';
+            dataList.forEach(function(item) {
+                csv += '"' + (item.datatypeLabel || '') + '",';
+                csv += (item.ocr == 1 ? '사용' : '미사용') + ',';
+                csv += (item.recent || 0) + ',';
+                csv += '"' + (item.extension || '') + '",';
+                csv += '"' + (item.regDate ? String(item.regDate).replace('T', ' ').substring(0, 16) : '') + '"\n';
+            });
+            var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            var link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'PICenter_개인정보유형.csv';
+            link.click();
+        });
+
+        // ========== 검색 이벤트 ==========
+        document.getElementById('btnSearch').addEventListener('click', loadList);
+        document.getElementById('searchKeyword').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') loadList();
+        });
+
+        // 초기 로드
+        loadList();
+    })();
+    </script>
+</body>
+</html>

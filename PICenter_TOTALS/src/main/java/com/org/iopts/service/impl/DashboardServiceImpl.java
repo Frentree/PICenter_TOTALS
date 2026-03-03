@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Dashboard Service Implementation
@@ -30,9 +31,33 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final DashboardMapper dashboardMapper;
 
+    /** 간단한 인메모리 캐시 (key → {data, expireTime}) - 대시보드 집계 쿼리 성능 개선 */
+    private final ConcurrentHashMap<String, Object[]> cache = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000L; // 5분
+
+    @SuppressWarnings("unchecked")
+    private <T> T getFromCache(String key) {
+        Object[] entry = cache.get(key);
+        if (entry != null && System.currentTimeMillis() < (long) entry[1]) {
+            return (T) entry[0];
+        }
+        return null;
+    }
+
+    private void putToCache(String key, Object data) {
+        cache.put(key, new Object[]{data, System.currentTimeMillis() + CACHE_TTL_MS});
+    }
+
     @Override
     public DashboardResponse getDashboardInfo(String groupId, String startDate, String endDate) {
         log.info("Getting dashboard info - groupId: {}, startDate: {}, endDate: {}", groupId, startDate, endDate);
+
+        String cacheKey = "dashboardInfo:" + groupId + ":" + startDate + ":" + endDate;
+        DashboardResponse cachedResp = getFromCache(cacheKey);
+        if (cachedResp != null) {
+            log.debug("Cache hit for dashboardInfo");
+            return cachedResp;
+        }
 
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
@@ -52,7 +77,7 @@ public class DashboardServiceImpl implements DashboardService {
                     .build();
         }
 
-        return DashboardResponse.builder()
+        DashboardResponse resp = DashboardResponse.builder()
                 .totalTargets(toLong(result.get("totalTargets")))
                 .totalDetections(toLong(result.get("totalDetections")))
                 .totalProcessed(toLong(result.get("totalProcessed")))
@@ -61,17 +86,28 @@ public class DashboardServiceImpl implements DashboardService {
                 .falsePositiveCount(toLong(result.get("falsePositiveCount")))
                 .lastScanDate(result.get("lastScanDate") != null ? result.get("lastScanDate").toString() : null)
                 .build();
+        putToCache(cacheKey, resp);
+        return resp;
     }
 
     @Override
     public List<Map<String, Object>> getDatatypeStatus(String groupId) {
         log.info("Getting datatype status - groupId: {}", groupId);
 
+        String cacheKey = "datatypeStatus:" + (groupId != null ? groupId : "ALL");
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for datatypeStatus - groupId: {}", groupId);
+            return cached;
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
 
         List<Map<String, Object>> result = dashboardMapper.selectDatatypeStatus(params);
-        return result != null ? result : new ArrayList<>();
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override
@@ -108,11 +144,20 @@ public class DashboardServiceImpl implements DashboardService {
     public List<Map<String, Object>> getPathCurrent(String groupId) {
         log.info("Getting path current - groupId: {}", groupId);
 
+        String cacheKey = "pathCurrent:" + (groupId != null ? groupId : "ALL");
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for pathCurrent");
+            return cached;
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
 
         List<Map<String, Object>> result = dashboardMapper.selectPathCurrent(params);
-        return result != null ? result : new ArrayList<>();
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override
@@ -130,6 +175,13 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public ChartDataResponse getPieChartData(String groupId, String startDate, String endDate) {
         log.info("Getting pie chart data - groupId: {}, startDate: {}, endDate: {}", groupId, startDate, endDate);
+
+        String cacheKey = "pieChart:" + groupId + ":" + startDate + ":" + endDate;
+        ChartDataResponse cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for pieChartData");
+            return cached;
+        }
 
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
@@ -155,11 +207,13 @@ public class DashboardServiceImpl implements DashboardService {
             datasets.add(dataset);
         }
 
-        return ChartDataResponse.builder()
+        ChartDataResponse response = ChartDataResponse.builder()
                 .chartType("pie")
                 .labels(labels)
                 .datasets(datasets)
                 .build();
+        putToCache(cacheKey, response);
+        return response;
     }
 
     @Override
@@ -223,6 +277,55 @@ public class DashboardServiceImpl implements DashboardService {
 
         List<Map<String, Object>> result = dashboardMapper.selectRankingData(params);
         return result != null ? result : new ArrayList<>();
+    }
+
+    @Override
+    public Map<String, Object> getSystemAgents() {
+        log.info("Getting system agents detail");
+        Map<String, Object> result = dashboardMapper.selectSystemAgents();
+        return result != null ? result : new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getTodoItems() {
+        log.info("Getting todo items");
+        Map<String, Object> result = dashboardMapper.selectTodoItems();
+        return result != null ? result : new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getImplementationStatus() {
+        log.info("Getting implementation status");
+        Map<String, Object> result = dashboardMapper.selectImplementationStatus();
+        return result != null ? result : new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getLastScan() {
+        log.info("Getting last scan info");
+        Map<String, Object> result = dashboardMapper.selectLastScan();
+        return result != null ? result : new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getCompletionStats() {
+        log.info("Getting completion stats");
+        Map<String, Object> result = dashboardMapper.selectCompletionStats();
+        return result != null ? result : new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getDetectionStatus() {
+        log.info("Getting detection status");
+        Map<String, Object> result = dashboardMapper.selectDetectionStatus();
+        return result != null ? result : new HashMap<>();
+    }
+
+    @Override
+    public Map<String, Object> getApprovalStatus() {
+        log.info("Getting approval status");
+        Map<String, Object> result = dashboardMapper.selectApprovalStatus();
+        return result != null ? result : new HashMap<>();
     }
 
     /**

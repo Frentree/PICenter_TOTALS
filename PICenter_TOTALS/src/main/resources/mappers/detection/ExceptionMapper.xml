@@ -30,6 +30,33 @@
         <result property="targetName" column="TARGET_NAME"/>
     </resultMap>
 
+    <!--
+        TUNING: exceptionSearchCondition
+        [성능 이슈] OR 조건 3개 + LIKE '%...%' → 인덱스 미사용, Full Table Scan 발생
+        [성능 이슈] pe.REASON이 text 타입 → LIKE '%...%' text 비교 매우 느림
+        [인덱스 권장] pi_exception(REGDATE DESC) 인덱스 → ORDER BY 정렬 가속
+            - CREATE INDEX idx_pi_exception_regdate ON pi_exception(REGDATE DESC);
+        [인덱스 권장] pi_exception(TARGET_ID) 인덱스 → pi_targets JOIN 가속
+            - CREATE INDEX idx_pi_exception_targetid ON pi_exception(TARGET_ID);
+        [개선 방안] 검색어를 t.NAME, pe.HASH_ID, pe.REASON 중 택일하도록 searchType 추가 권장
+    -->
+    <!-- Common search condition -->
+    <sql id="exceptionSearchCondition">
+        <where>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (t.NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+                     OR pe.HASH_ID LIKE CONCAT('%', #{searchKeyword}, '%')
+                     OR pe.REASON LIKE CONCAT('%', #{searchKeyword}, '%'))
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND pe.REGDATE &gt;= CONCAT(#{startDate}, ' 00:00:00')
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND pe.REGDATE &lt;= CONCAT(#{endDate}, ' 23:59:59')
+            </if>
+        </where>
+    </sql>
+
     <!-- Select path exception list with pagination - uses pi_exception -->
     <select id="selectPathExceptionList" parameterType="map" resultMap="pathExceptionResultMap">
         SELECT
@@ -56,6 +83,7 @@
         FROM pi_exception pe
         LEFT JOIN pi_targets t
             ON pe.TARGET_ID = t.TARGET_ID
+        <include refid="exceptionSearchCondition"/>
         ORDER BY pe.REGDATE DESC
         LIMIT #{offset}, #{limit}
     </select>
@@ -64,6 +92,10 @@
     <select id="selectPathExceptionListCount" parameterType="map" resultType="long">
         SELECT COUNT(*)
         FROM pi_exception pe
+        <if test="searchKeyword != null and searchKeyword != ''">
+            LEFT JOIN pi_targets t ON pe.TARGET_ID = t.TARGET_ID
+        </if>
+        <include refid="exceptionSearchCondition"/>
     </select>
 
     <!-- Insert a new path exception into pi_exception -->

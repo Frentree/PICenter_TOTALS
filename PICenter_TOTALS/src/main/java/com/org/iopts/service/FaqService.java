@@ -28,6 +28,14 @@ public interface FaqService {
     PageResponse<FaqResponse> getFaqList(int page, int size, String category);
 
     /**
+     * Get FAQ detail by ID
+     *
+     * @param faqId FAQ primary key
+     * @return FAQ response
+     */
+    FaqResponse getFaqDetail(Long faqId);
+
+    /**
      * Create a new FAQ
      *
      * @param request FAQ data

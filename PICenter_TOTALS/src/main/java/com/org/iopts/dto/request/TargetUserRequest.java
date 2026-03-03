@@ -16,9 +16,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TargetUserRequest {
 
-    @Schema(description = "타겟 ID", example = "1")
-    @NotNull(message = "Target ID is required")
-    private Long targetId;
+    @Schema(description = "타겟 ID (Path에서 전달 시 생략 가능)", example = "1")
+    private String targetId;
 
     @Schema(description = "사용자 번호", example = "1")
     @NotNull(message = "User number is required")

@@ -31,13 +31,22 @@ public class ApprovalServiceImpl implements ApprovalService {
      * Get approval list with pagination and optional status filter
      */
     @Override
-    public PageResponse<ApprovalResponse> getApprovalList(int page, int size, String status) {
-        log.info("Fetching approval list - page: {}, size: {}, status: {}", page, size, status);
+    public PageResponse<ApprovalResponse> getApprovalList(int page, int size, String status, String searchKeyword, String startDate, String endDate) {
+        log.info("Fetching approval list - page: {}, size: {}, status: {}, keyword: {}", page, size, status, searchKeyword);
 
         Map<String, Object> params = new HashMap<>();
         params.put("status", status);
         params.put("offset", page * size);
         params.put("limit", size);
+        if (searchKeyword != null && !searchKeyword.isEmpty()) {
+            params.put("searchKeyword", searchKeyword);
+        }
+        if (startDate != null && !startDate.isEmpty()) {
+            params.put("startDate", startDate);
+        }
+        if (endDate != null && !endDate.isEmpty()) {
+            params.put("endDate", endDate);
+        }
 
         List<ApprovalResponse> content = approvalMapper.selectApprovalList(params);
         long totalElements = approvalMapper.selectApprovalListCount(params);

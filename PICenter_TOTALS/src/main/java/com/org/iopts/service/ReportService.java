@@ -25,7 +25,7 @@ public interface ReportService {
      * @param endDate   optional end date filter
      * @return report summary response
      */
-    ReportSummaryResponse getReportSummary(String groupId, String startDate, String endDate);
+    ReportSummaryResponse getReportSummary(String groupId, String startDate, String endDate, String hostName, String path);
 
     /**
      * Get monthly report data
@@ -60,4 +60,14 @@ public interface ReportService {
      * @return Excel file as byte array
      */
     byte[] exportExcel(ReportSearchRequest request);
+
+    /**
+     * Get exception report summary
+     *
+     * @param groupId   optional group filter
+     * @param startDate optional start date filter
+     * @param endDate   optional end date filter
+     * @return list of exception report data
+     */
+    List<Map<String, Object>> getExceptionReport(String groupId, String startDate, String endDate);
 }

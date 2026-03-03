@@ -96,4 +96,46 @@ public interface DashboardService {
      * @return list of ranking data maps
      */
     List<Map<String, Object>> getRankingData(String groupId, int limit);
+
+    /**
+     * Get detailed agent status
+     * @return map with connected, disconnected, total agent counts
+     */
+    Map<String, Object> getSystemAgents();
+
+    /**
+     * Get todo items (pending approvals, scheduled scans)
+     * @return map with pending counts
+     */
+    Map<String, Object> getTodoItems();
+
+    /**
+     * Get remediation implementation status
+     * @return map with implementation progress data
+     */
+    Map<String, Object> getImplementationStatus();
+
+    /**
+     * Get last scan information
+     * @return map with last scan date and result
+     */
+    Map<String, Object> getLastScan();
+
+    /**
+     * Get completion statistics
+     * @return map with completion data
+     */
+    Map<String, Object> getCompletionStats();
+
+    /**
+     * Get detection status (file counts)
+     * @return map with find_path, processing_path, inaccess_path
+     */
+    Map<String, Object> getDetectionStatus();
+
+    /**
+     * Get approval status (owned/false-positive)
+     * @return map with approval_file, approval_false
+     */
+    Map<String, Object> getApprovalStatus();
 }

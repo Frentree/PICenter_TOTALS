@@ -30,7 +30,7 @@ public class PathException {
     private String description;
 
     /** Target ID (FK to pi_targets) */
-    private Long targetId;
+    private String targetId;
 
     /** Use flag (Y/N) */
     private Character useYn;

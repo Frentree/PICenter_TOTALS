@@ -18,6 +18,14 @@
         NOTE: There is NO pi_groups table. Use pi_target_group for target groups.
     -->
 
+    <!--
+        TUNING: selectGroupList
+        [성능 이슈] 페이지네이션 없이 전체 그룹 목록 조회 → 그룹 수가 많으면 메모리 부담
+        [인덱스 권장] pi_targets(TARGET_USE, group_idx) 복합 인덱스 → 서브쿼리 GROUP BY 가속
+            - CREATE INDEX idx_pi_targets_use_grpidx ON pi_targets(TARGET_USE, group_idx);
+        [인덱스 권장] pi_target_group(name, idx) 복합 인덱스 → ORDER BY 커버
+            - CREATE INDEX idx_pi_tg_name_idx ON pi_target_group(name, idx);
+    -->
     <!-- Select all target groups (flat list for tree building) -->
     <select id="selectGroupList" resultType="map">
         SELECT

@@ -49,11 +49,21 @@ public class ReportController {
             Authentication authentication,
             @Parameter(description = "Group ID filter", example = "GRP001") @RequestParam(required = false) String groupId,
             @Parameter(description = "Start date (yyyy-MM-dd)", example = "2026-01-01") @RequestParam(required = false) String startDate,
-            @Parameter(description = "End date (yyyy-MM-dd)", example = "2026-12-31") @RequestParam(required = false) String endDate) {
+            @Parameter(description = "End date (yyyy-MM-dd)", example = "2026-12-31") @RequestParam(required = false) String endDate,
+            @Parameter(description = "Host name filter") @RequestParam(required = false) String hostName,
+            @Parameter(description = "From date (alias for startDate)") @RequestParam(required = false) String fromDate,
+            @Parameter(description = "To date (alias for endDate)") @RequestParam(required = false) String toDate,
+            @Parameter(description = "Path filter") @RequestParam(required = false) String path,
+            @Parameter(description = "Page number") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size) {
         String userNo = (String) authentication.getPrincipal();
         log.info("Report summary request by user: {}", userNo);
 
-        ReportSummaryResponse response = reportService.getReportSummary(groupId, startDate, endDate);
+        // Map frontend aliases to backend params
+        String effectiveStartDate = (startDate != null && !startDate.isEmpty()) ? startDate : fromDate;
+        String effectiveEndDate = (endDate != null && !endDate.isEmpty()) ? endDate : toDate;
+
+        ReportSummaryResponse response = reportService.getReportSummary(groupId, effectiveStartDate, effectiveEndDate, hostName, path);
         return ApiResponse.success(response);
     }
 
@@ -126,6 +136,24 @@ public class ReportController {
         log.info("Target report request by user: {}, targetId: {}", userNo, targetId);
 
         List<Map<String, Object>> response = reportService.getTargetReport(groupId, targetId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Exception Report
+     *
+     * New: GET /api/v1/reports/exceptions
+     */
+    @Operation(summary = "Get exception report", description = "Get exception report summary")
+    @GetMapping("/exceptions")
+    public ApiResponse<List<Map<String, Object>>> getExceptionReport(
+            Authentication authentication,
+            @Parameter(description = "Group ID filter") @RequestParam(required = false) String groupId,
+            @Parameter(description = "Start date") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End date") @RequestParam(required = false) String endDate) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Exception report request by user: {}", userNo);
+        List<Map<String, Object>> response = reportService.getExceptionReport(groupId, startDate, endDate);
         return ApiResponse.success(response);
     }
 

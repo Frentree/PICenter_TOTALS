@@ -1,8 +1,10 @@
 package com.org.iopts.controller;
 
 import com.org.iopts.dto.request.LoginRequest;
+import com.org.iopts.dto.request.PasswordChangeRequest;
 import com.org.iopts.dto.response.ApiResponse;
 import com.org.iopts.dto.response.LoginResponse;
+import com.org.iopts.service.UserManageService;
 import com.org.iopts.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final UserService userService;
+    private final UserManageService userManageService;
 
     /**
      * User Login
@@ -82,6 +85,22 @@ public class AuthController {
         String userNo = getUserNoFromRequest(request);
         LoginResponse response = userService.getUserInfo(userNo);
         return ApiResponse.success(response);
+    }
+
+    /**
+     * Change Password
+     *
+     * New: POST /api/v1/auth/change-password
+     */
+    @Operation(summary = "Change password", description = "Change current user password")
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(
+            @Valid @RequestBody PasswordChangeRequest request,
+            HttpServletRequest httpRequest) {
+        String userNo = getUserNoFromRequest(httpRequest);
+        log.info("Change password request: userNo={}", userNo);
+        userManageService.changePassword(userNo, request);
+        return ApiResponse.success();
     }
 
     /**

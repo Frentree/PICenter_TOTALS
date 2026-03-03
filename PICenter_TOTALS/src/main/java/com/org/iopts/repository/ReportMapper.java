@@ -45,4 +45,9 @@ public interface ReportMapper {
      * Select data for Excel export
      */
     List<Map<String, Object>> selectExcelData(Map<String, Object> params);
+
+    /**
+     * Select exception report data
+     */
+    List<Map<String, Object>> selectExceptionReport(Map<String, Object> params);
 }

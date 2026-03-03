@@ -19,6 +19,15 @@
               used for read/check status, not a view counter.
     -->
 
+    <!--
+        TUNING: selectNoticeList
+        [성능 이슈] LIKE '%...%' 양쪽 와일드카드 2개(notice_title, notice_con) → Full Table Scan
+        [성능 이슈] notice_title이 text 타입, notice_con이 varchar(2000) → text LIKE 느림
+        [인덱스 권장] pi_notice(regdate DESC) 인덱스 → ORDER BY 정렬 가속
+            - CREATE INDEX idx_pi_notice_regdate ON pi_notice(regdate DESC);
+        [개선 방안] Full-Text Index 사용으로 검색 성능 개선
+            - CREATE FULLTEXT INDEX idx_pi_notice_ft ON pi_notice(notice_title, notice_con);
+    -->
     <!-- Notice list with pagination and search -->
     <select id="selectNoticeList" parameterType="map"
             resultType="com.org.iopts.dto.response.NoticeResponse">

@@ -67,6 +67,14 @@
          schedule_target_id -> TARGET_GROUP_ID, schedule_status -> STATUS_YN,
          schedule_target_name -> DESCRIPTION, schedule_next_scan -> NEXT_RUN_DT
     -->
+    <!--
+        TUNING: selectScheduleList
+        [성능 이슈] 상관 서브쿼리(POLICY_NAME)가 매 행마다 pi_datatypes 조회 → N+1 패턴
+        [인덱스 권장] pi_schedules(REGDATE DESC) 인덱스 → ORDER BY 정렬 가속
+            - CREATE INDEX idx_pi_schedules_regdate ON pi_schedules(REGDATE DESC);
+        [인덱스 권장] pi_datatypes(DATATYPE_ID) PK 활용 확인
+    -->
+    <!-- [튜닝 적용] 상관 서브쿼리 → LEFT JOIN으로 변환하여 1회 조인 -->
     <select id="selectScheduleList" resultMap="scheduleResponseMap">
         SELECT
             s.SCHEDULE_ID,
@@ -82,9 +90,9 @@
             s.REGDATE                     AS REG_DT,
             NULL                          AS REG_USER,
             NULL                          AS MOD_DT,
-            (SELECT d.DATATYPE_LABEL FROM pi_datatypes d
-             WHERE d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES LIMIT 1) AS POLICY_NAME
+            d.DATATYPE_LABEL              AS POLICY_NAME
         FROM pi_schedules s
+        LEFT JOIN pi_datatypes d ON d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES
         ORDER BY s.REGDATE DESC
         LIMIT #{offset}, #{limit}
     </select>
@@ -94,6 +102,7 @@
         FROM pi_schedules
     </select>
 
+    <!-- [튜닝 적용] 상관 서브쿼리 → LEFT JOIN으로 변환 (selectScheduleList와 동일 패턴) -->
     <select id="selectScheduleDetail" resultMap="scheduleResponseMap">
         SELECT
             s.SCHEDULE_ID,
@@ -109,9 +118,9 @@
             s.REGDATE                     AS REG_DT,
             NULL                          AS REG_USER,
             NULL                          AS MOD_DT,
-            (SELECT d.DATATYPE_LABEL FROM pi_datatypes d
-             WHERE d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES LIMIT 1) AS POLICY_NAME
+            d.DATATYPE_LABEL              AS POLICY_NAME
         FROM pi_schedules s
+        LEFT JOIN pi_datatypes d ON d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES
         WHERE s.SCHEDULE_ID = #{scheduleId}
     </select>
 
@@ -175,6 +184,13 @@
         VALUES (#{targetId}, 0, NOW(), 'RUNNING', CURDATE())
     </insert>
 
+    <!--
+        TUNING: selectScanHistory
+        [인덱스 권장] pi_scan_history(REGDATE DESC, STARTED DESC) → ORDER BY 커버
+            - CREATE INDEX idx_pi_scan_hist_reg_start ON pi_scan_history(REGDATE DESC, STARTED DESC);
+        [인덱스 권장] pi_scan_history(TARGET_ID, AP_NO) → 특정 타겟 조회 가속
+            - CREATE INDEX idx_pi_scan_hist_target ON pi_scan_history(TARGET_ID, AP_NO);
+    -->
     <select id="selectScanHistory" resultType="map">
         SELECT
             sh.TARGET_ID            AS targetId,
@@ -205,6 +221,103 @@
         </where>
     </select>
 
+    <!-- Schedule list with search filters -->
+    <select id="selectScheduleListFiltered" parameterType="map" resultMap="scheduleResponseMap">
+        SELECT
+            s.SCHEDULE_ID,
+            s.SCHEDULE_LABEL              AS SCHEDULE_NAME,
+            s.SCHEDULE_REPEAT_DAYS        AS SCHEDULE_TYPE,
+            s.SCHEDULE_DATATYPE_PROFILES  AS CRON_EXPRESSION,
+            NULL                          AS POLICY_ID,
+            s.SCHEDULE_TARGET_ID          AS TARGET_GROUP_ID,
+            s.SCHEDULE_STATUS             AS STATUS_YN,
+            s.SCHEDULE_TARGET_NAME        AS DESCRIPTION,
+            NULL                          AS LAST_RUN_DT,
+            s.SCHEDULE_NEXT_SCAN          AS NEXT_RUN_DT,
+            s.REGDATE                     AS REG_DT,
+            NULL                          AS REG_USER,
+            NULL                          AS MOD_DT,
+            d.DATATYPE_LABEL              AS POLICY_NAME
+        FROM pi_schedules s
+        LEFT JOIN pi_datatypes d ON d.DATATYPE_ID = s.SCHEDULE_DATATYPE_PROFILES
+        <where>
+            <if test="hostName != null and hostName != ''">
+                AND (s.SCHEDULE_LABEL LIKE CONCAT('%', #{hostName}, '%')
+                     OR s.SCHEDULE_TARGET_NAME LIKE CONCAT('%', #{hostName}, '%')
+                     OR s.SCHEDULE_TARGET_ID LIKE CONCAT('%', #{hostName}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND s.SCHEDULE_STATUS = #{status}
+            </if>
+        </where>
+        ORDER BY s.REGDATE DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countScheduleListFiltered" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_schedules s
+        <where>
+            <if test="hostName != null and hostName != ''">
+                AND (s.SCHEDULE_LABEL LIKE CONCAT('%', #{hostName}, '%')
+                     OR s.SCHEDULE_TARGET_NAME LIKE CONCAT('%', #{hostName}, '%')
+                     OR s.SCHEDULE_TARGET_ID LIKE CONCAT('%', #{hostName}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND s.SCHEDULE_STATUS = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!-- Scan history with search filters -->
+    <select id="selectScanHistoryFiltered" parameterType="map" resultType="map">
+        SELECT
+            sh.TARGET_ID            AS targetId,
+            t.NAME                  AS targetName,
+            IFNULL(a.AGENT_CONNECTED_IP, '') AS targetIp,
+            sh.STATUS               AS scanStatus,
+            sh.STARTED              AS startDt,
+            sh.REGDATE              AS regDt
+        FROM pi_scan_history sh
+        LEFT JOIN pi_targets t   ON sh.TARGET_ID = t.TARGET_ID AND sh.AP_NO = t.AP_NO
+        LEFT JOIN pi_agents a    ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO
+        <where>
+            <if test="targetId != null and targetId != ''">
+                AND sh.TARGET_ID = #{targetId}
+            </if>
+            <if test="hostName != null and hostName != ''">
+                AND (t.NAME LIKE CONCAT('%', #{hostName}, '%')
+                     OR a.AGENT_CONNECTED_IP LIKE CONCAT('%', #{hostName}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND sh.STATUS = #{status}
+            </if>
+        </where>
+        ORDER BY sh.REGDATE DESC, sh.STARTED DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countScanHistoryFiltered" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_scan_history sh
+        <if test="hostName != null and hostName != ''">
+            LEFT JOIN pi_targets t ON sh.TARGET_ID = t.TARGET_ID AND sh.AP_NO = t.AP_NO
+            LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO
+        </if>
+        <where>
+            <if test="targetId != null and targetId != ''">
+                AND sh.TARGET_ID = #{targetId}
+            </if>
+            <if test="hostName != null and hostName != ''">
+                AND (t.NAME LIKE CONCAT('%', #{hostName}, '%')
+                     OR a.AGENT_CONNECTED_IP LIKE CONCAT('%', #{hostName}, '%'))
+            </if>
+            <if test="status != null and status != ''">
+                AND sh.STATUS = #{status}
+            </if>
+        </where>
+    </select>
+
     <!-- ==================== Location Queries ==================== -->
 
     <!--
@@ -231,12 +344,18 @@
             version, owner, modified, defaults, disabled, global, sealed, ocr,
             recent, extension
     -->
+    <!--
+        TUNING: selectDatatypeList
+        [성능 이슈] DATATYPE가 longtext 타입 → 전체 조회 시 대량 데이터 전송
+        [개선 방안] 목록 조회에서는 longtext 컬럼(DATATYPE) 제외 또는 SUBSTRING으로 일부만 반환 권장
+    -->
+    <!-- [튜닝 적용] 목록 조회에서 longtext 컬럼(datatypePattern) 제외하여 전송량 감소 -->
     <select id="selectDatatypeList" resultType="map">
         SELECT
             DATATYPE_ID      AS datatypeId,
             DATATYPE_LABEL   AS datatypeName,
             VERSION          AS version,
-            DATATYPE         AS datatypePattern,
+            NULL             AS datatypePattern,
             NULL             AS description,
             CASE WHEN DISABLED = 0 THEN 'Y' ELSE 'N' END AS useYn
         FROM pi_datatypes
@@ -314,15 +433,18 @@
         pi_scan_policy links to schedules indirectly via datatype_id.
         Return 0 as safe default since direct FK relationship does not exist.
     -->
+    <!--
+        TUNING: countSchedulesByPolicyId
+        [성능 이슈] 상관 서브쿼리 대신 JOIN 사용 가능
+        [인덱스 권장] pi_schedules(SCHEDULE_DATATYPE_PROFILES) 인덱스
+            - CREATE INDEX idx_pi_schedules_profiles ON pi_schedules(SCHEDULE_DATATYPE_PROFILES);
+    -->
+    <!-- [튜닝 적용] 서브쿼리 → INNER JOIN으로 변환 -->
     <select id="countSchedulesByPolicyId" resultType="int">
         SELECT COUNT(*)
         FROM pi_schedules s
-        WHERE s.SCHEDULE_DATATYPE_PROFILES = (
-            SELECT sp.DATATYPE_ID
-            FROM pi_scan_policy sp
-            WHERE sp.IDX = #{policyId}
-            LIMIT 1
-        )
+        INNER JOIN pi_scan_policy sp ON s.SCHEDULE_DATATYPE_PROFILES = sp.DATATYPE_ID
+        WHERE sp.IDX = #{policyId}
     </select>
 
 </mapper>

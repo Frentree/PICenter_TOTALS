@@ -59,9 +59,29 @@
                     </otherwise>
                 </choose>
             </if>
+            <if test="searchKeyword != null and searchKeyword != ''">
+                AND (dp.NOTEPAD LIKE CONCAT('%', #{searchKeyword}, '%')
+                     OR dp.ADD_CONTENT LIKE CONCAT('%', #{searchKeyword}, '%')
+                     OR dp.TARGET_ID LIKE CONCAT('%', #{searchKeyword}, '%'))
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND dp.REGDATE &gt;= CONCAT(#{startDate}, ' 00:00:00')
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND dp.REGDATE &lt;= CONCAT(#{endDate}, ' 23:59:59')
+            </if>
         </where>
     </sql>
 
+    <!--
+        TUNING: selectApprovalList
+        [성능 이슈] pi_data_processing LEFT JOIN pi_find ON hash_id(text) → text 컬럼 JOIN 매우 느림
+        [인덱스 권장] pi_data_processing(APPROVAL_STATUS, REGDATE DESC) 복합 인덱스
+            - CREATE INDEX idx_pi_dp_status_regdate ON pi_data_processing(APPROVAL_STATUS, REGDATE DESC);
+        [인덱스 권장] pi_data_processing(TARGET_ID, AP_NO) 복합 인덱스
+            - CREATE INDEX idx_pi_dp_target_ap ON pi_data_processing(TARGET_ID, AP_NO);
+        [성능 이슈] hash_id가 text 타입인데 JOIN 조건에 사용 → varchar(100) 변환 검토 권장
+    -->
     <!-- Select approval list with pagination - uses pi_data_processing -->
     <select id="selectApprovalList" parameterType="map" resultMap="approvalResultMap">
         SELECT
@@ -93,14 +113,15 @@
         LIMIT #{offset}, #{limit}
     </select>
 
-    <!-- Count total approvals matching filter - uses pi_data_processing -->
+    <!--
+        [튜닝] selectApprovalListCount
+        변경 전: pi_find, pi_targets LEFT JOIN 포함 → 34만건 text 컬럼(hash_id) JOIN 발생
+        변경 후: approvalCondition이 dp 컬럼만 참조하므로 불필요한 JOIN 제거
+        효과: pi_find(34만건) text JOIN 제거로 카운트 쿼리 대폭 개선
+    -->
     <select id="selectApprovalListCount" parameterType="map" resultType="long">
         SELECT COUNT(*)
         FROM pi_data_processing dp
-        LEFT JOIN pi_find f
-            ON dp.HASH_ID = f.HASH_ID AND dp.TARGET_ID = f.TARGET_ID AND dp.AP_NO = f.AP_NO
-        LEFT JOIN pi_targets t
-            ON dp.TARGET_ID = t.TARGET_ID AND dp.AP_NO = t.AP_NO
         <include refid="approvalCondition"/>
     </select>
 
@@ -133,15 +154,20 @@
         WHERE dp.DATA_PROCESSING_IDX = #{approvalId}
     </select>
 
+    <!--
+        TUNING: updateApprovalStatus
+        [인덱스] DATA_PROCESSING_IDX가 PK이므로 WHERE 조건은 최적
+        [성능 이슈] CASE 표현식은 업데이트 시 상수 변환되므로 성능 영향 없음
+    -->
     <!-- Update approval status in pi_data_processing -->
     <update id="updateApprovalStatus" parameterType="map">
         UPDATE pi_data_processing
         SET
-            APPROVAL_STATUS = CASE #{approvalStatus}
-                WHEN 'APPROVED'  THEN 'Y'
-                WHEN 'REJECTED'  THEN 'N'
-                WHEN 'CANCELLED' THEN 'C'
-                WHEN 'PENDING'   THEN 'W'
+            APPROVAL_STATUS = CASE
+                WHEN #{approvalStatus} = 'APPROVED'  THEN 'Y'
+                WHEN #{approvalStatus} = 'REJECTED'  THEN 'N'
+                WHEN #{approvalStatus} = 'CANCELLED' THEN 'C'
+                WHEN #{approvalStatus} = 'PENDING'   THEN 'W'
                 ELSE #{approvalStatus}
             END,
             ADD_CONTENT = #{approvalComment},

@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Target {
 
-    private Long targetId;
+    private String targetId;
     private String targetName;
     private String targetIp;
     private String targetOs;

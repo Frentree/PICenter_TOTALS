@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -32,14 +33,44 @@ public class ReportServiceImpl implements ReportService {
 
     private final ReportMapper reportMapper;
 
+    /** 인메모리 캐시 - 보고서 집계 쿼리 성능 개선 */
+    private final ConcurrentHashMap<String, Object[]> cache = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000L;
+
+    @SuppressWarnings("unchecked")
+    private <T> T getFromCache(String key) {
+        Object[] entry = cache.get(key);
+        if (entry != null && System.currentTimeMillis() < (long) entry[1]) {
+            return (T) entry[0];
+        }
+        return null;
+    }
+
+    private void putToCache(String key, Object data) {
+        cache.put(key, new Object[]{data, System.currentTimeMillis() + CACHE_TTL_MS});
+    }
+
     @Override
-    public ReportSummaryResponse getReportSummary(String groupId, String startDate, String endDate) {
-        log.info("Getting report summary - groupId: {}, startDate: {}, endDate: {}", groupId, startDate, endDate);
+    public ReportSummaryResponse getReportSummary(String groupId, String startDate, String endDate, String hostName, String path) {
+        log.info("Getting report summary - groupId: {}, startDate: {}, endDate: {}, hostName: {}", groupId, startDate, endDate, hostName);
+
+        String cacheKey = "reportSummary:" + groupId + ":" + startDate + ":" + endDate + ":" + hostName + ":" + path;
+        ReportSummaryResponse cachedResp = getFromCache(cacheKey);
+        if (cachedResp != null) {
+            log.debug("Cache hit for reportSummary");
+            return cachedResp;
+        }
 
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
         params.put("startDate", startDate);
         params.put("endDate", endDate);
+        if (hostName != null && !hostName.isEmpty()) {
+            params.put("hostName", hostName);
+        }
+        if (path != null && !path.isEmpty()) {
+            params.put("path", path);
+        }
 
         Map<String, Object> result = reportMapper.selectReportSummary(params);
         if (result == null) {
@@ -63,7 +94,7 @@ public class ReportServiceImpl implements ReportService {
         detailParams.put("offset", 0);
         List<Map<String, Object>> topTargets = reportMapper.selectDetailedReport(detailParams);
 
-        return ReportSummaryResponse.builder()
+        ReportSummaryResponse resp = ReportSummaryResponse.builder()
                 .reportDate(result.get("reportDate") != null ? result.get("reportDate").toString() : null)
                 .totalTargets(toLong(result.get("totalTargets")))
                 .scannedTargets(toLong(result.get("scannedTargets")))
@@ -75,23 +106,43 @@ public class ReportServiceImpl implements ReportService {
                 .topDetectionTypes(new ArrayList<>())
                 .topTargets(topTargets != null ? topTargets : new ArrayList<>())
                 .build();
+        putToCache(cacheKey, resp);
+        return resp;
     }
 
     @Override
     public List<Map<String, Object>> getMonthlyReport(String startDate, String endDate) {
         log.info("Getting monthly report - startDate: {}, endDate: {}", startDate, endDate);
 
+        String cacheKey = "reportMonthly:" + startDate + ":" + endDate;
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for monthlyReport");
+            return cached;
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("startDate", startDate);
         params.put("endDate", endDate);
 
         List<Map<String, Object>> result = reportMapper.selectMonthlyReport(params);
-        return result != null ? result : new ArrayList<>();
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override
     public PageResponse<ReportDetailResponse> getDetailedReport(ReportSearchRequest request) {
         log.info("Getting detailed report - request: {}", request);
+
+        String cacheKey = "reportDetailed:" + request.getReportType() + ":" + request.getGroupId()
+                + ":" + request.getTargetId() + ":" + request.getStartDate() + ":" + request.getEndDate()
+                + ":" + request.getPage() + ":" + request.getSize();
+        PageResponse<ReportDetailResponse> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for detailedReport");
+            return cached;
+        }
 
         Map<String, Object> params = new HashMap<>();
         params.put("reportType", request.getReportType());
@@ -114,19 +165,30 @@ public class ReportServiceImpl implements ReportService {
                     .collect(Collectors.toList());
         }
 
-        return PageResponse.of(content, request.getPage(), request.getSize(), totalCount);
+        PageResponse<ReportDetailResponse> result = PageResponse.of(content, request.getPage(), request.getSize(), totalCount);
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override
     public List<Map<String, Object>> getTargetReport(String groupId, String targetId) {
         log.info("Getting target report - groupId: {}, targetId: {}", groupId, targetId);
 
+        String cacheKey = "reportTargets:" + groupId + ":" + targetId;
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for targetReport");
+            return cached;
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
         params.put("targetId", targetId);
 
         List<Map<String, Object>> result = reportMapper.selectTargetReport(params);
-        return result != null ? result : new ArrayList<>();
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override
@@ -158,7 +220,7 @@ public class ReportServiceImpl implements ReportService {
      */
     private ReportDetailResponse mapToReportDetailResponse(Map<String, Object> row) {
         return ReportDetailResponse.builder()
-                .targetId(toLong(row.get("targetId")))
+                .targetId(row.get("targetId") != null ? row.get("targetId").toString() : null)
                 .targetName(row.get("targetName") != null ? row.get("targetName").toString() : null)
                 .targetIp(row.get("targetIp") != null ? row.get("targetIp").toString() : null)
                 .detectionCount(toLong(row.get("detectionCount")))
@@ -169,6 +231,28 @@ public class ReportServiceImpl implements ReportService {
                 .lastScanDate(row.get("lastScanDate") != null ? row.get("lastScanDate").toString() : null)
                 .detections(new ArrayList<>())
                 .build();
+    }
+
+    @Override
+    public List<Map<String, Object>> getExceptionReport(String groupId, String startDate, String endDate) {
+        log.info("Getting exception report - groupId: {}, startDate: {}, endDate: {}", groupId, startDate, endDate);
+
+        String cacheKey = "reportException:" + groupId + ":" + startDate + ":" + endDate;
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for exceptionReport");
+            return cached;
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("groupId", groupId);
+        params.put("startDate", startDate);
+        params.put("endDate", endDate);
+
+        List<Map<String, Object>> result = reportMapper.selectExceptionReport(params);
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     /**

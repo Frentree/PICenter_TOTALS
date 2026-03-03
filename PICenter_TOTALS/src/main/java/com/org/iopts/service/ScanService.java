@@ -17,7 +17,7 @@ public interface ScanService {
     /**
      * Get paginated schedule list
      */
-    PageResponse<ScheduleResponse> getScheduleList(int page, int size);
+    PageResponse<ScheduleResponse> getScheduleList(int page, int size, String hostName, String status);
 
     /**
      * Get schedule detail by ID
@@ -52,7 +52,7 @@ public interface ScanService {
     /**
      * Get paginated scan history
      */
-    PageResponse<Map<String, Object>> getScanHistory(int page, int size, String targetId);
+    PageResponse<Map<String, Object>> getScanHistory(int page, int size, String targetId, String hostName, String status);
 
     /**
      * Get location list

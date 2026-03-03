@@ -29,6 +29,11 @@ public interface FaqMapper {
     long selectFaqListCount(Map<String, Object> params);
 
     /**
+     * Select a single FAQ by faqId
+     */
+    FaqResponse selectFaqDetail(@Param("faqId") Long faqId);
+
+    /**
      * Insert a new FAQ
      */
     int insertFaq(Map<String, Object> params);

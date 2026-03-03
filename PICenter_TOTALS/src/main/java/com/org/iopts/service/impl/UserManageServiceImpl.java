@@ -45,16 +45,15 @@ public class UserManageServiceImpl implements UserManageService {
      * Get paginated user list with optional search
      */
     @Override
-    public PageResponse<UserResponse> getUserList(int page, int size, String searchType, String searchKeyword) {
-        log.debug("getUserList - page: {}, size: {}, searchType: {}, searchKeyword: {}", page, size, searchType, searchKeyword);
+    public PageResponse<UserResponse> getUserList(int page, int size, Map<String, String> searchParams) {
+        log.debug("getUserList - page: {}, size: {}, searchParams: {}", page, size, searchParams);
 
         Map<String, Object> params = new HashMap<>();
         params.put("offset", page * size);
         params.put("limit", size);
 
-        if (searchType != null && !searchType.isEmpty() && searchKeyword != null && !searchKeyword.isEmpty()) {
-            params.put("searchType", searchType);
-            params.put("searchKeyword", searchKeyword);
+        if (searchParams != null) {
+            params.putAll(searchParams);
         }
 
         List<UserResponse> content = userManageMapper.selectUserList(params);
@@ -318,16 +317,34 @@ public class UserManageServiceImpl implements UserManageService {
      * Get paginated user log list with optional search
      */
     @Override
-    public PageResponse<UserLogResponse> getUserLogList(int page, int size, String searchType, String searchKeyword) {
-        log.debug("getUserLogList - page: {}, size: {}, searchType: {}, searchKeyword: {}", page, size, searchType, searchKeyword);
+    public PageResponse<UserLogResponse> getUserLogList(int page, int size, Map<String, String> searchParams) {
+        log.debug("getUserLogList - page: {}, size: {}, searchParams: {}", page, size, searchParams);
 
         Map<String, Object> params = new HashMap<>();
         params.put("offset", page * size);
         params.put("limit", size);
 
-        if (searchType != null && !searchType.isEmpty() && searchKeyword != null && !searchKeyword.isEmpty()) {
-            params.put("searchType", searchType);
-            params.put("searchKeyword", searchKeyword);
+        if (searchParams != null) {
+            // Map frontend param names to mapper param names
+            if (searchParams.containsKey("startDate")) {
+                params.put("fromDate", searchParams.get("startDate"));
+            }
+            if (searchParams.containsKey("endDate")) {
+                params.put("toDate", searchParams.get("endDate"));
+            }
+            if (searchParams.containsKey("userId")) {
+                params.put("userId", searchParams.get("userId"));
+            }
+            if (searchParams.containsKey("userName")) {
+                params.put("userName", searchParams.get("userName"));
+            }
+            // backward compat
+            if (searchParams.containsKey("searchType")) {
+                params.put("searchType", searchParams.get("searchType"));
+            }
+            if (searchParams.containsKey("searchKeyword")) {
+                params.put("searchKeyword", searchParams.get("searchKeyword"));
+            }
         }
 
         List<UserLogResponse> content = userManageMapper.selectUserLogList(params);
@@ -367,5 +384,47 @@ public class UserManageServiceImpl implements UserManageService {
         }
 
         log.info("saveAccountPolicy success");
+    }
+
+    /**
+     * Get paginated list of locked user accounts
+     */
+    @Override
+    public PageResponse<UserResponse> getLockedUsers(int page, int size, String searchKeyword) {
+        log.debug("getLockedUsers - page: {}, size: {}, keyword: {}", page, size, searchKeyword);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("offset", page * size);
+        params.put("limit", size);
+        if (searchKeyword != null && !searchKeyword.isEmpty()) {
+            params.put("searchKeyword", searchKeyword);
+        }
+
+        List<UserResponse> content = userManageMapper.selectLockedUsers(params);
+        long totalElements = userManageMapper.countLockedUsers(params);
+
+        return PageResponse.of(content, page, size, totalElements);
+    }
+
+    /**
+     * Unlock multiple user accounts
+     */
+    @Override
+    @Transactional
+    public void batchUnlockUsers(List<String> userNos) {
+        log.info("batchUnlockUsers - count: {}", userNos.size());
+
+        if (userNos == null || userNos.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_PARAMETER, "User numbers list is empty");
+        }
+
+        for (String userNo : userNos) {
+            int result = userManageMapper.unlockUser(userNo);
+            if (result == 0) {
+                log.warn("Failed to unlock user: {}", userNo);
+            }
+        }
+
+        log.info("batchUnlockUsers success - count: {}", userNos.size());
     }
 }

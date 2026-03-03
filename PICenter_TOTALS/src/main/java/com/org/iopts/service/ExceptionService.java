@@ -10,13 +10,16 @@ import com.org.iopts.dto.response.PathExceptionResponse;
 public interface ExceptionService {
 
     /**
-     * Get path exception list with pagination
+     * Get path exception list with pagination and search filters
      *
+     * @param searchKeyword search keyword
+     * @param startDate start date filter
+     * @param endDate end date filter
      * @param page page number (0-based)
      * @param size page size
      * @return paginated path exception list
      */
-    PageResponse<PathExceptionResponse> getPathExceptionList(int page, int size);
+    PageResponse<PathExceptionResponse> getPathExceptionList(String searchKeyword, String startDate, String endDate, int page, int size);
 
     /**
      * Create a new path exception

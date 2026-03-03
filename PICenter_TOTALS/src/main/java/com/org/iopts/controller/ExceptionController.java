@@ -28,6 +28,27 @@ public class ExceptionController {
     private final ExceptionService exceptionService;
 
     /**
+     * Get Exception List (root endpoint)
+     *
+     * New: GET /api/v1/exceptions
+     */
+    @Operation(summary = "Get exception list", description = "Get paginated exception list with search filters")
+    @GetMapping
+    public ApiResponse<PageResponse<PathExceptionResponse>> getExceptionList(
+            @Parameter(description = "Search keyword") @RequestParam(required = false) String searchKeyword,
+            @Parameter(description = "Start date (yyyy-MM-dd)") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam(required = false) String endDate,
+            @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Get exception list - keyword: {}, startDate: {}, endDate: {}, page: {}, size: {}",
+                searchKeyword, startDate, endDate, page, size);
+        PageResponse<PathExceptionResponse> response = exceptionService.getPathExceptionList(
+                searchKeyword, startDate, endDate, page, size);
+        return ApiResponse.success(response);
+    }
+
+    /**
      * Get Path Exception List
      *
      * Legacy: POST /getPathExceptionList
@@ -36,11 +57,15 @@ public class ExceptionController {
     @Operation(summary = "Get path exception list", description = "Get paginated path exception list")
     @GetMapping("/paths")
     public ApiResponse<PageResponse<PathExceptionResponse>> getPathExceptionList(
+            @Parameter(description = "Search keyword") @RequestParam(required = false) String searchKeyword,
+            @Parameter(description = "Start date (yyyy-MM-dd)") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam(required = false) String endDate,
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size) {
 
         log.info("Get path exception list - page: {}, size: {}", page, size);
-        PageResponse<PathExceptionResponse> response = exceptionService.getPathExceptionList(page, size);
+        PageResponse<PathExceptionResponse> response = exceptionService.getPathExceptionList(
+                searchKeyword, startDate, endDate, page, size);
         return ApiResponse.success(response);
     }
 

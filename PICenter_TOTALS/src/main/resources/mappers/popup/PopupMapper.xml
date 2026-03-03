@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.PopupMapper">
+
+    <!--
+        PopupMapper.xml - Popup selection data queries.
+
+        Key tables:
+          pi_user:           user_no(PK), user_id, user_name, user_grade, insa_code, user_email, user_phone, acc_yn
+          pi_group:          insa_code, team_name, up_idx, degree, credate
+          pi_targets:        target_id(PK), ap_no(PK), name, TARGET_USE, group_idx, platform, net_type
+          pi_agents:         agent_name(PK), ap_no(PK), agent_connected_ip, agent_version, agent_connected
+          pi_target_group:   idx(PK auto), name, degree, type, up_idx
+          pi_setting:        idx, name, detail_name, status, type, seq
+          pi_dmz:            idx(PK auto), dmz_ip, memo
+    -->
+
+    <!-- ==================== User List Popup ==================== -->
+
+    <!--
+        TUNING: selectUserListPopup
+        [성능 이슈] LIKE '%...%' 양쪽 와일드카드(user_id, user_name) → Full Table Scan
+        [인덱스 권장] pi_user(acc_yn, user_name) 복합 인덱스 → WHERE + ORDER BY 커버
+            - CREATE INDEX idx_pi_user_accyn_name ON pi_user(acc_yn, user_name);
+    -->
+    <select id="selectUserListPopup" parameterType="map" resultType="map">
+        SELECT
+            u.user_no    AS userNo,
+            u.user_id    AS userId,
+            u.user_name  AS userName,
+            u.user_grade AS userGrade,
+            u.insa_code  AS teamCode,
+            g.team_name  AS teamName,
+            u.user_email AS email
+        FROM pi_user u
+        LEFT JOIN pi_group g ON u.insa_code = g.insa_code
+        WHERE u.acc_yn = 'Y'
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_id LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.user_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY u.user_name ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countUserListPopup" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_user u
+        WHERE u.acc_yn = 'Y'
+        <if test="keyword != null and keyword != ''">
+            AND (u.user_id LIKE CONCAT('%', #{keyword}, '%')
+                 OR u.user_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- ==================== Group List Popup ==================== -->
+
+    <!--
+        TUNING: selectGroupListPopup
+        [성능 이슈] 페이지네이션 없이 전체 그룹 반환 → 그룹 수가 많으면 메모리 부담
+        [성능 이슈] LIKE '%...%' → 인덱스 미사용
+        [인덱스 권장] pi_target_group(degree, name) 복합 인덱스 → ORDER BY 커버
+            - CREATE INDEX idx_pi_tg_degree_name ON pi_target_group(degree, name);
+    -->
+    <select id="selectGroupListPopup" parameterType="map" resultType="map">
+        SELECT
+            tg.idx     AS groupId,
+            tg.name    AS groupName,
+            tg.up_idx  AS parentId,
+            tg.degree  AS sortOrder
+        FROM pi_target_group tg
+        WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND tg.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY tg.degree ASC, tg.name ASC
+    </select>
+
+    <!-- ==================== Host List Popup ==================== -->
+
+    <!--
+        TUNING: selectHostListPopup
+        [성능 이슈] LIKE '%...%' 양쪽 와일드카드(NAME, AGENT_CONNECTED_IP) → Full Table Scan
+        [인덱스 권장] pi_targets(TARGET_USE, NAME) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_name ON pi_targets(TARGET_USE, NAME);
+    -->
+    <select id="selectHostListPopup" parameterType="map" resultType="map">
+        SELECT
+            t.TARGET_ID              AS targetId,
+            t.NAME                   AS targetName,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+            t.PLATFORM               AS targetOs,
+            a.AGENT_VERSION          AS agentVersion,
+            CASE WHEN a.agent_connected = 1 THEN 'CONNECTED' ELSE 'DISCONNECTED' END AS agentStatus,
+            COALESCE(ptg.name, '미그룹') AS groupName
+        FROM pi_targets t
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+        WHERE t.TARGET_USE = 'Y'
+        <if test="keyword != null and keyword != ''">
+            AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                 OR a.AGENT_CONNECTED_IP LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY t.NAME ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <!--
+        TUNING: countHostListPopup
+        [개선 방안] keyword 없을 때 pi_agents JOIN 불필요
+    -->
+    <!-- [튜닝 적용] keyword 없을 때 불필요한 pi_agents JOIN 제거 -->
+    <select id="countHostListPopup" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_targets t
+        <if test="keyword != null and keyword != ''">
+            LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        </if>
+        WHERE t.TARGET_USE = 'Y'
+        <if test="keyword != null and keyword != ''">
+            AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                 OR a.AGENT_CONNECTED_IP LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- ==================== Target List Popup ==================== -->
+
+    <select id="selectTargetListPopup" parameterType="map" resultType="map">
+        SELECT
+            t.TARGET_ID              AS targetId,
+            t.NAME                   AS targetName,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+            t.PLATFORM               AS targetOs,
+            tg.idx                   AS groupId,
+            COALESCE(ptg.name, '미그룹') AS groupName
+        FROM pi_targets t
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_idx IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg2.IDX FROM pi_target_group tg2 INNER JOIN CTE ON tg2.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+        ORDER BY t.NAME ASC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countTargetListPopup" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_targets t
+        WHERE t.TARGET_USE = 'Y'
+        <if test="groupId != null and groupId != ''">
+            AND t.group_idx IN (
+                WITH RECURSIVE CTE AS (
+                    SELECT IDX FROM pi_target_group WHERE IDX = #{groupId}
+                    UNION ALL
+                    SELECT tg2.IDX FROM pi_target_group tg2 INNER JOIN CTE ON tg2.UP_IDX = CTE.IDX
+                )
+                SELECT IDX FROM CTE
+            )
+        </if>
+    </select>
+
+    <!-- ==================== Policy List Popup ==================== -->
+
+    <select id="selectPolicyListPopup" resultType="map">
+        SELECT
+            s.idx          AS policyId,
+            s.name         AS policyName,
+            s.detail_name  AS policyDetail,
+            s.status       AS useYn
+        FROM pi_setting s
+        WHERE s.status = 'Y'
+        ORDER BY s.seq ASC, s.idx ASC
+    </select>
+
+    <!-- ==================== Network List Popup ==================== -->
+
+    <select id="selectNetworkListPopup" resultType="map">
+        SELECT
+            d.idx      AS networkId,
+            d.dmz_ip   AS networkIp,
+            d.memo     AS memo
+        FROM pi_dmz d
+        ORDER BY d.memo ASC
+    </select>
+
+</mapper>

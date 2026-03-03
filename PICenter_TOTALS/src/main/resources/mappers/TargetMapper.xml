@@ -80,6 +80,17 @@
           a.AGENT_CONNECTED_IP -> TARGET_IP   (targetIp, from pi_agents)
     -->
 
+    <!--
+        TUNING: targetSearchCondition
+        [성능 이슈] LIKE CONCAT('%', ..., '%') → 양쪽 와일드카드로 인덱스 미사용 (Full Table Scan)
+        [개선 방안] 가능하면 앞쪽 와일드카드 제거 (LIKE CONCAT(keyword, '%')) 또는 Full-Text Index 사용
+        [인덱스 권장] pi_targets(TARGET_USE, NAME) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_name ON pi_targets(TARGET_USE, NAME);
+        [인덱스 권장] pi_targets(TARGET_USE, SEARCH_STATUS) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_status ON pi_targets(TARGET_USE, SEARCH_STATUS);
+        [인덱스 권장] pi_targets(TARGET_USE, PLATFORM) 복합 인덱스
+            - CREATE INDEX idx_pi_targets_use_platform ON pi_targets(TARGET_USE, PLATFORM);
+    -->
     <sql id="targetSearchCondition">
         <where>
             t.TARGET_USE = 'Y'
@@ -98,7 +109,19 @@
                 </choose>
             </if>
             <if test="request.groupId != null and request.groupId != ''">
-                AND t.GROUP_ID = #{request.groupId}
+                <!-- 재귀 CTE로 그룹 idx 하위의 모든 타겟을 검색 (RM 방식) -->
+                AND t.TARGET_ID IN (
+                    WITH RECURSIVE grp_cte AS (
+                        SELECT tgr.idx, tgr.TARGET_ID
+                        FROM pi_target_group tgr
+                        WHERE tgr.idx = #{request.groupId}
+                        UNION ALL
+                        SELECT tgr2.idx, tgr2.TARGET_ID
+                        FROM pi_target_group tgr2
+                        INNER JOIN grp_cte ON tgr2.up_idx = grp_cte.idx
+                    )
+                    SELECT grp_cte.TARGET_ID FROM grp_cte WHERE grp_cte.TARGET_ID IS NOT NULL
+                )
             </if>
             <if test="request.agentStatus != null and request.agentStatus != ''">
                 AND t.SEARCH_STATUS = #{request.agentStatus}
@@ -109,64 +132,105 @@
         </where>
     </sql>
 
+    <!--
+        [튜닝] selectTargetList
+        변경 전: pi_agents JOIN ON t.TARGET_ID = a.AGENT_NAME (잘못된 컬럼 매핑)
+                 pi_target_group JOIN ON t.GROUP_IDX = g.idx (GROUP_IDX가 모두 NULL)
+        변경 후: pi_agents JOIN ON t.NAME = a.AGENT_NAME (올바른 호스트명 기반 매핑)
+                 pi_target_group JOIN ON TG.TARGET_ID = T.TARGET_ID AND T.AP_NO = TG.AP_NO (AP_NO 포함 정확한 매핑)
+                 부모 그룹명: PTG.NAME (TG.UP_IDX = PTG.IDX)
+                 COALESCE로 IP: 에이전트 IP 우선, 없으면 그룹의 connected_ip 사용
+        효과: 그룹명, IP, 에이전트 버전 정상 조회
+    -->
+    <!--
+        TUNING: selectTargetList
+        [성능 이슈] 상관 서브쿼리(ASSIGNED_USER_NAME)가 매 행마다 실행 → N+1 패턴
+        [개선 방안] pi_target_user + pi_user를 LEFT JOIN 파생 테이블로 변환하여 1회 실행 권장
+        [인덱스 권장] pi_target_user(TARGET_ID, USER_NO) 복합 인덱스
+            - CREATE INDEX idx_pi_target_user_tid ON pi_target_user(TARGET_ID, USER_NO);
+        [인덱스 권장] pi_agents(AGENT_NAME, AP_NO, AGENT_USE) 복합 인덱스
+            - CREATE INDEX idx_pi_agents_name_ap_use ON pi_agents(AGENT_NAME, AP_NO, AGENT_USE);
+        [인덱스 권장] pi_target_group(TARGET_ID, AP_NO) 복합 인덱스
+            - CREATE INDEX idx_pi_tg_target_ap ON pi_target_group(TARGET_ID, AP_NO);
+        [성능 이슈] ORDER BY a.AGENT_CONNECTED_IP IS NULL → 인덱스 미사용, 임시 테이블 정렬 발생
+    -->
     <select id="selectTargetList" resultMap="targetResponseMap">
         SELECT
             t.TARGET_ID,
-            t.NAME                   AS TARGET_NAME,
-            a.AGENT_CONNECTED_IP     AS TARGET_IP,
-            t.PLATFORM               AS TARGET_OS,
-            t.NET_TYPE               AS TARGET_TYPE,
+            t.NAME                              AS TARGET_NAME,
+            COALESCE(a.AGENT_CONNECTED_IP,
+                     tg.connected_ip)            AS TARGET_IP,
+            t.PLATFORM                           AS TARGET_OS,
+            t.NET_TYPE                           AS TARGET_TYPE,
             t.GROUP_ID,
-            a.AGENT_VERSION          AS AGENT_VERSION,
-            t.SEARCH_STATUS          AS AGENT_STATUS,
-            t.TARGET_USE             AS USE_YN,
-            t.REGDATE                AS REG_DT,
-            NULL                     AS REG_USER,
-            NULL                     AS MOD_DT,
-            NULL                     AS MOD_USER,
-            g.name AS GROUP_NAME,
+            a.AGENT_VERSION                      AS AGENT_VERSION,
+            CASE WHEN a.AGENT_CONNECTED = 1 OR a.AGENT_CONNECTED = '1'
+                 THEN '1' ELSE '0'
+            END                                  AS AGENT_STATUS,
+            t.TARGET_USE                         AS USE_YN,
+            t.REGDATE                            AS REG_DT,
+            NULL                                 AS REG_USER,
+            NULL                                 AS MOD_DT,
+            NULL                                 AS MOD_USER,
+            COALESCE(ptg.name, '미그룹')          AS GROUP_NAME,
             (SELECT GROUP_CONCAT(u.USER_NAME SEPARATOR ', ')
              FROM pi_target_user tu
              JOIN pi_user u ON tu.USER_NO = u.USER_NO
-             WHERE tu.TARGET_ID = t.TARGET_ID) AS ASSIGNED_USER_NAME
+             WHERE tu.TARGET_ID = t.TARGET_ID)   AS ASSIGNED_USER_NAME
         FROM pi_targets t
-        LEFT JOIN pi_agents a ON t.TARGET_ID = a.AGENT_NAME
-        LEFT JOIN pi_target_group g ON t.GROUP_IDX = g.idx
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
         <include refid="targetSearchCondition"/>
-        ORDER BY t.REGDATE DESC
+        ORDER BY a.AGENT_CONNECTED_IP IS NULL, t.NAME
         LIMIT #{offset}, #{limit}
     </select>
 
+    <!--
+        [튜닝] countTargetList
+        변경 전: 항상 pi_agents LEFT JOIN 수행
+        변경 후: targetIp 검색 시에만 pi_agents JOIN 수행 (그 외에는 JOIN 생략)
+        효과: IP 검색이 아닌 경우 불필요한 JOIN 제거로 카운트 성능 개선
+    -->
     <select id="countTargetList" resultType="long">
         SELECT COUNT(*)
         FROM pi_targets t
-        LEFT JOIN pi_agents a ON t.TARGET_ID = a.AGENT_NAME
+        <if test="request.searchType != null and (request.searchType == 'targetIp' or request.searchType == 'all')">
+            LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        </if>
         <include refid="targetSearchCondition"/>
     </select>
 
+    <!--
+        [튜닝] selectTargetDetail - JOIN 수정 (selectTargetList와 동일)
+    -->
     <select id="selectTargetDetail" resultMap="targetResponseMap">
         SELECT
             t.TARGET_ID,
-            t.NAME                   AS TARGET_NAME,
-            a.AGENT_CONNECTED_IP     AS TARGET_IP,
-            t.PLATFORM               AS TARGET_OS,
-            t.NET_TYPE               AS TARGET_TYPE,
+            t.NAME                              AS TARGET_NAME,
+            COALESCE(a.AGENT_CONNECTED_IP,
+                     tg.connected_ip)            AS TARGET_IP,
+            t.PLATFORM                           AS TARGET_OS,
+            t.NET_TYPE                           AS TARGET_TYPE,
             t.GROUP_ID,
-            a.AGENT_VERSION          AS AGENT_VERSION,
-            t.SEARCH_STATUS          AS AGENT_STATUS,
-            t.TARGET_USE             AS USE_YN,
-            t.REGDATE                AS REG_DT,
-            NULL                     AS REG_USER,
-            NULL                     AS MOD_DT,
-            NULL                     AS MOD_USER,
-            g.name AS GROUP_NAME,
+            a.AGENT_VERSION                      AS AGENT_VERSION,
+            CASE WHEN a.AGENT_CONNECTED = 1 OR a.AGENT_CONNECTED = '1'
+                 THEN '1' ELSE '0'
+            END                                  AS AGENT_STATUS,
+            t.TARGET_USE                         AS USE_YN,
+            t.REGDATE                            AS REG_DT,
+            NULL                                 AS REG_USER,
+            NULL                                 AS MOD_DT,
+            NULL                                 AS MOD_USER,
+            COALESCE(ptg.name, '미그룹')          AS GROUP_NAME,
             (SELECT GROUP_CONCAT(u.USER_NAME SEPARATOR ', ')
              FROM pi_target_user tu
              JOIN pi_user u ON tu.USER_NO = u.USER_NO
-             WHERE tu.TARGET_ID = t.TARGET_ID) AS ASSIGNED_USER_NAME
+             WHERE tu.TARGET_ID = t.TARGET_ID)   AS ASSIGNED_USER_NAME
         FROM pi_targets t
-        LEFT JOIN pi_agents a ON t.TARGET_ID = a.AGENT_NAME
-        LEFT JOIN pi_target_group g ON t.GROUP_IDX = g.idx
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
         WHERE t.TARGET_ID = #{targetId}
     </select>
 
@@ -178,22 +242,26 @@
             u.USER_ID,
             u.USER_NAME,
             u.USER_GRADE,
-            u.TEAM_CODE,
-            u.EMAIL,
-            u.PHONE,
-            u.USE_YN,
-            u.LAST_LOGIN_DT,
-            u.REG_DT
+            u.insa_code      AS TEAM_CODE,
+            u.user_email     AS EMAIL,
+            u.user_phone     AS PHONE,
+            u.acc_yn         AS USE_YN,
+            u.logindate      AS LAST_LOGIN_DT,
+            u.regdate        AS REG_DT
         FROM pi_target_user tu
         JOIN pi_user u ON tu.USER_NO = u.USER_NO
         WHERE tu.TARGET_ID = #{targetId}
         ORDER BY u.USER_NAME
     </select>
 
-    <!-- pi_target_user actual columns: USER_NO, TARGET_ID, REGDATE, AP_NO -->
+    <!-- pi_target_user actual columns: USER_NO, TARGET_ID, USER_NAME, TARGET_USE, REGDATE, AP_NO -->
     <insert id="insertTargetUser">
-        INSERT INTO pi_target_user (TARGET_ID, USER_NO, REGDATE, AP_NO)
-        VALUES (#{targetId}, #{userNo}, NOW(), #{apNo})
+        INSERT INTO pi_target_user (TARGET_ID, USER_NO, USER_NAME, TARGET_USE, REGDATE, AP_NO)
+        VALUES (
+            #{targetId}, #{userNo},
+            (SELECT IFNULL(u.USER_NAME, '') FROM pi_user u WHERE u.USER_NO = #{userNo} LIMIT 1),
+            'Y', NOW(), 0
+        )
     </insert>
 
     <delete id="deleteTargetUser">
@@ -212,23 +280,27 @@
     <select id="selectServerList" resultMap="targetResponseMap">
         SELECT
             t.TARGET_ID,
-            t.NAME                   AS TARGET_NAME,
-            a.AGENT_CONNECTED_IP     AS TARGET_IP,
-            t.PLATFORM               AS TARGET_OS,
-            t.NET_TYPE               AS TARGET_TYPE,
+            t.NAME                              AS TARGET_NAME,
+            COALESCE(a.AGENT_CONNECTED_IP,
+                     tg.connected_ip)            AS TARGET_IP,
+            t.PLATFORM                           AS TARGET_OS,
+            t.NET_TYPE                           AS TARGET_TYPE,
             t.GROUP_ID,
-            a.AGENT_VERSION          AS AGENT_VERSION,
-            t.SEARCH_STATUS          AS AGENT_STATUS,
-            t.TARGET_USE             AS USE_YN,
-            t.REGDATE                AS REG_DT,
-            NULL                     AS REG_USER,
-            NULL                     AS MOD_DT,
-            NULL                     AS MOD_USER,
-            g.name AS GROUP_NAME,
-            NULL AS ASSIGNED_USER_NAME
+            a.AGENT_VERSION                      AS AGENT_VERSION,
+            CASE WHEN a.AGENT_CONNECTED = 1 OR a.AGENT_CONNECTED = '1'
+                 THEN '1' ELSE '0'
+            END                                  AS AGENT_STATUS,
+            t.TARGET_USE                         AS USE_YN,
+            t.REGDATE                            AS REG_DT,
+            NULL                                 AS REG_USER,
+            NULL                                 AS MOD_DT,
+            NULL                                 AS MOD_USER,
+            COALESCE(ptg.name, '미그룹')          AS GROUP_NAME,
+            NULL                                 AS ASSIGNED_USER_NAME
         FROM pi_targets t
-        LEFT JOIN pi_agents a ON t.TARGET_ID = a.AGENT_NAME
-        LEFT JOIN pi_target_group g ON t.GROUP_IDX = g.idx
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
         WHERE t.TARGET_USE = 'Y'
           AND t.NET_TYPE = 'SERVER'
         ORDER BY t.NAME
@@ -292,20 +364,94 @@
         pi_target_group actual columns: idx (PK auto_increment), name, degree, type, TARGET_ID,
         connected_ip, AP_NO, up_idx, credate, process, regdate, TARGET_USE
     -->
+    <!--
+        [튜닝] selectGroupList
+        변경 전: 모든 pi_target_group 반환 (type=1 호스트 포함)
+        변경 후: type=99(루트), type=98(서브그룹)만 반환 + 각 그룹 하위 타겟 수 포함
+        효과: 트리에서 실제 그룹만 표시, 호스트 수 파악 가능
+    -->
+    <!--
+        [튜닝] selectGroupList
+        변경: 직속 타겟(up_idx=g.idx, type=1) + 실사용(TARGET_USE='Y') 카운트
+    -->
+    <!--
+        TUNING: selectGroupList
+        [성능 이슈] 상관 서브쿼리(targetCount)가 그룹 수 만큼 반복 실행 → N+1 패턴
+        [개선 방안] LEFT JOIN 파생 테이블로 변환하여 1회 집계 후 JOIN 권장
+        [인덱스 권장] pi_target_group(up_idx, TARGET_ID) 복합 인덱스
+            - CREATE INDEX idx_pi_tg_upidx_target ON pi_target_group(up_idx, TARGET_ID);
+        [인덱스 권장] pi_target_group(type) 인덱스
+            - CREATE INDEX idx_pi_tg_type ON pi_target_group(type);
+    -->
+    <!-- [튜닝 적용] 상관 서브쿼리 → LEFT JOIN 파생 테이블로 변환하여 1회 집계 -->
     <select id="selectGroupList" resultType="map">
         SELECT
-            idx        AS groupId,
-            name       AS groupName,
-            up_idx     AS parentId,
-            degree     AS sortOrder,
-            NULL       AS levelNo
-        FROM pi_target_group
-        ORDER BY degree, name
+            g.idx        AS groupId,
+            g.name       AS groupName,
+            g.up_idx     AS parentId,
+            CASE
+                WHEN g.up_idx = '#' OR g.up_idx IS NULL THEN '최상위'
+                ELSE IFNULL(pg.name, '-')
+            END          AS parentGroupName,
+            g.degree     AS sortOrder,
+            g.type       AS groupType,
+            g.regdate    AS regDate,
+            IFNULL(tc.targetCount, 0) AS targetCount
+        FROM pi_target_group g
+        LEFT JOIN pi_target_group pg ON pg.idx = g.up_idx AND pg.type IN (99, 98)
+        LEFT JOIN (
+            SELECT tg2.up_idx, COUNT(*) AS targetCount
+            FROM pi_target_group tg2
+            INNER JOIN pi_targets pt ON tg2.TARGET_ID = pt.TARGET_ID AND pt.TARGET_USE = 'Y'
+            WHERE tg2.TARGET_ID IS NOT NULL
+            GROUP BY tg2.up_idx
+        ) tc ON tc.up_idx = g.idx
+        WHERE g.type IN (99, 98)
+        ORDER BY g.degree, g.name
+    </select>
+
+    <select id="selectGroupListPaged" parameterType="map" resultType="map">
+        SELECT
+            g.idx        AS groupId,
+            g.name       AS groupName,
+            g.up_idx     AS parentId,
+            CASE
+                WHEN g.up_idx = '#' OR g.up_idx IS NULL THEN '최상위'
+                ELSE IFNULL(pg.name, '-')
+            END          AS parentGroupName,
+            g.degree     AS sortOrder,
+            g.type       AS groupType,
+            g.regdate    AS regDate,
+            IFNULL(tc.targetCount, 0) AS targetCount
+        FROM pi_target_group g
+        LEFT JOIN pi_target_group pg ON pg.idx = g.up_idx AND pg.type IN (99, 98)
+        LEFT JOIN (
+            SELECT tg2.up_idx, COUNT(*) AS targetCount
+            FROM pi_target_group tg2
+            INNER JOIN pi_targets pt ON tg2.TARGET_ID = pt.TARGET_ID AND pt.TARGET_USE = 'Y'
+            WHERE tg2.TARGET_ID IS NOT NULL
+            GROUP BY tg2.up_idx
+        ) tc ON tc.up_idx = g.idx
+        WHERE g.type IN (99, 98)
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND g.name LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
+        ORDER BY g.degree, g.name
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countGroupListPaged" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_target_group g
+        WHERE g.type IN (99, 98)
+        <if test="searchKeyword != null and searchKeyword != ''">
+            AND g.name LIKE CONCAT('%', #{searchKeyword}, '%')
+        </if>
     </select>
 
     <insert id="insertGroup">
-        INSERT INTO pi_target_group (name, up_idx, degree, regdate)
-        VALUES (#{groupName}, #{parentId}, '1', NOW())
+        INSERT INTO pi_target_group (name, up_idx, degree, type, regdate)
+        VALUES (#{groupName}, #{parentId}, '1', #{groupType}, NOW())
     </insert>
 
     <update id="updateGroup">
@@ -348,18 +494,25 @@
         pi_targets has SEARCH_STATUS (not AGENT_STATUS).
         t.ERROR column holds error count; SEARCH_STATUS holds status text.
     -->
+    <!--
+        TUNING: selectExceptionList
+        [인덱스 권장] pi_targets(TARGET_USE, SEARCH_STATUS, REGDATE DESC) 복합 인덱스 → WHERE + ORDER BY 커버
+            - CREATE INDEX idx_pi_targets_use_status_reg ON pi_targets(TARGET_USE, SEARCH_STATUS, REGDATE DESC);
+    -->
     <select id="selectExceptionList" resultType="map">
         SELECT
             t.TARGET_ID              AS targetId,
             t.NAME                   AS targetName,
-            a.AGENT_CONNECTED_IP     AS targetIp,
+            COALESCE(a.AGENT_CONNECTED_IP,
+                     tg.connected_ip) AS targetIp,
             t.SEARCH_STATUS          AS agentStatus,
             a.AGENT_VERSION          AS agentVersion,
-            g.name                   AS groupName,
+            COALESCE(ptg.name, '미그룹') AS groupName,
             t.REGDATE                AS modDt
         FROM pi_targets t
-        LEFT JOIN pi_agents a ON t.TARGET_ID = a.AGENT_NAME
-        LEFT JOIN pi_target_group g ON t.GROUP_IDX = g.idx
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
         WHERE t.TARGET_USE = 'Y'
           AND t.SEARCH_STATUS IN ('ERROR', 'DISCONNECTED', 'TIMEOUT')
         ORDER BY t.REGDATE DESC
@@ -372,5 +525,33 @@
         WHERE TARGET_USE = 'Y'
           AND SEARCH_STATUS IN ('ERROR', 'DISCONNECTED', 'TIMEOUT')
     </select>
+
+    <!-- ==================== Global Filter Queries ==================== -->
+
+    <!--
+        Global filters stored in pi_dmz table (repurposed as general filter storage).
+        Alternatively, these could be in a dedicated filter table if one exists.
+        Using pi_dmz as it stores IP-based filter entries.
+    -->
+
+    <select id="selectGlobalFilters" resultType="map">
+        SELECT
+            d.idx       AS filterId,
+            d.memo      AS filterName,
+            'PATH'      AS filterType,
+            d.dmz_ip    AS filterValue
+        FROM pi_dmz d
+        ORDER BY d.idx DESC
+    </select>
+
+    <insert id="insertGlobalFilter" parameterType="map">
+        INSERT INTO pi_dmz (dmz_ip, memo)
+        VALUES (#{filterValue}, #{filterName})
+    </insert>
+
+    <delete id="deleteGlobalFilter">
+        DELETE FROM pi_dmz
+        WHERE idx = #{filterId}
+    </delete>
 
 </mapper>

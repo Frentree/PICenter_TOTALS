@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.org.iopts.repository.RemediationMapper">
+
+    <!--
+        RemediationMapper.xml - Remediation management queries.
+
+        Key tables:
+          pi_find:             hash_id(PK), target_id(PK), ap_no(PK), path, account, owner, regdate, credate
+          pi_data_processing:  data_processing_idx(PK), ap_no, target_id, hash_id(text),
+                               approval_status('W'/'Y'/'N'/'R'), processing_flag, user_no, regdate, notepad
+          pi_targets:          target_id(PK), ap_no(PK), name, TARGET_USE, group_idx, platform
+          pi_agents:           agent_name(PK), ap_no(PK), agent_connected_ip, agent_version
+          pi_target_group:     idx(PK auto), name, degree, type, up_idx
+          pi_summary:          target_id(PK), object_id(PK), data_type(PK), ap_no(PK), match_count, regdate
+
+        Remediation tracks the processing of detected findings.
+        processing_flag != 0 means the finding has been processed/remediated.
+        approval_status: 'W'=waiting, 'Y'=approved, 'N'=rejected, 'R'=returned.
+    -->
+
+    <!-- ==================== Remediation List ==================== -->
+
+    <!--
+        TUNING: remediationSearchCondition
+        [성능 이슈] OR 조건 3개 + LIKE '%...%' → 인덱스 미사용, Full Table Scan
+        [성능 이슈] f.path가 text 타입 → LIKE '%...%' text 비교 매우 느림
+        [개선 방안] searchType 파라미터를 추가하여 검색 대상 컬럼을 지정하면 인덱스 활용 가능
+        [개선 방안] PATH 검색은 Full-Text Index 사용 권장
+    -->
+    <sql id="remediationSearchCondition">
+        <if test="keyword != null and keyword != ''">
+            AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                 OR f.path LIKE CONCAT('%', #{keyword}, '%')
+                 OR a.AGENT_CONNECTED_IP LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="status != null and status != ''">
+            <choose>
+                <when test="status == 'processed'">
+                    AND dp.processing_flag IS NOT NULL AND dp.processing_flag != 0
+                </when>
+                <when test="status == 'unprocessed'">
+                    AND (dp.processing_flag IS NULL OR dp.processing_flag = 0)
+                </when>
+                <when test="status == 'approved'">
+                    AND dp.approval_status = 'Y'
+                </when>
+                <when test="status == 'rejected'">
+                    AND dp.approval_status = 'N'
+                </when>
+                <when test="status == 'waiting'">
+                    AND dp.approval_status = 'W'
+                </when>
+            </choose>
+        </if>
+    </sql>
+
+    <!--
+        TUNING: selectRemediationList
+        [성능 이슈] 5개 테이블 JOIN (pi_summary, pi_data_processing에 text 컬럼 비교)
+        [성능 이슈] pi_find LEFT JOIN pi_data_processing ON hash_id(text) → 대량 text 비교
+        [인덱스 권장] pi_find(target_id, ap_no, regdate DESC) 복합 인덱스
+            - CREATE INDEX idx_pi_find_target_ap_regdate ON pi_find(target_id, ap_no, regdate DESC);
+        [인덱스 권장] pi_data_processing(target_id, ap_no, hash_id(100))
+            - CREATE INDEX idx_pi_dp_target_ap_hash ON pi_data_processing(target_id, ap_no, hash_id(100));
+    -->
+    <!--
+        [튜닝] selectRemediationList - 서브쿼리 페이지네이션
+        변경 전: 34만건 전체에 5개 테이블 JOIN 후 LIMIT → 24초
+        변경 후: status 필터 없을 때 pi_find+pi_targets만으로 LIMIT 후 나머지 JOIN → 5건만 JOIN
+    -->
+    <select id="selectRemediationList" parameterType="map" resultType="map">
+        <choose>
+            <when test="status == null or status == ''">
+                /* 필터 없는 경우: 서브쿼리 페이지네이션 (fast path) */
+                SELECT
+                    dp.data_processing_idx AS remediationId,
+                    sub.hash_id            AS findNo,
+                    sub.path               AS findPath,
+                    sub.regdate            AS findDate,
+                    t2.TARGET_ID           AS targetId,
+                    t2.NAME                AS targetName,
+                    COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+                    s.data_type            AS datatype,
+                    dp.approval_status     AS approvalStatus,
+                    CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+                    dp.user_no             AS processUserNo,
+                    dp.regdate             AS processDate,
+                    dp.notepad             AS notepad,
+                    COALESCE(ptg.name, '미그룹') AS groupName
+                FROM (
+                    SELECT f.hash_id, f.path, f.regdate, f.target_id, f.ap_no
+                    FROM pi_find f
+                    INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+                    WHERE t.TARGET_USE = 'Y'
+                    <if test="keyword != null and keyword != ''">
+                        AND (t.NAME LIKE CONCAT('%', #{keyword}, '%')
+                             OR f.path LIKE CONCAT('%', #{keyword}, '%'))
+                    </if>
+                    ORDER BY f.regdate DESC
+                    LIMIT #{offset}, #{limit}
+                ) sub
+                INNER JOIN pi_targets t2 ON sub.target_id = t2.target_id AND sub.ap_no = t2.ap_no
+                LEFT JOIN pi_summary s ON sub.target_id = s.target_id AND sub.ap_no = s.ap_no AND sub.hash_id = s.object_id
+                LEFT JOIN pi_data_processing dp ON sub.target_id = dp.target_id AND sub.ap_no = dp.ap_no AND sub.hash_id = dp.hash_id
+                LEFT JOIN pi_agents a ON t2.NAME = a.AGENT_NAME AND t2.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+                LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t2.TARGET_ID AND t2.AP_NO = tg.AP_NO
+                LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+            </when>
+            <otherwise>
+                /* status 필터 있는 경우: 기존 방식 (dp JOIN 필수) */
+                SELECT
+                    dp.data_processing_idx AS remediationId,
+                    f.hash_id              AS findNo,
+                    f.path                 AS findPath,
+                    f.regdate              AS findDate,
+                    t.TARGET_ID            AS targetId,
+                    t.NAME                 AS targetName,
+                    COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+                    s.data_type            AS datatype,
+                    dp.approval_status     AS approvalStatus,
+                    CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+                    dp.user_no             AS processUserNo,
+                    dp.regdate             AS processDate,
+                    dp.notepad             AS notepad,
+                    COALESCE(ptg.name, '미그룹') AS groupName
+                FROM pi_find f
+                INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+                LEFT JOIN pi_summary s ON f.target_id = s.target_id AND f.ap_no = s.ap_no AND f.hash_id = s.object_id
+                LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+                LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+                LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+                LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+                WHERE t.TARGET_USE = 'Y'
+                <include refid="remediationSearchCondition"/>
+                ORDER BY f.regdate DESC
+                LIMIT #{offset}, #{limit}
+            </otherwise>
+        </choose>
+    </select>
+
+    <!--
+        [튜닝] countRemediationList
+        변경 전: 항상 pi_agents, pi_data_processing LEFT JOIN 수행
+        변경 후: keyword 필터 시에만 pi_agents JOIN, status 필터 시에만 pi_data_processing JOIN
+        효과: 필터 없는 경우 불필요한 JOIN 2개 제거로 카운트 성능 개선
+    -->
+    <select id="countRemediationList" parameterType="map" resultType="long">
+        SELECT COUNT(*)
+        FROM pi_find f
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        <if test="status != null and status != ''">
+            LEFT JOIN pi_data_processing dp ON f.target_id = dp.target_id AND f.ap_no = dp.ap_no AND f.hash_id = dp.hash_id
+        </if>
+        <if test="keyword != null and keyword != ''">
+            LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        </if>
+        WHERE t.TARGET_USE = 'Y'
+        <include refid="remediationSearchCondition"/>
+    </select>
+
+    <!-- ==================== Remediation Detail ==================== -->
+
+    <select id="selectRemediationDetail" resultType="map">
+        SELECT
+            dp.data_processing_idx AS remediationId,
+            f.hash_id              AS findNo,
+            f.path                 AS findPath,
+            f.account              AS account,
+            f.owner                AS owner,
+            f.regdate              AS findDate,
+            f.credate              AS createDate,
+            t.TARGET_ID            AS targetId,
+            t.NAME                 AS targetName,
+            COALESCE(a.AGENT_CONNECTED_IP, tg.connected_ip) AS targetIp,
+            t.PLATFORM             AS targetOs,
+            s.data_type            AS datatype,
+            s.match_count          AS matchCount,
+            dp.approval_status     AS approvalStatus,
+            CASE WHEN dp.processing_flag IS NOT NULL AND dp.processing_flag != 0 THEN 'Y' ELSE 'N' END AS processYn,
+            dp.processing_flag     AS processingFlag,
+            dp.user_no             AS processUserNo,
+            dp.regdate             AS processDate,
+            dp.notepad             AS notepad,
+            COALESCE(ptg.name, '미그룹') AS groupName
+        FROM pi_data_processing dp
+        INNER JOIN pi_find f ON dp.target_id = f.target_id AND dp.ap_no = f.ap_no AND dp.hash_id = f.hash_id
+        INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+        LEFT JOIN pi_summary s ON f.target_id = s.target_id AND f.ap_no = s.ap_no AND f.hash_id = s.object_id
+        LEFT JOIN pi_agents a ON t.NAME = a.AGENT_NAME AND t.AP_NO = a.AP_NO AND a.AGENT_USE = 'Y'
+        LEFT JOIN pi_target_group tg ON tg.TARGET_ID = t.TARGET_ID AND t.AP_NO = tg.AP_NO
+        LEFT JOIN pi_target_group ptg ON tg.up_idx = ptg.idx
+        WHERE dp.data_processing_idx = #{remediationId}
+    </select>
+
+    <!-- ==================== Process Remediation ==================== -->
+
+    <!--
+        TUNING: updateRemediationProcess
+        [성능 이슈] WHERE hash_id = #{hashId} → hash_id가 text 타입이면 인덱스 미사용
+        [인덱스 권장] pi_data_processing(hash_id(100)) prefix 인덱스
+            - CREATE INDEX idx_pi_dp_hashid ON pi_data_processing(hash_id(100));
+        [개선 방안] data_processing_idx(PK)를 WHERE 조건으로 사용하면 더 빠름
+    -->
+    <update id="updateRemediationProcess" parameterType="map">
+        UPDATE pi_data_processing
+        SET
+            processing_flag = IFNULL(#{action}, 1),
+            user_no = #{userNo},
+            regdate = NOW(),
+            notepad = #{notepad}
+        WHERE hash_id = #{hashId}
+    </update>
+
+    <!-- ==================== Remediation Summary ==================== -->
+
+    <!--
+        [튜닝] selectRemediationSummary
+        변경 전: pi_find(34만건) LEFT JOIN pi_data_processing on hash_id(text) → 느린 text 비교
+        변경 후: 서브쿼리 방식으로 pi_find 건수와 pi_data_processing 집계를 독립 수행
+        효과: text 컬럼 JOIN 제거로 요약 쿼리 대폭 개선
+    -->
+    <!--
+        TUNING: selectRemediationSummary 추가 최적화
+        [성능 이슈] pi_find COUNT 3회 중복 실행 → 서브쿼리 재사용 필요
+        [성능 이슈] pi_data_processing 6회 스캔 → CASE+SUM으로 1회 통합 가능
+    -->
+    <!-- [튜닝 적용] pi_data_processing 6회 스캔 → CASE+SUM으로 1회 통합, pi_find COUNT 중복 제거 -->
+    <select id="selectRemediationSummary" resultType="map">
+        SELECT
+            total.cnt AS totalFindings,
+            dp_stat.processedCount,
+            (total.cnt - dp_stat.processedCount) AS unprocessedCount,
+            dp_stat.approvedCount,
+            dp_stat.rejectedCount,
+            dp_stat.waitingCount,
+            dp_stat.returnedCount,
+            ROUND(dp_stat.processedCount * 100.0 / NULLIF(total.cnt, 0), 1) AS remediationRate
+        FROM
+            (SELECT COUNT(*) AS cnt
+             FROM pi_find f
+             INNER JOIN pi_targets t ON f.target_id = t.target_id AND f.ap_no = t.ap_no
+             WHERE t.TARGET_USE = 'Y') total,
+            (SELECT
+                SUM(CASE WHEN processing_flag IS NOT NULL AND processing_flag != 0 THEN 1 ELSE 0 END) AS processedCount,
+                SUM(CASE WHEN approval_status = 'Y' THEN 1 ELSE 0 END) AS approvedCount,
+                SUM(CASE WHEN approval_status = 'N' THEN 1 ELSE 0 END) AS rejectedCount,
+                SUM(CASE WHEN approval_status = 'W' THEN 1 ELSE 0 END) AS waitingCount,
+                SUM(CASE WHEN approval_status = 'R' THEN 1 ELSE 0 END) AS returnedCount
+             FROM pi_data_processing) dp_stat
+    </select>
+
+</mapper>

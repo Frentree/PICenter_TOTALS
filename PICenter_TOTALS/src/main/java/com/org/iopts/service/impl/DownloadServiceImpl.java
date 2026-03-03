@@ -61,7 +61,8 @@ public class DownloadServiceImpl implements DownloadService {
         params.put("userNo", userNo);
         params.put("title", title);
         params.put("content", content);
-        params.put("downloadFileId", downloadFileId);
+        // download_file_id is int column - convert empty string to null
+        params.put("downloadFileId", (downloadFileId != null && !downloadFileId.isEmpty()) ? Integer.parseInt(downloadFileId) : null);
 
         int result = downloadMapper.insertDownload(params);
         if (result == 0) {

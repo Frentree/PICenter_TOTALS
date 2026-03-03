@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Statistics Service Implementation
@@ -29,9 +30,33 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     private final StatisticsMapper statisticsMapper;
 
+    /** 인메모리 캐시 (key → {data, expireTime}) - 통계 집계 쿼리 성능 개선 */
+    private final ConcurrentHashMap<String, Object[]> cache = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000L; // 5분
+
+    @SuppressWarnings("unchecked")
+    private <T> T getFromCache(String key) {
+        Object[] entry = cache.get(key);
+        if (entry != null && System.currentTimeMillis() < (long) entry[1]) {
+            return (T) entry[0];
+        }
+        return null;
+    }
+
+    private void putToCache(String key, Object data) {
+        cache.put(key, new Object[]{data, System.currentTimeMillis() + CACHE_TTL_MS});
+    }
+
     @Override
     public StatisticsResponse getOverallStatistics(String groupId, String startDate, String endDate) {
         log.info("Getting overall statistics - groupId: {}, startDate: {}, endDate: {}", groupId, startDate, endDate);
+
+        String cacheKey = "overallStats:" + groupId + ":" + startDate + ":" + endDate;
+        StatisticsResponse cachedResp = getFromCache(cacheKey);
+        if (cachedResp != null) {
+            log.debug("Cache hit for overallStatistics");
+            return cachedResp;
+        }
 
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
@@ -58,7 +83,7 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<Map<String, Object>> datatypeStats = statisticsMapper.selectDatatypeStatistics(params);
         List<Map<String, Object>> monthlyStats = statisticsMapper.selectMonthlyStatistics(params);
 
-        return StatisticsResponse.builder()
+        StatisticsResponse statsResp = StatisticsResponse.builder()
                 .totalDetections(toLong(result.get("totalDetections")))
                 .truePositiveCount(toLong(result.get("truePositiveCount")))
                 .falsePositiveCount(toLong(result.get("falsePositiveCount")))
@@ -69,11 +94,20 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .datatypeStats(datatypeStats != null ? datatypeStats : new ArrayList<>())
                 .monthlyStats(monthlyStats != null ? monthlyStats : new ArrayList<>())
                 .build();
+        putToCache(cacheKey, statsResp);
+        return statsResp;
     }
 
     @Override
     public List<Map<String, Object>> getDetectionStatistics(String groupId, String startDate, String endDate) {
         log.info("Getting detection statistics - groupId: {}, startDate: {}, endDate: {}", groupId, startDate, endDate);
+
+        String cacheKey = "detectionStats:" + groupId + ":" + startDate + ":" + endDate;
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for detectionStatistics");
+            return cached;
+        }
 
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
@@ -81,7 +115,9 @@ public class StatisticsServiceImpl implements StatisticsService {
         params.put("endDate", endDate);
 
         List<Map<String, Object>> result = statisticsMapper.selectDetectionStatistics(params);
-        return result != null ? result : new ArrayList<>();
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override
@@ -110,11 +146,20 @@ public class StatisticsServiceImpl implements StatisticsService {
     public List<Map<String, Object>> getDatatypeStatistics(String groupId) {
         log.info("Getting datatype statistics - groupId: {}", groupId);
 
+        String cacheKey = "datatypeStats:" + (groupId != null ? groupId : "ALL");
+        List<Map<String, Object>> cached = getFromCache(cacheKey);
+        if (cached != null) {
+            log.debug("Cache hit for datatypeStatistics");
+            return cached;
+        }
+
         Map<String, Object> params = new HashMap<>();
         params.put("groupId", groupId);
 
         List<Map<String, Object>> result = statisticsMapper.selectDatatypeStatistics(params);
-        return result != null ? result : new ArrayList<>();
+        result = result != null ? result : new ArrayList<>();
+        putToCache(cacheKey, result);
+        return result;
     }
 
     @Override

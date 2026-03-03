@@ -22,12 +22,13 @@ html {
 }
 
 body {
-    font-family: 'Malgun Gothic', dotum, sans-serif;
-    background: #f9f9f9;
+    font-family: 'Noto Sans KR', 'Malgun Gothic', dotum, '돋움', sans-serif;
+    background: #f4f4f2;
     color: #555;
     min-height: 100vh;
     line-height: 1.5;
     font-size: 12px;
+    font-weight: 300;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -60,7 +61,7 @@ textarea {
     background: #fff;
     padding: 0 24px;
     border-bottom: 1px solid #c8ced3;
-    box-shadow: 1px 1px 1px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     position: fixed;
     top: 0;
     left: 0;
@@ -110,8 +111,9 @@ textarea {
     padding: 0;
 }
 
-.gnb_menu li {
+.gnb_menu > li {
     display: inline-block;
+    position: relative;
 }
 
 .gnb_menu li a,
@@ -134,7 +136,8 @@ textarea {
 .gnb_menu li a:hover,
 .gnb_menu li button:hover {
     text-decoration: none;
-    border-bottom: 3px solid #2f353a;
+    color: #2f353a;
+    border-bottom: 3px solid #0c4da2;
 }
 
 .gnb_menu li.on a,
@@ -145,9 +148,61 @@ textarea {
 .gnb_menu li.active button,
 .gnb_menu li a.active,
 .gnb_menu li button.active {
-    color: #2f353a;
+    color: #0c4da2;
     font-weight: 600;
-    border-bottom: 3px solid #2f353a;
+    border-bottom: 3px solid #0c4da2;
+}
+
+/* --- GNB Sub-menu (dropdown) --- */
+.gnb_sub_menu {
+    display: none;
+    position: absolute;
+    top: 55px;
+    left: 0;
+    background: #fff;
+    border: 1px solid #c8ced3;
+    z-index: 999;
+    min-width: 170px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.gnb_sub_menu li {
+    display: block;
+}
+
+.gnb_sub_menu li a {
+    display: block;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    line-height: 1.5;
+    text-decoration: none;
+    white-space: nowrap;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+}
+
+.gnb_sub_menu li a:hover {
+    background: #f0f4f8;
+    color: #0c4da2;
+    text-decoration: none;
+    border-bottom: 1px solid #eee;
+}
+
+.gnb_sub_menu li:last-child a {
+    border-bottom: none;
+}
+
+.gnb_sub_menu li a.on,
+.gnb_sub_menu li a.active {
+    color: #0c4da2;
+    font-weight: 600;
+    background: #f0f4f8;
 }
 
 /* --- Simple nav (alternative) --- */
@@ -355,7 +410,7 @@ textarea {
 
 .page_title {
     font-size: 16px;
-    font-weight: 400;
+    font-weight: 600;
     color: #0c4da2;
     margin-bottom: 2px;
 }
@@ -447,6 +502,7 @@ textarea {
     border-radius: 0.25rem;
     padding: 10px;
     margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 
@@ -469,10 +525,13 @@ textarea {
     padding: 15px 20px;
     border: 1px solid #c8ced3;
     border-radius: 0.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s ease, background 0.2s ease;
 }
 
 .summary_card:hover {
-    background: #fafafa;
+    background: #fafaf8;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
 .card_icon {
@@ -533,6 +592,7 @@ textarea {
     border-radius: 0.25rem;
     padding: 15px;
     text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .stat_value {
@@ -726,26 +786,28 @@ textarea {
    7. BUTTONS
    ============================================================ */
 
-/* Base */
+/* Base - 버튼 기본 높이 30px, 텍스트 1줄 유지 */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 4px;
-    padding: 0 20px;
-    height: 27px;
+    padding: 0 16px;
+    height: 30px;
+    min-height: 30px;
     border: 1px solid #cdcdcd;
     border-radius: 4px;
     font-size: 12px;
     font-weight: 400;
     cursor: pointer;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     white-space: nowrap;
     text-decoration: none;
-    line-height: 25px;
+    line-height: 28px;
     background: #fff;
-    color: #000;
+    color: #333;
     font-family: inherit;
+    min-width: fit-content;
 }
 
 .btn:hover {
@@ -759,23 +821,25 @@ textarea {
     cursor: not-allowed;
 }
 
-/* Button sizes */
-.btn_xs { height: 22px; padding: 0 8px; font-size: 11px; line-height: 20px; }
-.btn_sm { height: 25px; padding: 0 12px; font-size: 11px; line-height: 23px; }
-.btn_md { height: 27px; padding: 0 20px; font-size: 12px; line-height: 25px; }
-.btn_lg { height: 34px; padding: 0 30px; font-size: 13px; line-height: 32px; }
+/* Button sizes - 최소 높이 보장으로 텍스트 2줄 방지 */
+.btn_xs { height: 24px; min-height: 24px; padding: 0 10px; font-size: 11px; line-height: 22px; }
+.btn_sm { height: 28px; min-height: 28px; padding: 0 14px; font-size: 12px; line-height: 26px; }
+.btn_md { height: 30px; min-height: 30px; padding: 0 16px; font-size: 12px; line-height: 28px; }
+.btn_lg { height: 36px; min-height: 36px; padding: 0 24px; font-size: 13px; line-height: 34px; }
 
 /* Default (white) */
 .btn_default {
     background: #fff;
     border: 1px solid #cdcdcd;
-    color: #000;
+    color: #333;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -786,19 +850,20 @@ textarea {
 
 /* Search button (magnifying glass icon) */
 .btn_search {
-    width: 30px;
+    width: 32px;
     height: 30px;
+    min-height: 30px;
     padding: 0;
-    background: #fff;
-    border: 1px solid #c8ced3;
+    background: #0c4da2;
+    border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s ease;
-    color: #555;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    color: #fff;
     font-family: inherit;
 }
 
@@ -808,26 +873,30 @@ textarea {
 }
 
 .btn_search:hover {
-    background: #e8eef4;
-    border-color: #0c4da2;
+    background: #093d85;
+    box-shadow: 0 1px 4px rgba(12,77,162,0.3);
 }
 
-/* Primary (dark gray/black) */
+/* Primary (blue - 통일 색상) */
 .btn_primary {
-    background: #2f353a;
+    background: #0c4da2;
     color: #fff;
-    border: 1px solid #2f353a;
+    border: 1px solid #0c4da2;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
-    transition: background 0.2s ease;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn_primary:hover {
-    background: #23282c;
+    background: #093d85;
+    box-shadow: 0 1px 4px rgba(12,77,162,0.3);
 }
 
 /* Danger (red) */
@@ -836,11 +905,13 @@ textarea {
     color: #fff;
     border: 1px solid #f02533;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -854,11 +925,13 @@ textarea {
     color: #fff;
     border: 1px solid #0070C0;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -872,11 +945,13 @@ textarea {
     color: #555;
     border: 1px solid #cdcdcd;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -888,11 +963,13 @@ textarea {
     color: #0c4da2;
     border: 1px solid #0c4da2;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -904,11 +981,13 @@ textarea {
     color: #fff;
     border: 1px solid #2e7d32;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -920,11 +999,13 @@ textarea {
     color: #fff;
     border: 1px solid #e65100;
     font-size: 12px;
-    height: 27px;
-    padding: 0 20px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
     border-radius: 4px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
     transition: background 0.2s ease;
 }
 
@@ -935,18 +1016,21 @@ textarea {
     background: transparent;
     color: #666;
     border: none;
-    padding: 0 10px;
-    height: 27px;
+    padding: 0 12px;
+    height: 30px;
+    min-height: 30px;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
 }
 
 .btn_ghost:hover { background: #f5f5f5; color: #333; }
 
 /* Icon-only button */
 .btn_icon {
-    width: 27px;
-    height: 27px;
+    width: 30px;
+    height: 30px;
+    min-height: 30px;
     padding: 0;
     border-radius: 4px;
     display: inline-flex;
@@ -962,8 +1046,9 @@ textarea {
 
 /* Reset button */
 .btn_reset {
-    padding: 0 20px;
-    height: 27px;
+    padding: 0 16px;
+    height: 30px;
+    min-height: 30px;
     background: #fff;
     color: #555;
     border: 1px solid #cdcdcd;
@@ -1038,6 +1123,7 @@ textarea {
     border-radius: 0.25rem;
     overflow: hidden;
     margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .table_header {
@@ -1045,8 +1131,8 @@ textarea {
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px;
-    border-bottom: 1px solid #ddd;
-    background: #f9f9f9;
+    border-bottom: 1px solid #e8e8e8;
+    background: #f8f8f6;
 }
 
 .table_title {
@@ -1079,11 +1165,11 @@ textarea {
     background: #fff;
 }
 
-.data_table thead { background: #e8eef4; }
+.data_table thead { background: #e8eef4; border-top: 2px solid #004cb6; }
 
 .data_table th {
     background: #e8eef4;
-    border: 1px solid #ddd;
+    border: 1px solid #e8e8e8;
     padding: 8px 5px;
     font-size: 12px;
     font-weight: 600;
@@ -1093,28 +1179,36 @@ textarea {
     user-select: none;
 }
 
-/* Sortable columns */
-.data_table th.sortable {
+/* Sortable columns (모든 테이블 공통) - 화살표 크게, 색상 진하게 */
+th.sortable {
     cursor: pointer;
     position: relative;
-    padding-right: 18px;
+    padding-right: 20px !important;
+    user-select: none;
+    transition: background 0.15s ease;
 }
 
-.data_table th.sortable::after {
-    content: '\2195';
+th.sortable:hover {
+    background: #dce5ef !important;
+}
+
+th.sortable::after {
+    content: '\25B2\25BC';
     position: absolute;
     right: 4px;
     top: 50%;
     transform: translateY(-50%);
-    color: #bbb;
-    font-size: 10px;
+    color: #aaa;
+    font-size: 8px;
+    line-height: 1;
+    letter-spacing: -2px;
 }
 
-.data_table th.sort_asc::after { content: '\2191'; color: #0c4da2; }
-.data_table th.sort_desc::after { content: '\2193'; color: #0c4da2; }
+th.sort_asc::after { content: '\25B2'; color: #0c4da2; font-size: 10px; letter-spacing: 0; }
+th.sort_desc::after { content: '\25BC'; color: #0c4da2; font-size: 10px; letter-spacing: 0; }
 
 .data_table td {
-    border: 1px solid #ddd;
+    border: 1px solid #e8e8e8;
     padding: 6px 5px;
     font-size: 12px;
     color: #555;
@@ -1125,7 +1219,7 @@ textarea {
     transition: background 0.15s ease;
 }
 
-.data_table tbody tr:hover { background: #f5f5f5; }
+.data_table tbody tr:hover { background: #f7f6f4; }
 .data_table tbody tr.selected { background: #e8f4fd; }
 
 /* Clickable rows */
@@ -1285,9 +1379,9 @@ textarea {
 }
 
 .page_btn.active {
-    background: #2f353a;
+    background: #0c4da2;
     color: #fff;
-    border-color: #2f353a;
+    border-color: #0c4da2;
     font-weight: 600;
 }
 
@@ -1452,7 +1546,7 @@ textarea {
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #e8e8e8;
     background: #e8eef4;
 }
 
@@ -1542,7 +1636,7 @@ textarea {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1581,15 +1675,16 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
-    background: #f9f9f9;
+    padding: 10px 14px;
+    background: #23282c;
     flex-shrink: 0;
+    border-radius: 0.25rem 0.25rem 0 0;
 }
 
 .modal_title {
     font-size: 16px;
     font-weight: 600;
-    color: #222;
+    color: #fff;
 }
 
 .modal_close {
@@ -1601,10 +1696,10 @@ textarea {
     background: none;
     border: none;
     font-size: 18px;
-    color: #999;
+    color: rgba(255,255,255,0.7);
     cursor: pointer;
     border-radius: 4px;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease;
     position: relative;
 }
 
@@ -1613,7 +1708,7 @@ textarea {
     font-size: 22px;
 }
 
-.modal_close:hover { background: #eee; color: #333; }
+.modal_close:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 .modal_body {
     padding: 10px;
@@ -1640,7 +1735,7 @@ textarea {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1662,14 +1757,15 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px;
-    background: #f9f9f9;
+    padding: 10px 14px;
+    background: #23282c;
+    border-radius: 0.25rem 0.25rem 0 0;
 }
 
 .popup_title {
     font-size: 16px;
     font-weight: 600;
-    color: #222;
+    color: #fff;
 }
 
 .popup_close {
@@ -1678,16 +1774,16 @@ textarea {
     border: none;
     background: none;
     font-size: 20px;
-    color: #999;
+    color: rgba(255,255,255,0.7);
     cursor: pointer;
     border-radius: 4px;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, color 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.popup_close:hover { background: #eee; color: #333; }
+.popup_close:hover { background: rgba(255,255,255,0.15); color: #fff; }
 
 .popup_content {
     padding: 10px;
@@ -1899,6 +1995,7 @@ textarea {
     border-radius: 0.25rem;
     overflow: hidden;
     margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 
 .card_header {
@@ -1906,8 +2003,8 @@ textarea {
     align-items: center;
     justify-content: space-between;
     padding: 8px 10px;
-    border-bottom: 1px solid #ddd;
-    background: #f9f9f9;
+    border-bottom: 1px solid #e8e8e8;
+    background: #f8f8f6;
 }
 
 .card_title {
@@ -2049,14 +2146,14 @@ textarea {
 }
 
 .sidebar_tree_header {
-    padding: 8px;
-    border-bottom: 1px solid #ddd;
+    padding: 8px 10px;
+    border-bottom: 1px solid #d8dfe6;
     font-size: 13px;
     font-weight: 600;
     color: #333;
     background: #e8eef4;
     margin: -5px -5px 5px -5px;
-    padding: 8px 10px;
+    border-top: 2px solid #004cb6;
 }
 
 /* Layout with sidebar + content */
@@ -2800,7 +2897,42 @@ textarea {
 
 
 /* ============================================================
-   28. ANIMATIONS
+   28. CONNECTION STATUS ICONS (RM Style)
+   ============================================================ */
+
+.icon_con,
+.icon_dicon {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    vertical-align: middle;
+}
+
+.icon_con {
+    background: #62d424;
+    box-shadow: 0 0 4px rgba(98,212,36,0.5);
+}
+
+.icon_dicon {
+    background: #dd2334;
+    box-shadow: 0 0 4px rgba(221,35,52,0.4);
+}
+
+/* Agent status text with icon */
+.status_connected {
+    color: #2e7d32;
+    font-weight: 500;
+}
+
+.status_disconnected {
+    color: #c62828;
+    font-weight: 500;
+}
+
+
+/* ============================================================
+   29. ANIMATIONS
    ============================================================ */
 
 @keyframes fadeIn {
@@ -2831,3 +2963,1012 @@ textarea {
 .animate_fadeIn { animation: fadeIn 0.3s ease forwards; }
 .animate_fadeInUp { animation: fadeInUp 0.3s ease forwards; }
 .animate_fadeInDown { animation: fadeInDown 0.3s ease forwards; }
+
+
+/* ============================================================
+   30. PAGE TITLE (h3 - RM Style)
+   ============================================================ */
+
+.container h3 {
+    font-size: 20px;
+    font-weight: 400;
+    color: #000;
+    line-height: 50px;
+    margin: 0;
+    padding: 0;
+    font-family: 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+}
+
+
+/* ============================================================
+   31. COMMON ACTION BUTTONS (RM Style)
+   ============================================================ */
+
+/* .btn_down - 다운로드/액션 버튼 (RM .btn_down과 동일) */
+.btn_down {
+    background-color: #fff;
+    border: 1px solid #cdcdcd;
+    color: #000;
+    font-size: 12px;
+    font-weight: 500;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn_down:hover {
+    background-color: #e4e4e4;
+    border-color: #999;
+}
+
+/* .btn_look_approval - 돋보기 검색 버튼 (RM .btn_look과 동일) */
+.btn_look_approval {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 30px;
+    min-height: 30px;
+    background: #0c4da2 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat center;
+    background-size: 40%;
+    border: 1px solid #0c4da2;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn_look_approval:hover {
+    background-color: #093d85;
+}
+
+/* .btn_popup_action - 팝업 내부 액션 버튼 */
+.btn_popup_action {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background 0.2s ease;
+}
+
+/* .btn_search_legacy - 검색 버튼 */
+.btn_search_legacy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 30px;
+    min-height: 30px;
+    background: #0c4da2;
+    border: 1px solid #0c4da2;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 13px;
+    transition: background 0.2s ease;
+}
+
+.btn_search_legacy:hover {
+    background: #093d85;
+}
+
+
+/* ============================================================
+   32. CONTENT AREA (RM Style)
+   ============================================================ */
+
+/* RM .content 스타일과 동일한 박스 영역 */
+.content {
+    background: #fff;
+    border: 1px solid #c8ced3;
+    border-radius: 0.25rem;
+    padding: 10px;
+    margin-top: 8px;
+}
+
+/* RM .list_sch 스타일 - 액션 버튼 영역 */
+.list_sch {
+    float: right;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.list_sch::after {
+    content: '';
+    display: table;
+    clear: both;
+}
+
+.sch_area {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+/* RM .user_info 스타일 - 검색 폼 테이블 */
+.user_info_search {
+    display: inline-table;
+    border: 1px solid #c8ced3;
+    border-radius: 0.25rem;
+    background: #fff;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+}
+
+.user_info_search th {
+    text-align: center;
+    font-weight: 400;
+    font-size: 12px;
+    color: #000;
+    background: #fff;
+    border-radius: 0.25rem;
+    height: 31.5px;
+    padding: 5px 10px;
+    white-space: nowrap;
+}
+
+.user_info_search td {
+    color: #000;
+    height: 31.5px;
+    padding: 5px;
+    text-align: left;
+}
+
+.user_info_search td input[type="text"] {
+    font-size: 13px;
+    line-height: 2;
+    padding-left: 5px;
+    width: 200px;
+    border: 1px solid #c8ced3;
+    border-radius: 4px;
+    outline: none;
+}
+
+.user_info_search td input[type="text"]:focus {
+    border-color: #0c4da2;
+}
+
+/* RM .left_box2 스타일 - 그리드 영역 */
+.left_box2 {
+    padding: 0;
+    background: #fff;
+    height: 100%;
+    overflow-y: auto;
+    width: 100%;
+}
+
+/* RM .grid_top 스타일 - 그리드 컨테이너 */
+.grid_top {
+    height: 100%;
+    width: 100%;
+    padding-top: 10px;
+}
+
+
+/* ============================================================
+   33. RM POPUP LAYER STYLE
+   ============================================================ */
+
+.popup_layer {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.popup_layer.show {
+    display: flex;
+}
+
+.popup_layer .popup_box {
+    position: relative;
+    background: #f9f9f9;
+    border-radius: 0.25rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    padding: 10px;
+}
+
+/* RM 팝업 내 폼 테이블 */
+.popup_tbl {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+.popup_tbl th {
+    text-align: center;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #333;
+    font-weight: 600;
+    width: 100px;
+    background: #e8eef4;
+    border: 1px solid #ddd;
+    white-space: nowrap;
+}
+
+.popup_tbl td {
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #555;
+    border: 1px solid #ddd;
+}
+
+.popup_tbl td input[type="text"],
+.popup_tbl td input[type="password"],
+.popup_tbl td select {
+    width: 100%;
+    height: 27px;
+    padding: 0 5px;
+    border: 1px solid #c8ced3;
+    border-radius: 4px;
+    font-size: 12px;
+    outline: none;
+}
+
+.popup_tbl td input[type="text"]:focus,
+.popup_tbl td select:focus {
+    border-color: #0c4da2;
+}
+
+/* RM 팝업 상단/하단 */
+.popup_top {
+    background: #23282c;
+    padding: 10px 14px;
+    border-radius: 0.25rem 0.25rem 0 0;
+    margin: -10px -10px 10px -10px;
+}
+
+.popup_top h1 {
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+.popup_btn {
+    padding: 10px 0 0;
+    text-align: right;
+}
+
+.popup_btn .btn_area {
+    display: flex;
+    gap: 5px;
+    justify-content: flex-end;
+}
+
+.popup_btn button {
+    height: 30px;
+    padding: 0 20px;
+    border: 1px solid #cdcdcd;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    background: #fff;
+    transition: background 0.2s ease;
+}
+
+.popup_btn button:first-child {
+    background: #0c4da2;
+    color: #fff;
+    border: 1px solid #0c4da2;
+}
+
+.popup_btn button:first-child:hover {
+    background: #093d85;
+}
+
+.popup_btn button:last-child:hover {
+    background: #f5f5f5;
+}
+
+/* CancleImg (RM 팝업 닫기 아이콘) */
+.CancleImg,
+.popup_close_x {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    opacity: 0.7;
+    z-index: 10;
+    transition: opacity 0.2s ease;
+}
+
+.CancleImg:hover,
+.popup_close_x:hover {
+    opacity: 1;
+}
+
+
+/* ============================================================
+   34. CONTEXT MENU (RM Style)
+   ============================================================ */
+
+.context_menu {
+    position: absolute;
+    z-index: 999;
+    border-top: 2px solid #2f353a;
+    box-shadow: 0 2px 5px #ddd;
+    background: #fff;
+    width: 150px;
+    display: none;
+}
+
+.context_menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.context_menu li button {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: #fff;
+    text-align: left;
+    font-size: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #eee;
+    transition: background 0.15s ease;
+}
+
+.context_menu li button:hover {
+    background: #f5f5f5;
+}
+
+.context_menu li:last-child button {
+    border-bottom: none;
+}
+
+
+/* ---- 모든 button 요소에 공통 스타일 강제 적용 (텍스트 2줄 방지) ---- */
+button {
+    white-space: nowrap;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+/* ============================================================
+   38. TABLE LOADING INDICATOR (2026-02-27)
+   테이블 데이터 로딩 중 표시
+   ============================================================ */
+.loading_row td {
+    text-align: center;
+    padding: 40px 0 !important;
+    color: #888;
+    font-size: 13px;
+    border-bottom: 1px solid #e9ecef;
+}
+.loading_indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.loading_spin {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #c8ced3;
+    border-top-color: #0c4da2;
+    border-radius: 50%;
+    animation: tbl_spin 0.8s linear infinite;
+}
+@keyframes tbl_spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   35. INLINE BUTTON STYLES → COMMON (2026-02-26)
+   모든 페이지 인라인 <style>에서 반복 정의되던 버튼/입력 스타일을 공통으로 이동
+   ============================================================ */
+
+/* ---- Search Table (검색 폼) ---- */
+.search_table input[type="text"],
+.search_table input[type="date"],
+.search_table select {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 8px;
+    border: 1px solid #c8ced3;
+    font-size: 12px;
+    outline: none;
+    box-sizing: border-box;
+    border-radius: 2px;
+}
+/* 날짜 입력: YYYY-MM-DD(10자) + 달력 아이콘 여백 → 130px */
+.search_table input[type="date"] {
+    width: 130px;
+    text-align: center;
+    color: #333;
+}
+.search_table input[type="text"]:focus,
+.search_table input[type="date"]:focus,
+.search_table select:focus {
+    border-color: #0c4da2;
+}
+
+/* ---- .btn_search_legacy (파란 검색 버튼, 전 페이지 공통) ---- */
+.btn_search_legacy {
+    width: 52px;
+    height: 30px;
+    min-height: 30px;
+    background: #0c4da2;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 2px;
+    white-space: nowrap;
+}
+.btn_search_legacy:hover { background: #093d85; }
+
+/* ---- .btn_search_rm (RM 검색 버튼) ---- */
+.btn_search_rm {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 16px;
+    background: #0c4da2;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 2px;
+    white-space: nowrap;
+}
+.btn_search_rm:hover { background: #093d85; }
+
+/* ---- .btn_add (추가 버튼, 파란색) ---- */
+.btn_add {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 14px;
+    background: #0c4da2;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_add:hover { background: #093d85; }
+
+/* ---- .btn_edit (수정 버튼, 아웃라인) ---- */
+.btn_edit {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 10px;
+    background: #fff;
+    color: #0c4da2;
+    border: 1px solid #0c4da2;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_edit:hover { background: #e3f2fd; }
+
+/* ---- .btn_delete (삭제 버튼, 빨간 아웃라인) ---- */
+.btn_delete {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 10px;
+    background: #fff;
+    color: #c62828;
+    border: 1px solid #c62828;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_delete:hover { background: #fce4ec; }
+
+/* ---- .btn_save (저장 버튼) ---- */
+.btn_save {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 20px;
+    background: #0c4da2;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_save:hover { background: #093d85; }
+
+/* ---- .btn_cancel (취소 버튼) ---- */
+.btn_cancel {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 20px;
+    background: #e0e0e0;
+    color: #333;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_cancel:hover { background: #d0d0d0; }
+
+/* ---- .btn_download (다운로드 버튼, 아웃라인 파란색) ---- */
+.btn_download {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 10px;
+    background: #fff;
+    color: #0c4da2;
+    border: 1px solid #0c4da2;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_download:hover { background: #e3f2fd; }
+
+/* ---- .btn_approve / .btn_reject (승인/반려) ---- */
+.btn_approve {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 10px;
+    background: #fff;
+    color: #2e7d32;
+    border: 1px solid #2e7d32;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_approve:hover { background: #e8f5e9; }
+.btn_reject {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 10px;
+    background: #fff;
+    color: #c62828;
+    border: 1px solid #c62828;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_reject:hover { background: #fce4ec; }
+
+/* ---- .btn_unlock (잠금해제) ---- */
+.btn_unlock {
+    height: 26px;
+    min-height: 26px;
+    padding: 0 10px;
+    background: #fff;
+    color: #0c4da2;
+    border: 1px solid #0c4da2;
+    cursor: pointer;
+    font-size: 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_unlock:hover { background: #e3f2fd; }
+
+/* ---- .btn_export (엑셀 내보내기) ---- */
+.btn_export {
+    height: 30px;
+    min-height: 30px;
+    padding: 0 14px;
+    background: #217346;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 3px;
+    white-space: nowrap;
+}
+.btn_export:hover { background: #1a5c38; }
+
+/* ---- Subtitle Area ---- */
+.sub_title_area {
+    padding: 12px 0 6px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.sub_title_area h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+.sub_title_area .total_count {
+    font-size: 12px;
+    color: #888;
+}
+
+/* ---- Button Area ---- */
+.btn_area {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ---- Data Box / Table ---- */
+.data_box {
+    background: #fff;
+    border: 1px solid #c8ced3;
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+/* ---- Popup Close Button ---- */
+.popup_close_btn {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1;
+}
+.popup_close_btn:hover { color: #ff9999; }
+
+/* ---- Popup Form Table ---- */
+.popup_info_tbl {
+    width: 100%;
+    border-collapse: collapse;
+}
+.popup_info_tbl th {
+    width: 120px;
+    text-align: right;
+    padding: 8px 12px 8px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+}
+.popup_info_tbl td {
+    padding: 8px 0;
+}
+.popup_info_tbl input[type="text"],
+.popup_info_tbl select,
+.popup_info_tbl textarea {
+    width: 100%;
+    height: 30px;
+    min-height: 30px;
+    padding: 0 8px;
+    border: 1px solid #c8ced3;
+    border-radius: 2px;
+    font-size: 12px;
+    box-sizing: border-box;
+}
+.popup_info_tbl textarea {
+    height: auto;
+    min-height: 60px;
+    padding: 8px;
+}
+.popup_info_tbl input[type="text"]:focus,
+.popup_info_tbl select:focus,
+.popup_info_tbl textarea:focus {
+    border-color: #0c4da2;
+    outline: none;
+}
+
+
+/* ============================================================
+   36. EMPTY DATA / NO-DATA STATES
+   ============================================================ */
+
+/* 테이블 내 빈 데이터 행 (.empty_row) */
+.empty_row td {
+    padding: 40px 0 !important;
+    color: #999;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* 그리드 빈 데이터 (.grid_empty) */
+.grid_empty {
+    text-align: center;
+    color: #999;
+    padding: 40px 10px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* RM 스타일 빈 데이터 (.rm_empty) */
+.rm_empty {
+    text-align: center;
+    color: #999;
+    padding: 30px 10px !important;
+    font-size: 12px;
+}
+
+/* 빈 데이터 아이콘 (큰 아이콘 + 메시지) */
+.empty_state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 50px 20px;
+    color: #bbb;
+}
+.empty_state_icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+.empty_state_text {
+    font-size: 13px;
+    color: #999;
+}
+
+
+/* ============================================================
+   37. TREE COMMON STYLES (공통 트리 컴포넌트)
+   ============================================================ */
+
+/* --- 트리 컨테이너 --- */
+.tree_box {
+    background: #fff;
+    border: 1px solid #c8ced3;
+    border-radius: 0.25rem;
+    overflow-y: auto;
+    overflow-x: auto;
+    padding: 6px;
+    white-space: nowrap;
+}
+
+/* --- 트리 노드 리스트 --- */
+.tree_ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+.tree_ul .tree_ul {
+    padding-left: 20px;
+    position: relative;
+}
+
+/* 연결선 (가이드라인) */
+.tree_ul .tree_ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 8px;
+    bottom: 12px;
+    width: 1px;
+    background: #d8dfe6;
+}
+.tree_ul .tree_ul > li {
+    position: relative;
+}
+.tree_ul .tree_ul > li::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: -12px;
+    width: 12px;
+    height: 1px;
+    background: #d8dfe6;
+}
+
+/* --- 트리 아이템 --- */
+.tree_label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 8px;
+    font-size: 12px;
+    color: #333;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+    line-height: 22px;
+    user-select: none;
+}
+.tree_label:hover {
+    background: #e8f0fe;
+}
+.tree_label.active {
+    background: #d4e4f7;
+    font-weight: 600;
+    color: #0c4da2;
+}
+
+/* --- 접기/펼치기 토글 --- */
+.tree_arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 9px;
+    color: #999;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+    user-select: none;
+}
+.tree_arrow::before {
+    content: '\25B6'; /* ▶ */
+}
+.tree_arrow.expanded {
+    transform: rotate(90deg);
+}
+.tree_arrow.hidden {
+    visibility: hidden;
+}
+
+/* --- 트리 아이콘 --- */
+.tree_ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 13px;
+    flex-shrink: 0;
+}
+.tree_ico_folder { color: #e6a817; }
+.tree_ico_folder::before { content: '\1F4C1'; } /* 📁 */
+.tree_ico_folder.open::before { content: '\1F4C2'; } /* 📂 */
+.tree_ico_server { color: #0c4da2; }
+.tree_ico_server::before { content: '\1F5A5'; } /* 🖥 */
+.tree_ico_file { color: #888; }
+.tree_ico_file::before { content: '\1F4C4'; } /* 📄 */
+.tree_ico_schedule { color: #2e7d32; }
+.tree_ico_schedule::before { content: '\1F4C5'; } /* 📅 */
+.tree_ico_connected { color: #2e7d32; }
+.tree_ico_connected::before { content: '\1F7E2'; } /* 🟢 */
+.tree_ico_disconnected { color: #c62828; }
+.tree_ico_disconnected::before { content: '\1F534'; } /* 🔴 */
+
+/* --- 트리 텍스트 --- */
+.tree_name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- 트리 카운트 배지 --- */
+.tree_count {
+    font-size: 10px;
+    color: #888;
+    margin-left: 4px;
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border-radius: 8px;
+}
+
+/* --- 트리 IP 라벨 --- */
+.tree_ip_label {
+    font-size: 11px;
+    color: #888;
+    margin-left: 4px;
+}
+
+/* --- 트리 빈 상태 --- */
+.tree_empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 10px;
+    color: #bbb;
+    font-size: 12px;
+}
+.tree_empty_icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+    opacity: 0.4;
+}
+
+/* --- 트리 로딩 상태 --- */
+.tree_loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 30px 10px;
+    color: #999;
+    font-size: 12px;
+}
+.tree_loading::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 2px solid #ddd;
+    border-top-color: #0c4da2;
+    border-radius: 50%;
+    animation: tree_spin 0.8s linear infinite;
+}
+@keyframes tree_spin {
+    to { transform: rotate(360deg); }
+}
+
+/* --- 하위 경로 트리 (subpath_tree) --- */
+.subpath_tree {
+    padding: 8px;
+}
+.subpath_tree ul {
+    list-style: none;
+    padding-left: 20px;
+    margin: 2px 0;
+    position: relative;
+}
+.subpath_tree > ul {
+    padding-left: 0;
+}
+.subpath_tree ul::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 8px;
+    bottom: 8px;
+    width: 1px;
+    background: #d8dfe6;
+}
+.subpath_tree li {
+    position: relative;
+    padding: 2px 0;
+}
+.subpath_tree li::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    left: -12px;
+    width: 12px;
+    height: 1px;
+    background: #d8dfe6;
+}
+.subpath_tree > ul > li::before {
+    display: none;
+}
+.subpath_tree li a,
+.subpath_tree li span.subpath_name {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 12px;
+    color: #333;
+    text-decoration: none;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+}
+.subpath_tree li a:hover,
+.subpath_tree li span.subpath_name:hover {
+    background: #e8f0fe;
+    color: #0c4da2;
+}

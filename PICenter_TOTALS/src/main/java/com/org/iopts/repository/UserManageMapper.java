@@ -97,4 +97,14 @@ public interface UserManageMapper {
      * Save (insert or update) account policy
      */
     int saveAccountPolicy(Map<String, Object> params);
+
+    /**
+     * Select paginated locked users
+     */
+    List<UserResponse> selectLockedUsers(Map<String, Object> params);
+
+    /**
+     * Count total locked users
+     */
+    long countLockedUsers(Map<String, Object> params);
 }

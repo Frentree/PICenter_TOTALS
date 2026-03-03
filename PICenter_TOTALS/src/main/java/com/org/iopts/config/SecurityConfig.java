@@ -69,24 +69,40 @@ public class SecurityConfig {
                                 "/",
                                 "/login",
                                 "/login.html",
-                                "/picenter_target",
-                                "/picenter_target.html",
-                                "/picenter_dashboard",
-                                "/picenter_dashboard.html",
-                                "/picenter_detection",
-                                "/picenter_detection.html",
-                                "/picenter_scan",
-                                "/picenter_scan.html",
-                                "/picenter_report",
-                                "/picenter_report.html",
-                                "/picenter_statistics",
-                                "/picenter_statistics.html",
-                                "/picenter_user",
-                                "/picenter_user.html",
-                                "/picenter_notice",
-                                "/picenter_notice.html",
-                                "/picenter_setting",
-                                "/picenter_setting.html",
+                                // Existing pages
+                                "/picenter_dashboard", "/picenter_dashboard.html",
+                                "/picenter_target", "/picenter_target.html",
+                                "/picenter_detection", "/picenter_detection.html",
+                                "/picenter_scan", "/picenter_scan.html",
+                                "/picenter_report", "/picenter_report.html",
+                                "/picenter_statistics", "/picenter_statistics.html",
+                                "/picenter_user", "/picenter_user.html",
+                                "/picenter_notice", "/picenter_notice.html",
+                                "/picenter_setting", "/picenter_setting.html",
+                                // New pages - Target sub-menus
+                                "/picenter_target_group", "/picenter_target_group.html",
+                                "/picenter_global_filters", "/picenter_global_filters.html",
+                                // New pages - Detection sub-menus
+                                "/picenter_exception", "/picenter_exception.html",
+                                "/picenter_approval", "/picenter_approval.html",
+                                // New pages - Scan sub-menus
+                                "/picenter_search_regist", "/picenter_search_regist.html",
+                                "/picenter_search_list", "/picenter_search_list.html",
+                                // New pages - Report sub-menus
+                                "/picenter_report_except", "/picenter_report_except.html",
+                                // New pages - User sub-menus
+                                "/picenter_userlog", "/picenter_userlog.html",
+                                "/picenter_user_lockdown", "/picenter_user_lockdown.html",
+                                // New pages - Notice sub-menus
+                                "/picenter_faq", "/picenter_faq.html",
+                                "/picenter_download", "/picenter_download.html",
+                                // New pages - Setting sub-menus
+                                "/picenter_node", "/picenter_node.html",
+                                "/picenter_interlock", "/picenter_interlock.html",
+                                // Data Type page
+                                "/picenter_data_type", "/picenter_data_type.html",
+                                "/search/data_type",
+                                // Static resources
                                 "/css/**",
                                 "/js/**",
                                 "/images/**",

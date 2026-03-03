@@ -17,7 +17,7 @@ public interface ApprovalService {
      * @param status optional approval status filter
      * @return paginated approval list
      */
-    PageResponse<ApprovalResponse> getApprovalList(int page, int size, String status);
+    PageResponse<ApprovalResponse> getApprovalList(int page, int size, String status, String searchKeyword, String startDate, String endDate);
 
     /**
      * Approve an approval request

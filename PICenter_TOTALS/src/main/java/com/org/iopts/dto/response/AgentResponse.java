@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class AgentResponse {
 
     private Long agentId;
-    private Long targetId;
+    private String targetId;
     private String agentVersion;
     private String agentStatus;
     private String agentIp;

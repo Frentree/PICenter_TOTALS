@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8">
+    <title>PICenter - 무결성 체크</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="/css/common.css">
+    <style>
+        .container {
+            width: 100%;
+            display: inline-block;
+            position: relative;
+            padding: 0 65px 20px 65px;
+            background: #f9f9f9;
+            margin-top: 55px;
+        }
+        .page_title_area { padding: 20px 0 10px 0; }
+        .page_title_area h3 { font-size: 16px; font-weight: 600; color: #0c4da2; line-height: 30px; }
+
+        .search_table {
+            width: 410px;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+        .search_table th {
+            text-align: center; width: 60px; padding: 4px 8px;
+            background: #e8eef4; border: 1px solid #c8ced3;
+            font-size: 12px; font-weight: 600; color: #333;
+            border-radius: 0.25rem; white-space: nowrap;
+        }
+        .search_table td { padding: 4px 6px; border: none; }
+        .search_table input[type="text"] {
+            width: 250px; height: 30px; padding-left: 8px;
+            border: 1px solid #c8ced3; font-size: 12px; outline: none;
+        }
+        .search_table input[type="text"]:focus { border-color: #0c4da2; }
+        .data_tbl { width: 100%; border-collapse: collapse; }
+        .data_tbl thead th {
+            padding: 8px 10px; background: #e8eef4;
+            border-bottom: 1px solid #c8ced3; border-right: 1px solid #dde3ea;
+            font-size: 12px; font-weight: 600; color: #333;
+            text-align: center; white-space: nowrap;
+        }
+        .data_tbl thead th:last-child { border-right: none; }
+        .data_tbl tbody td {
+            padding: 7px 10px; border-bottom: 1px solid #e8e8e8;
+            font-size: 12px; color: #444; text-align: center;
+        }
+        .data_tbl tbody tr:hover { background: #f5f8fc; }
+        .data_tbl tbody tr:last-child td { border-bottom: none; }
+        .td_left { text-align: left !important; }
+
+        .badge {
+            display: inline-block; padding: 2px 10px; border-radius: 10px;
+            font-size: 11px; font-weight: 600;
+        }
+        .badge_green { background: #e8f5e9; color: #2e7d32; }
+        .badge_red { background: #fce4ec; color: #c62828; }
+        .badge_gray { background: #f0f0f0; color: #888; }
+
+        .paging_area { padding: 15px 0; text-align: center; }
+        .paging_area button {
+            min-width: 30px; height: 28px; padding: 0 6px; margin: 0 2px;
+            border: 1px solid #c8ced3; background: #fff; color: #555;
+            font-size: 12px; cursor: pointer; border-radius: 3px;
+        }
+        .paging_area button:hover { background: #e8eef4; border-color: #0c4da2; color: #0c4da2; }
+        .paging_area button.active { background: #0c4da2; color: #fff; border-color: #0c4da2; font-weight: 600; }
+        .paging_area button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Popup */
+        .popup_layer {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .popup_box {
+            width: 500px; max-height: 80vh; padding: 10px;
+            background: #f9f9f9; border-radius: 4px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            position: relative; overflow: auto;
+        }
+        .popup_top { background: #f9f9f9; padding: 8px 0; }
+        .popup_top h1 { color: #222; font-size: 15px; font-weight: 600; padding: 0; box-shadow: none; }
+        .popup_content_box {
+            background: #fff; border: 1px solid #c8ced3;
+            border-radius: 3px; overflow: hidden;
+        }
+        .popup_btn_area { padding: 10px 0; text-align: center; }
+        .footer_area {
+            text-align: center; padding: 15px 0; font-size: 11px;
+            color: #aaa; border-top: 1px solid #e8e8e8; margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== Header ===== -->
+<div class="header">
+    <div class="header_left">
+        <a href="/picenter_dashboard" class="logo">개인정보 검출관리 센터</a>
+    </div>
+    <div class="header_center">
+        <ul class="gnb_menu">
+            <li><a href="/picenter_dashboard">Dashboard</a></li>
+            <li><a href="/picenter_target">대상 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_target">대상조회 및 현행화</a></li>
+                    <li><a href="/picenter_target_group">대상 그룹 관리</a></li>
+                    <li><a href="/picenter_global_filters">예외 관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_detection">결과 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_detection">결과조회</a></li>
+                    <li><a href="/picenter_exception">조치계획 승인요청</a></li>
+                    <li><a href="/picenter_approval">결재 진행현황</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_scan">검색 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_scan">검색 실행</a></li>
+                    <li><a href="/picenter_search_regist">검색 스케줄</a></li>
+                    <li><a href="/picenter_search_list">검색 현황</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_report">보고서</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_report">통합 보고서</a></li>
+                    <li><a href="/picenter_report_except">예외보고서</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_statistics">통계</a></li>
+            <li><a href="/picenter_user">사용자</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_user">사용자 관리</a></li>
+                    <li><a href="/picenter_userlog">로그관리</a></li>
+                    <li><a href="/picenter_user_lockdown">잠금관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_notice">커뮤니티</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_notice">공지사항</a></li>
+                    <li><a href="/picenter_faq">FAQ</a></li>
+                    <li><a href="/picenter_download">프로그램 다운로드</a></li>
+                </ul>
+            </li>
+            <li class="on"><a href="/picenter_setting">설정</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_setting">시스템설정</a></li>
+                    <li><a href="/picenter_node">무결성 체크</a></li>
+                    <li><a href="/picenter_interlock">통합 관리</a></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+    <div class="header_right">
+        <span class="user_info" id="userInfo"></span>
+        <button class="btn_logout" id="btnLogout">로그아웃</button>
+    </div>
+</div>
+
+<!-- Main Content -->
+<section>
+    <div class="container">
+        <div class="page_title_area">
+            <h3>무결성 체크</h3>
+        </div>
+
+        <div class="content">
+            <table class="search_table">
+                <tbody>
+                    <tr>
+                        <th>검색</th>
+                        <td>
+                            <input type="text" id="schKeyword" placeholder="노드명 또는 IP를 입력하세요.">
+                        </td>
+                        <td style="padding-left: 6px;">
+                            <button type="button" class="btn_search_legacy" id="btnSearch">검색</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="sub_title_area">
+            <h4>노드 목록</h4>
+            <div class="btn_area">
+                <span class="total_count" id="totalLabel"></span>
+                <button type="button" class="btn_add" id="btnAdd">노드 추가</button>
+            </div>
+        </div>
+
+        <div class="data_box">
+            <table class="data_tbl">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">No</th>
+                        <th>노드명</th>
+                        <th style="width:140px;">IP주소</th>
+                        <th style="width:80px;">포트</th>
+                        <th style="width:80px;">상태</th>
+                        <th style="width:140px;">등록일</th>
+                        <th style="width:130px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody id="nodeBody">
+                    <tr class="empty_row"><td colspan="7">데이터를 불러오는 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="paging_area" id="pagination"></div>
+
+        <div class="footer_area">
+            Copyright &copy; PICenter TOTALS. All rights reserved.
+        </div>
+    </div>
+</section>
+
+<!-- Node Add/Edit Popup -->
+<div id="nodePopup" class="popup_layer" style="display:none;">
+    <div class="popup_box">
+        <button class="popup_close_btn" id="btnPopupClose">&times;</button>
+        <div class="popup_top">
+            <h1 id="popupTitle">노드 추가</h1>
+        </div>
+        <div class="popup_content_box">
+            <table class="popup_info_tbl">
+                <tbody>
+                    <tr>
+                        <th>노드명</th>
+                        <td><input type="text" id="popNodeName" placeholder="노드명을 입력하세요."></td>
+                    </tr>
+                    <tr>
+                        <th>IP주소</th>
+                        <td><input type="text" id="popIpAddress" placeholder="IP주소를 입력하세요."></td>
+                    </tr>
+                    <tr>
+                        <th>에이전트 번호</th>
+                        <td><input type="number" id="popPort" placeholder="에이전트 번호 (기본: 0)" value="0" min="0"></td>
+                    </tr>
+                    <tr>
+                        <th>사용여부</th>
+                        <td>
+                            <select id="popUseYn">
+                                <option value="Y">사용</option>
+                                <option value="N">미사용</option>
+                            </select>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="popup_btn_area">
+            <button type="button" class="btn_save" id="btnSave">저장</button>
+            <button type="button" class="btn_cancel" id="btnPopCancel">취소</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var items = document.querySelectorAll('.gnb_menu > li');
+    for (var i = 0; i < items.length; i++) {
+        (function(item) {
+            var sub = item.querySelector('.gnb_sub_menu');
+            if (!sub) return;
+            item.addEventListener('mouseenter', function() { sub.style.display = 'block'; });
+            item.addEventListener('mouseleave', function() { sub.style.display = 'none'; });
+        })(items[i]);
+    }
+})();
+</script>
+<script>
+(function() {
+    'use strict';
+
+    var PAGE_SIZE = 20;
+    var token = localStorage.getItem('picenter_token');
+    var userStr = localStorage.getItem('picenter_user');
+    var editId = null;
+
+    if (!token) { window.location.href = '/login.html'; return; }
+
+    if (userStr) {
+        try {
+            var user = JSON.parse(userStr);
+            document.getElementById('userInfo').textContent = user.userName + '(' + user.userId + ')';
+        } catch (e) {}
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', function() {
+        localStorage.removeItem('picenter_token');
+        localStorage.removeItem('picenter_refresh_token');
+        localStorage.removeItem('picenter_user');
+        window.location.href = '/login.html';
+    });
+
+    document.getElementById('btnSearch').addEventListener('click', function() { loadNodes(0); });
+    document.getElementById('schKeyword').addEventListener('keyup', function(e) { if (e.key === 'Enter') loadNodes(0); });
+
+    document.getElementById('btnAdd').addEventListener('click', function() { openPopup(null); });
+    document.getElementById('btnPopupClose').addEventListener('click', closePopup);
+    document.getElementById('btnPopCancel').addEventListener('click', closePopup);
+    document.getElementById('nodePopup').addEventListener('click', function(e) { if (e.target === this) closePopup(); });
+    document.getElementById('btnSave').addEventListener('click', saveNode);
+
+    function openPopup(item) {
+        editId = item ? (item.nodeId || item.node_id || item.id) : null;
+        document.getElementById('popupTitle').textContent = editId ? '노드 수정' : '노드 추가';
+        document.getElementById('popNodeName').value = item ? (item.nodeName || item.node_name || item.name || '') : '';
+        document.getElementById('popIpAddress').value = item ? (item.ipAddress || item.ip_address || item.ip || '') : '';
+        document.getElementById('popPort').value = item ? (item.port || 0) : 0;
+        document.getElementById('popUseYn').value = item ? (item.useYn || item.use_yn || 'Y') : 'Y';
+        document.getElementById('nodePopup').style.display = 'flex';
+    }
+
+    function closePopup() {
+        document.getElementById('nodePopup').style.display = 'none';
+        editId = null;
+    }
+
+    function api(url, options) {
+        var opts = options || {};
+        opts.headers = Object.assign({ 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, opts.headers || {});
+        return fetch(url, opts).then(function(r) {
+            if (r.status === 401 || r.status === 403) { localStorage.removeItem('picenter_token'); window.location.href = '/login.html'; return null; }
+            return r.json();
+        });
+    }
+
+    function saveNode() {
+        var name = document.getElementById('popNodeName').value.trim();
+        var ip = document.getElementById('popIpAddress').value.trim();
+        var port = document.getElementById('popPort').value.trim();
+        var useYn = document.getElementById('popUseYn').value;
+        if (!name) { alert('노드명을 입력하세요.'); return; }
+        if (!ip) { alert('IP주소를 입력하세요.'); return; }
+
+        var body = JSON.stringify({ nodeName: name, ipAddress: ip, port: port || '0', useYn: useYn });
+
+        if (editId) {
+            api('/api/v1/settings/nodes/' + editId, { method: 'PUT', body: body }).then(function(data) {
+                if (!data) return;
+                if (data.success) { closePopup(); loadNodes(0); }
+                else { alert(data.error ? data.error.message : '수정에 실패하였습니다.'); }
+            }).catch(function() { alert('서버 연결에 실패하였습니다.'); });
+        } else {
+            api('/api/v1/settings/nodes', { method: 'POST', body: body }).then(function(data) {
+                if (!data) return;
+                if (data.success) { closePopup(); loadNodes(0); }
+                else { alert(data.error ? data.error.message : '등록에 실패하였습니다.'); }
+            }).catch(function() { alert('서버 연결에 실패하였습니다.'); });
+        }
+    }
+
+    function deleteNode(id) {
+        if (!confirm('해당 노드를 삭제하시겠습니까?')) return;
+        api('/api/v1/settings/nodes/' + id, { method: 'DELETE' }).then(function(data) {
+            if (!data) return;
+            if (data.success) { loadNodes(0); }
+            else { alert(data.error ? data.error.message : '삭제에 실패하였습니다.'); }
+        }).catch(function() { alert('서버 연결에 실패하였습니다.'); });
+    }
+
+    function loadNodes(page) {
+        var keyword = document.getElementById('schKeyword').value.trim();
+        var url = '/api/v1/settings/nodes?page=' + page + '&size=' + PAGE_SIZE;
+        if (keyword) url += '&searchKeyword=' + encodeURIComponent(keyword);
+
+        document.getElementById('nodeBody').innerHTML = '<tr class="loading_row"><td colspan="7"><div class="loading_indicator"><span class="loading_spin"></span> 데이터를 불러오는 중입니다...</div></td></tr>';
+
+        api(url).then(function(data) {
+            if (!data) return;
+            if (data.success && data.data) { renderTable(data.data, page); }
+            else { renderEmpty(data.error ? data.error.message : '데이터를 불러오지 못했습니다.'); }
+        }).catch(function() { renderEmpty('서버 연결에 실패하였습니다.'); });
+    }
+
+    function renderTable(pageData, page) {
+        var tbody = document.getElementById('nodeBody');
+        var items = pageData.content || pageData.list || [];
+        var total = pageData.totalElements || pageData.totalCount || 0;
+        var totalPages = pageData.totalPages || 1;
+
+        document.getElementById('totalLabel').textContent = '총 ' + formatNumber(total) + '건';
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr class="empty_row"><td colspan="7">검색 결과가 없습니다.</td></tr>';
+            document.getElementById('pagination').innerHTML = '';
+            return;
+        }
+
+        var html = '';
+        items.forEach(function(item, i) {
+            var id = item.nodeId || item.node_id || item.id;
+            var status = item.status || item.nodeStatus || '-';
+            var statusBadge = '';
+            if (status === 'ACTIVE' || status === '활성' || status === 'Y') {
+                statusBadge = '<span class="badge badge_green">활성</span>';
+            } else if (status === 'INACTIVE' || status === '비활성' || status === 'N') {
+                statusBadge = '<span class="badge badge_red">비활성</span>';
+            } else {
+                statusBadge = '<span class="badge badge_gray">' + escHtml(status) + '</span>';
+            }
+
+            html += '<tr>' +
+                '<td>' + (page * PAGE_SIZE + i + 1) + '</td>' +
+                '<td class="td_left">' + escHtml(item.nodeName || item.node_name || item.name || '-') + '</td>' +
+                '<td>' + escHtml(item.ipAddress || item.ip_address || item.ip || '-') + '</td>' +
+                '<td>' + escHtml(item.port || '-') + '</td>' +
+                '<td>' + statusBadge + '</td>' +
+                '<td>' + escHtml(item.regDate || item.regdate || item.createDate || '-') + '</td>' +
+                '<td>' +
+                    '<button class="btn_edit" data-idx="' + i + '">수정</button> ' +
+                    '<button class="btn_delete" data-id="' + id + '">삭제</button>' +
+                '</td>' +
+                '</tr>';
+        });
+        tbody.innerHTML = html;
+
+        tbody.querySelectorAll('.btn_edit').forEach(function(btn) {
+            btn.addEventListener('click', function(e) { e.stopPropagation(); openPopup(items[parseInt(this.dataset.idx)]); });
+        });
+        tbody.querySelectorAll('.btn_delete').forEach(function(btn) {
+            btn.addEventListener('click', function(e) { e.stopPropagation(); deleteNode(this.dataset.id); });
+        });
+
+        renderPagination(page, totalPages);
+    }
+
+    function renderEmpty(msg) {
+        document.getElementById('nodeBody').innerHTML = '<tr class="empty_row"><td colspan="7">' + escHtml(msg) + '</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        document.getElementById('totalLabel').textContent = '총 0건';
+    }
+
+    function renderPagination(current, total) {
+        var el = document.getElementById('pagination');
+        if (total <= 1) { el.innerHTML = ''; return; }
+        var html = '';
+        var start = Math.max(0, current - 4);
+        var end = Math.min(total, start + 9);
+        if (end - start < 9) start = Math.max(0, end - 9);
+
+        html += '<button data-page="0"' + (current === 0 ? ' disabled' : '') + '>&laquo;</button>';
+        html += '<button data-page="' + Math.max(0, current - 1) + '"' + (current === 0 ? ' disabled' : '') + '>&lsaquo;</button>';
+        for (var i = start; i < end; i++) {
+            html += '<button data-page="' + i + '"' + (i === current ? ' class="active"' : '') + '>' + (i + 1) + '</button>';
+        }
+        html += '<button data-page="' + Math.min(total - 1, current + 1) + '"' + (current >= total - 1 ? ' disabled' : '') + '>&rsaquo;</button>';
+        html += '<button data-page="' + (total - 1) + '"' + (current >= total - 1 ? ' disabled' : '') + '>&raquo;</button>';
+
+        el.innerHTML = html;
+        el.querySelectorAll('button').forEach(function(btn) {
+            btn.addEventListener('click', function() { if (!this.disabled) loadNodes(parseInt(this.dataset.page)); });
+        });
+    }
+
+    function formatNumber(n) { if (n === null || n === undefined) return '0'; return Number(n).toLocaleString(); }
+    function escHtml(str) { if (!str || str === '-') return str || '-'; var d = document.createElement('div'); d.appendChild(document.createTextNode(String(str))); return d.innerHTML; }
+
+    loadNodes(0);
+})();
+</script>
+<script src="/js/common_menu.js?v=1"></script>
+<script src="/js/table_sort.js?v=3"></script>
+</body>
+</html>

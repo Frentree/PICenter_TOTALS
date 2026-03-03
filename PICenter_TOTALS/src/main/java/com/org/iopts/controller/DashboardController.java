@@ -203,4 +203,95 @@ public class DashboardController {
         List<Map<String, Object>> response = dashboardService.getRankingData(groupId, limit);
         return ApiResponse.success(response);
     }
+
+    /**
+     * Get System Agents Detail
+     * New: GET /api/v1/dashboard/system-agents
+     */
+    @Operation(summary = "Get system agents detail", description = "Get detailed agent status including connected/disconnected/total counts")
+    @GetMapping("/system-agents")
+    public ApiResponse<Map<String, Object>> getSystemAgents(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("System agents request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getSystemAgents();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Todo Items (pending approvals, scheduled scans)
+     * New: GET /api/v1/dashboard/todo
+     */
+    @Operation(summary = "Get todo items", description = "Get pending approval and scheduled scan counts")
+    @GetMapping("/todo")
+    public ApiResponse<Map<String, Object>> getTodoItems(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Todo items request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getTodoItems();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Implementation Status (remediation progress)
+     * New: GET /api/v1/dashboard/implementation
+     */
+    @Operation(summary = "Get implementation status", description = "Get remediation implementation progress")
+    @GetMapping("/implementation")
+    public ApiResponse<Map<String, Object>> getImplementationStatus(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Implementation status request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getImplementationStatus();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Last Scan Information
+     * New: GET /api/v1/dashboard/last-scan
+     */
+    @Operation(summary = "Get last scan info", description = "Get last scan date and result information")
+    @GetMapping("/last-scan")
+    public ApiResponse<Map<String, Object>> getLastScan(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Last scan request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getLastScan();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Completion Statistics
+     * New: GET /api/v1/dashboard/completion
+     */
+    @Operation(summary = "Get completion stats", description = "Get completion and processing statistics")
+    @GetMapping("/completion")
+    public ApiResponse<Map<String, Object>> getCompletionStats(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Completion stats request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getCompletionStats();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Detection Status (file counts)
+     * New: GET /api/v1/dashboard/detection-status
+     */
+    @Operation(summary = "Get detection status", description = "Get detection file counts (total, incomplete, complete, inaccessible)")
+    @GetMapping("/detection-status")
+    public ApiResponse<Map<String, Object>> getDetectionStatus(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Detection status request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getDetectionStatus();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Get Approval Status (owned/false-positive counts)
+     * New: GET /api/v1/dashboard/approval-status
+     */
+    @Operation(summary = "Get approval status", description = "Get approval processing status (owned, false positive counts)")
+    @GetMapping("/approval-status")
+    public ApiResponse<Map<String, Object>> getApprovalStatus(Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Approval status request by user: {}", userNo);
+        Map<String, Object> response = dashboardService.getApprovalStatus();
+        return ApiResponse.success(response);
+    }
 }

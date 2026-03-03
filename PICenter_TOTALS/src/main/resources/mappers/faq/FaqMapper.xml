@@ -19,6 +19,15 @@
             - Has faq_status (char1) and faq_user_sosok (varchar200)
     -->
 
+    <!--
+        TUNING: selectFaqList
+        [성능 이슈] LIKE '%...%' 양쪽 와일드카드(faq_title, faq_content) → Full Table Scan
+        [성능 이슈] faq_content가 varchar(3000) → 길이가 길어 LIKE 비교 느림
+        [인덱스 권장] pi_faq(faq_create_dt DESC) 인덱스 → ORDER BY 정렬 가속
+            - CREATE INDEX idx_pi_faq_createdt ON pi_faq(faq_create_dt DESC);
+        [개선 방안] Full-Text Index 사용으로 검색 성능 개선
+            - CREATE FULLTEXT INDEX idx_pi_faq_ft ON pi_faq(faq_title, faq_content);
+    -->
     <!-- FAQ list with pagination and optional search -->
     <select id="selectFaqList" parameterType="map"
             resultType="com.org.iopts.dto.response.FaqResponse">
@@ -55,6 +64,21 @@
                 )
             </if>
         </where>
+    </select>
+
+    <!-- FAQ detail by faqId -->
+    <select id="selectFaqDetail" parameterType="long"
+            resultType="com.org.iopts.dto.response.FaqResponse">
+        SELECT
+            f.faq_no                                              AS faqId,
+            f.user_no                                             AS userNo,
+            f.faq_title                                           AS question,
+            f.faq_content                                         AS answer,
+            DATE_FORMAT(f.faq_create_dt, '%Y-%m-%d %H:%i:%s')    AS regDt,
+            u.USER_NAME                                           AS regUserName
+        FROM pi_faq f
+        LEFT JOIN pi_user u ON f.user_no = u.USER_NO
+        WHERE f.faq_no = #{faqId}
     </select>
 
     <!-- Insert FAQ -->

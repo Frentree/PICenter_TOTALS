@@ -43,6 +43,18 @@
         <result property="datatypeLabel" column="DATATYPE_LABEL"/>
     </resultMap>
 
+    <!--
+        TUNING: searchCondition
+        [성능 이슈] LIKE CONCAT('%', ..., '%') → 양쪽 와일드카드로 인덱스 미사용 (FILE_PATH, OWNER, HASH_ID)
+        [성능 이슈] f.PATH가 text 타입 → LIKE '%...%'는 Full Table Scan + text 비교
+        [성능 이슈] CONCAT(#{startDate}, ' 00:00:00') → 함수 사용으로 인덱스 활용도 저하
+        [인덱스 권장] pi_find(TARGET_ID, CREDATE) 복합 인덱스 → targetId + 날짜 범위 필터 가속
+            - CREATE INDEX idx_pi_find_target_credate ON pi_find(TARGET_ID, CREDATE);
+        [인덱스 권장] pi_find(HASH_ID) → HASH_ID 검색 시 prefix 인덱스
+            - CREATE INDEX idx_pi_find_hashid ON pi_find(HASH_ID(100));
+        [개선 방안] PATH 검색은 Full-Text Index 사용 권장
+            - CREATE FULLTEXT INDEX idx_pi_find_path_ft ON pi_find(PATH);
+    -->
     <!-- Common WHERE clause for search filters -->
     <sql id="searchCondition">
         <where>
@@ -77,7 +89,23 @@
         </where>
     </sql>
 
-    <!-- Select detection list with pagination -->
+    <!--
+        [튜닝] selectDetectionList
+        변경 전: 상관 서브쿼리 SELECT MAX(DATA_PROCESSING_IDX)가 pi_find 매 행마다 실행 → O(N*M) 성능
+        변경 후: 파생 테이블(derived table)로 MAX를 미리 계산하여 1회만 실행 → O(N+M) 성능
+        효과: 34만건 기준 조회 속도 대폭 개선
+    -->
+    <!--
+        TUNING: selectDetectionList
+        [인덱스 권장] pi_data_processing(TARGET_ID, HASH_ID, DATA_PROCESSING_IDX) 복합 인덱스
+            - CREATE INDEX idx_pi_dp_target_hash_dpidx ON pi_data_processing(TARGET_ID, HASH_ID(100), DATA_PROCESSING_IDX);
+        [인덱스 권장] pi_path_data(TARGET_ID, AP_NO, HASH_ID) 복합 인덱스
+            - CREATE INDEX idx_pi_pd_target_ap_hash ON pi_path_data(TARGET_ID, AP_NO, HASH_ID(100));
+        [인덱스 권장] pi_find(CREDATE DESC) → ORDER BY 정렬 인덱스
+            - CREATE INDEX idx_pi_find_credate_desc ON pi_find(CREDATE DESC);
+        [성능 이슈] SUBSTRING_INDEX(f.PATH, '/', -1) → 매 행마다 문자열 연산, 인덱스 미사용
+        [개선 방안] 파일명을 별도 컬럼으로 저장하면 연산 비용 제거 가능
+    -->
     <select id="selectDetectionList" parameterType="map" resultMap="detectionResultMap">
         SELECT
             f.HASH_ID                                       AS FIND_ID,
@@ -107,39 +135,48 @@
             ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
         LEFT JOIN pi_path_data pd
             ON pd.TARGET_ID = f.TARGET_ID AND pd.AP_NO = f.AP_NO AND pd.HASH_ID = f.HASH_ID
+        /* [튜닝] 파생 테이블로 최신 DATA_PROCESSING_IDX를 미리 계산 (상관 서브쿼리 제거) */
+        LEFT JOIN (
+            SELECT TARGET_ID, HASH_ID, MAX(DATA_PROCESSING_IDX) AS max_idx
+            FROM pi_data_processing
+            GROUP BY TARGET_ID, HASH_ID
+        ) dp_max ON dp_max.TARGET_ID = f.TARGET_ID AND dp_max.HASH_ID = f.HASH_ID
         LEFT JOIN pi_data_processing dp_latest
-            ON dp_latest.TARGET_ID = f.TARGET_ID
-               AND dp_latest.HASH_ID = f.HASH_ID
-               AND dp_latest.DATA_PROCESSING_IDX = (
-                   SELECT MAX(dp2.DATA_PROCESSING_IDX)
-                   FROM pi_data_processing dp2
-                   WHERE dp2.TARGET_ID = f.TARGET_ID
-                     AND dp2.HASH_ID = f.HASH_ID
-               )
+            ON dp_latest.DATA_PROCESSING_IDX = dp_max.max_idx
         <include refid="searchCondition"/>
         ORDER BY f.CREDATE DESC
         LIMIT #{offset}, #{limit}
     </select>
 
-    <!-- Count total detections matching filters -->
+    <!--
+        [튜닝] selectDetectionListCount
+        변경 전: COUNT 쿼리에도 상관 서브쿼리 + 불필요한 dp_latest JOIN
+        변경 후: processStatus 필터가 없으면 dp JOIN 생략, 있으면 파생 테이블 방식 사용
+        효과: 필터 없는 경우 JOIN 2개 제거로 카운트 쿼리 속도 대폭 개선
+    -->
     <select id="selectDetectionListCount" parameterType="map" resultType="long">
         SELECT COUNT(*)
         FROM pi_find f
         LEFT JOIN pi_targets t
             ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
-        LEFT JOIN pi_data_processing dp_latest
-            ON dp_latest.TARGET_ID = f.TARGET_ID
-               AND dp_latest.HASH_ID = f.HASH_ID
-               AND dp_latest.DATA_PROCESSING_IDX = (
-                   SELECT MAX(dp2.DATA_PROCESSING_IDX)
-                   FROM pi_data_processing dp2
-                   WHERE dp2.TARGET_ID = f.TARGET_ID
-                     AND dp2.HASH_ID = f.HASH_ID
-               )
+        <if test="processStatus != null and processStatus != ''">
+            /* [튜닝] processStatus 필터가 있을 때만 dp JOIN 수행 */
+            LEFT JOIN (
+                SELECT TARGET_ID, HASH_ID, MAX(DATA_PROCESSING_IDX) AS max_idx
+                FROM pi_data_processing
+                GROUP BY TARGET_ID, HASH_ID
+            ) dp_max ON dp_max.TARGET_ID = f.TARGET_ID AND dp_max.HASH_ID = f.HASH_ID
+            LEFT JOIN pi_data_processing dp_latest
+                ON dp_latest.DATA_PROCESSING_IDX = dp_max.max_idx
+        </if>
         <include refid="searchCondition"/>
     </select>
 
-    <!-- Select detection detail by HASH_ID (used as findId) -->
+    <!--
+        [튜닝] selectDetectionDetail
+        변경 전: 상관 서브쿼리로 MAX(DATA_PROCESSING_IDX) 조회
+        변경 후: 단건 조회이므로 ORDER BY + LIMIT 1 서브쿼리로 변경 (PK 조건으로 충분히 빠름)
+    -->
     <select id="selectDetectionDetail" parameterType="string" resultMap="detectionResultMap">
         SELECT
             f.HASH_ID                                       AS FIND_ID,
@@ -169,19 +206,26 @@
             ON f.TARGET_ID = t.TARGET_ID AND f.AP_NO = t.AP_NO
         LEFT JOIN pi_path_data pd
             ON pd.TARGET_ID = f.TARGET_ID AND pd.AP_NO = f.AP_NO AND pd.HASH_ID = f.HASH_ID
+        /* [튜닝] 단건 조회 시 ORDER BY DESC LIMIT 1로 최신 처리건 가져오기 */
         LEFT JOIN pi_data_processing dp_latest
             ON dp_latest.TARGET_ID = f.TARGET_ID
                AND dp_latest.HASH_ID = f.HASH_ID
                AND dp_latest.DATA_PROCESSING_IDX = (
-                   SELECT MAX(dp2.DATA_PROCESSING_IDX)
+                   SELECT dp2.DATA_PROCESSING_IDX
                    FROM pi_data_processing dp2
-                   WHERE dp2.TARGET_ID = f.TARGET_ID
-                     AND dp2.HASH_ID = f.HASH_ID
+                   WHERE dp2.TARGET_ID = f.TARGET_ID AND dp2.HASH_ID = f.HASH_ID
+                   ORDER BY dp2.DATA_PROCESSING_IDX DESC LIMIT 1
                )
         WHERE f.HASH_ID = #{findId}
         LIMIT 1
     </select>
 
+    <!--
+        TUNING: selectProcessHistory
+        [성능 이슈] HASH_ID가 text 타입 → WHERE dp.HASH_ID = #{findId} 비교 느림
+        [인덱스 권장] pi_data_processing(HASH_ID(100), REGDATE DESC) prefix 인덱스
+            - CREATE INDEX idx_pi_dp_hashid_regdate ON pi_data_processing(HASH_ID(100), REGDATE DESC);
+    -->
     <!-- Select process history for a detection (by HASH_ID) using pi_data_processing -->
     <select id="selectProcessHistory" parameterType="string" resultType="map">
         SELECT

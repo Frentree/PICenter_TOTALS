@@ -23,22 +23,22 @@ public interface TargetService {
     /**
      * Get target detail by ID
      */
-    TargetResponse getTargetDetail(Long targetId);
+    TargetResponse getTargetDetail(String targetId);
 
     /**
      * Get users assigned to a target
      */
-    List<UserResponse> getTargetUsers(Long targetId);
+    List<UserResponse> getTargetUsers(String targetId);
 
     /**
      * Assign a user to a target
      */
-    void assignUserToTarget(Long targetId, String userNo, String regUserNo);
+    void assignUserToTarget(String targetId, String userNo, String regUserNo);
 
     /**
      * Unassign a user from a target
      */
-    void unassignUserFromTarget(Long targetId, String userNo);
+    void unassignUserFromTarget(String targetId, String userNo);
 
     /**
      * Get paginated server list
@@ -48,7 +48,7 @@ public interface TargetService {
     /**
      * Get top files for a server target
      */
-    List<Map<String, Object>> getServerTopFiles(Long targetId, int topN);
+    List<Map<String, Object>> getServerTopFiles(String targetId, int topN);
 
     /**
      * Get DMZ list
@@ -69,6 +69,11 @@ public interface TargetService {
      * Get group list (tree structure)
      */
     List<Map<String, Object>> getGroupList();
+
+    /**
+     * Get paginated group list with search
+     */
+    PageResponse<Map<String, Object>> getGroupListPaged(int page, int size, String searchKeyword);
 
     /**
      * Add a new group
@@ -94,4 +99,26 @@ public interface TargetService {
      * Get paginated exception list
      */
     PageResponse<Map<String, Object>> getExceptionList(int page, int size);
+
+    /**
+     * Get global filter list
+     *
+     * @return list of global filter maps
+     */
+    List<Map<String, Object>> getGlobalFilters();
+
+    /**
+     * Save (create or update) a global filter
+     *
+     * @param request filter data
+     * @param userNo  user performing the action
+     */
+    void saveGlobalFilter(Map<String, Object> request, String userNo);
+
+    /**
+     * Delete a global filter
+     *
+     * @param filterId filter ID to delete
+     */
+    void deleteGlobalFilter(Long filterId);
 }

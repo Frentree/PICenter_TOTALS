@@ -37,10 +37,13 @@ public class ApprovalController {
     public ApiResponse<PageResponse<ApprovalResponse>> getApprovalList(
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Approval status filter", example = "PENDING") @RequestParam(required = false) String status) {
+            @Parameter(description = "Approval status filter", example = "PENDING") @RequestParam(required = false) String status,
+            @Parameter(description = "Search keyword") @RequestParam(required = false) String searchKeyword,
+            @Parameter(description = "Start date (yyyy-MM-dd)") @RequestParam(required = false) String startDate,
+            @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam(required = false) String endDate) {
 
-        log.info("Get approval list - page: {}, size: {}, status: {}", page, size, status);
-        PageResponse<ApprovalResponse> response = approvalService.getApprovalList(page, size, status);
+        log.info("Get approval list - page: {}, size: {}, status: {}, keyword: {}", page, size, status, searchKeyword);
+        PageResponse<ApprovalResponse> response = approvalService.getApprovalList(page, size, status, searchKeyword, startDate, endDate);
         return ApiResponse.success(response);
     }
 
@@ -54,12 +57,13 @@ public class ApprovalController {
     @PutMapping("/{approvalId}/approve")
     public ApiResponse<Void> approve(
             @Parameter(description = "Approval ID", example = "1") @PathVariable Long approvalId,
-            @RequestBody ApprovalRequest request,
+            @RequestBody(required = false) ApprovalRequest request,
             Authentication authentication) {
 
         String userNo = (String) authentication.getPrincipal();
         log.info("Approve request - approvalId: {}, userNo: {}", approvalId, userNo);
 
+        if (request == null) request = new ApprovalRequest();
         approvalService.approve(approvalId, request, userNo);
         return ApiResponse.success();
     }
@@ -74,12 +78,13 @@ public class ApprovalController {
     @PutMapping("/{approvalId}/reject")
     public ApiResponse<Void> reject(
             @Parameter(description = "Approval ID", example = "1") @PathVariable Long approvalId,
-            @RequestBody ApprovalRequest request,
+            @RequestBody(required = false) ApprovalRequest request,
             Authentication authentication) {
 
         String userNo = (String) authentication.getPrincipal();
         log.info("Reject request - approvalId: {}, userNo: {}", approvalId, userNo);
 
+        if (request == null) request = new ApprovalRequest();
         approvalService.reject(approvalId, request, userNo);
         return ApiResponse.success();
     }

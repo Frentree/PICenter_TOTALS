@@ -5,20 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="Cache-Control" content="no-cache">
-    <title>PICenter TOTALS - 대시보드</title>
+    <title>PICenter - Dashboard</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/css/common.css">
-    <!-- ECharts CDN -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
     <style>
         /* ===== Dashboard Section ===== */
-        section {
-            padding: 0 65px 0 45px;
-        }
+        header { background: none; }
         h4 {
-            margin: 14px 0 0 1px;
+            margin: 20px 0 0 1px;
             font-size: 16px;
             font-weight: normal;
+            color: #0c4da2;
         }
 
         /* ===== Content wrap ===== */
@@ -27,86 +25,126 @@
             padding: 0;
         }
 
-        /* ===== Container Main (3-column dashboard) ===== */
+        /* ===== System status cards ===== */
+        .system_cards {
+            display: flex;
+            gap: 12px;
+            padding: 8px 45px 0 45px;
+            flex-wrap: wrap;
+        }
+        .system_card {
+            flex: 1;
+            min-width: 150px;
+            background: #fff;
+            border: 1px solid #c8ced3;
+            border-radius: 4px;
+            padding: 10px 14px;
+            text-align: center;
+        }
+        .system_card .card_title {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 3px;
+        }
+        .system_card .card_value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #0c4da2;
+        }
+        .system_card .card_value.orange { color: #FF7F00; }
+        .system_card .card_value.red { color: #CC0F2E; }
+        .system_card .card_value.green { color: #68A62F; }
+        .system_card .card_sub {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        /* ===== Dashboard switch button ===== */
+        .dashboard-switch-btn {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 32px;
+            background: #2f353a;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            z-index: 9999;
+            box-shadow: 0 8px 24px rgba(47, 53, 58, 0.4);
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: 0.5px;
+        }
+        .dashboard-switch-btn:hover {
+            transform: translateX(-50%) translateY(-4px);
+            box-shadow: 0 12px 32px rgba(47, 53, 58, 0.5);
+        }
+
+        /* ===== Container Main (3-column: 20% / 58% / 22%) ===== */
         .container_main {
             width: 100%;
-            height: auto;
-            min-height: 815px;
             position: relative;
-            padding: 0 65px 29px 45px;
-            margin-top: 10px;
+            padding: 0 45px 29px 45px;
+            margin-top: 5px;
             display: flex;
             gap: 0;
         }
-
-        /* ===== Left Area (351px) ===== */
-        .left_area {
-            width: 351px;
-            min-width: 351px;
-            flex-shrink: 0;
-            padding-top: 16px;
+        .container_main > div {
+            float: left;
         }
 
+        /* ===== Left Area (20%) ===== */
+        .left_area {
+            width: 20%;
+            min-width: 300px;
+            padding-right: 10px;
+        }
         .left_area h4 {
-            position: relative;
-            color: #FF7F00;
-            margin-top: 19px;
+            margin-top: 0;
+            padding-bottom: 5px;
+        }
+
+        .sch_target_tbl {
+            width: 100%;
             margin-bottom: 5px;
         }
-
-        .user_info_table {
-            width: 351px;
-            border-collapse: collapse;
+        .sch_target_tbl td {
+            padding: 2px 0;
         }
-        .user_info_table th {
-            text-align: center;
-            border-radius: 0.25rem;
-            background: #f5f6f8;
+        .sch_target_tbl input[type="date"],
+        .sch_target_tbl input[type="text"] {
+            height: 28px;
+            padding: 0 2px;
             border: 1px solid #c8ced3;
-            padding: 6px 10px;
-            font-size: 12px;
-            font-weight: 600;
-            color: #555;
+            font-size: 11px;
+            font-family: 'Malgun Gothic', dotum, sans-serif;
+            box-sizing: border-box;
+        }
+        .sch_target_tbl .date_row {
             white-space: nowrap;
         }
-        .user_info_table td {
-            border: 1px solid #c8ced3;
-            padding: 4px 6px;
-        }
-        .user_info_table input[type="text"] {
-            width: 221px;
-            padding-left: 5px;
-            height: 28px;
-            border: 1px solid #c8ced3;
-            font-size: 12px;
-            font-family: 'Malgun Gothic', dotum, sans-serif;
-        }
-        .user_info_table input[type="text"]:focus {
-            border-color: #FF7F00;
-            outline: none;
-        }
-        .user_info_table input[type="text"]::placeholder {
-            color: #aaa;
-        }
-        .btn_look_approval {
+        .btn_sch_target {
             display: inline-block;
             width: 30px;
-            height: 28px;
-            margin-top: 0;
+            height: 30px;
+            margin: 0 5px;
             border: 1px solid #c8ced3;
             background: #f5f6f8 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="%23555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>') no-repeat center center;
             cursor: pointer;
             border-radius: 2px;
             vertical-align: middle;
         }
-        .btn_look_approval:hover {
-            background-color: #e8e8e8;
-        }
+        .btn_sch_target:hover { background-color: #e8e8e8; }
 
         .left_box {
-            margin-top: 11px;
-            height: 655px;
-            width: 351px;
+            height: 313px;
+            width: 100%;
             background-color: #fff;
             border: 1px solid #c8ced3;
             border-radius: 0.25rem;
@@ -114,9 +152,9 @@
             overflow-y: auto;
         }
 
-        /* Tree items */
-        .tree_group { margin-bottom: 2px; }
-        .tree_group_name {
+        /* Dashboard tree (schedule + asset) */
+        .dash_tree_group { margin-bottom: 2px; }
+        .dash_tree_header {
             cursor: pointer;
             padding: 5px 8px;
             font-weight: 600;
@@ -125,91 +163,153 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            border-radius: 3px;
+            transition: background 0.15s ease;
         }
-        .tree_group_name:hover { background: #f0f4f8; }
-        .tree_toggle {
-            display: inline-block;
-            width: 14px;
-            font-size: 11px;
-            color: #888;
-            text-align: center;
-            flex-shrink: 0;
-        }
-        .tree_children {
+        .dash_tree_header:hover { background: #f0f4f8; }
+        .dash_tree_children {
             display: none;
-            padding-left: 24px;
+            padding-left: 20px;
+            position: relative;
         }
-        .tree_children.open { display: block; }
-        .tree_child_item {
+        .dash_tree_children.open { display: block; }
+        .dash_tree_children::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10px;
+            bottom: 8px;
+            width: 1px;
+            background: #d8dfe6;
+        }
+        .dash_tree_child {
             padding: 4px 8px;
             font-size: 12px;
             color: #555;
             cursor: pointer;
+            border-radius: 3px;
+            transition: background 0.12s ease;
+            position: relative;
         }
-        .tree_child_item:hover {
+        .dash_tree_child::before {
+            content: '';
+            position: absolute;
+            top: 12px;
+            left: -10px;
+            width: 10px;
+            height: 1px;
+            background: #d8dfe6;
+        }
+        .dash_tree_child:hover {
             background: #e8f0fe;
             color: #0c4da2;
         }
-        .tree_child_item.selected {
+        .dash_tree_child.selected {
             background: #dbeafe;
             color: #0c4da2;
             font-weight: 600;
         }
 
-        /* ===== Chart Area ===== */
-        .chart_area {
-            flex: 1;
+        /* ===== Center Area (58%) ===== */
+        .center_area {
+            width: 58%;
+            padding: 0 10px;
+        }
+        .center_area > div {
+            margin-left: 10px;
+            margin-top: 0;
+        }
+
+        /* Todo boxes */
+        .todo_area {
             display: flex;
-            gap: 5px;
-            padding-left: 20px;
+            gap: 15px;
+            margin-bottom: 15px;
         }
-
-        /* ===== Chart Left (413px) ===== */
-        .chart_left {
-            width: 413px;
-            min-width: 413px;
-            flex-shrink: 0;
-        }
-        .chart_left h4 {
-            position: relative;
-            color: #FF7F00;
-            margin-top: 35px;
-            margin-bottom: 5px;
-        }
-        .chart_left h4#managerRank {
-            color: #FF7A00;
+        .todo_box {
             display: inline-block;
-            margin-top: 23px;
+            padding: 12px 15px;
+            width: 200px;
+            border-radius: 0.25rem;
+            cursor: pointer;
+            background: #0c4da2;
+            color: #fff;
+            position: relative;
+        }
+        .todo_box:hover { background: #0a3d82; }
+        .todo_box p {
+            font-size: 14px;
+            color: #fff;
+            margin: 0;
+        }
+        .todo_box .todo_count {
+            float: right;
+            font-size: 16px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        /* Center bottom: 2 columns */
+        .center_bottom {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .center_left {
+            width: 48%;
+        }
+        .center_right {
+            width: 48%;
+            margin-left: 10px;
+        }
+        .center_left h4,
+        .center_right h4 {
+            margin-top: 0;
             padding-bottom: 5px;
+            display: inline-block;
         }
 
-        .left_box_chart {
-            width: 413px;
-            margin-right: 5px;
-            background-color: #fff;
+        /* Pie chart area */
+        .pie_chart_wrap {
+            height: 615px;
             border: 1px solid #c8ced3;
             border-radius: 0.25rem;
-            padding: 5px;
-        }
-        .chart_box_donut {
-            height: 265px;
-            padding: 0;
-            border: none;
             background: #fff;
-            width: 405px;
+        }
+        #circleGraph {
+            height: 78%;
+            width: 100%;
+        }
+        .progress_area {
+            background: #fff;
+            border: 0 none;
+            padding: 0 15px;
+            height: 22%;
+        }
+        .progress_area p {
+            height: 42px;
+            margin-left: 13px;
+            font-size: 14px;
+            line-height: 47px;
+        }
+        .progress_area .percent_value {
+            font-size: 28px;
+            color: #0078D7;
+        }
+        .progress_area progress {
+            width: 100%;
+            height: 10px;
+            margin: 0 13px;
         }
 
-        .left_box_dash_rank {
-            width: 413px;
-            height: 376px;
-            padding: 10px 0;
-            background-color: #fff;
+        /* Rankings grid */
+        .rank_grid_wrap {
+            height: 642px;
             border: 1px solid #c8ced3;
             border-radius: 0.25rem;
+            background: #fff;
             overflow-y: auto;
         }
-
-        /* Rank data table */
         .data_table {
             width: 100%;
             border-collapse: collapse;
@@ -235,72 +335,93 @@
         }
         .data_table tbody tr:hover { background: #f8f9fb; }
         .data_table .td_left { text-align: left; }
-        .data_table .td_right {
-            text-align: right;
-            font-weight: 600;
+        .data_table .td_right { text-align: right; font-weight: 600; }
+
+        /* ===== Right Area (22%) ===== */
+        .right_area {
+            width: 22%;
+            min-width: 250px;
+            padding-left: 10px;
+        }
+        .right_area h4 {
+            margin-top: 0;
+            padding-bottom: 6px;
         }
 
-        /* ===== Chart Center (remaining width) ===== */
-        .chart_center {
-            flex: 1;
-            margin-left: 5px;
+        .notice_more {
+            float: right;
+            font-size: 12px;
+            color: #0c4da2;
+            text-decoration: none;
+            line-height: 36px;
         }
-        .chart_center h4 {
-            color: #FF7F00;
-            margin-top: 35px;
-            margin-bottom: 5px;
-        }
+        .notice_more:hover { text-decoration: underline; }
 
-        .chart_box_bar {
+        .squareBox {
             width: 100%;
-            min-height: 705px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .squareBox td {
+            font-size: 12px;
+            padding: 5px 0 7px 2px;
+            border-bottom: 1px solid #c8ced3;
+        }
+        .squareBox .notice_title_td {
+            cursor: pointer;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .squareBox .notice_date_td {
+            font-size: 12px;
+            text-align: right;
+            width: 80px;
+        }
+
+        .detection_section {
+            margin-top: 8px;
+        }
+        .detection_section h4 {
+            padding-bottom: 5px;
+        }
+        .status_box {
             background: #fff;
             border: 1px solid #c8ced3;
             border-radius: 0.25rem;
-            padding: 1.6px;
-            overflow: hidden;
-            position: relative;
+            padding: 8px;
         }
-        .chart_box_bar .date_area {
-            float: right;
-            padding: 8px 12px;
-        }
-        .chart_box_bar .date_area select {
-            width: 100px;
-            height: 28px;
-            border: 1px solid #ddd;
-            font-size: 12px;
-            font-family: 'Malgun Gothic', dotum, sans-serif;
-            background: #fff;
-            cursor: pointer;
-            padding: 0 4px;
-        }
-
-        #main_graph {
-            margin-top: 30px;
-            height: 665px;
+        .status_table {
             width: 100%;
+            border-collapse: collapse;
         }
+        .status_table td {
+            padding: 5px 4px;
+            height: 31px;
+            font-size: 12px;
+            border-bottom: 1px solid #e6e6e6;
+        }
+        .status_table tr:last-child td {
+            border-bottom: 0 none;
+        }
+        .status_table .val_td {
+            text-align: right;
+            font-weight: 600;
+        }
+        .connect { color: #62d424; }
+        .disconnect { color: #dd2334; }
 
-        /* ===== Empty message ===== */
+        /* ===== Empty / Popup ===== */
         .empty_msg {
             text-align: center;
             color: #999;
             padding: 30px 10px;
             font-size: 13px;
         }
-
-        /* ===== Clear float ===== */
-        .clear { clear: both; }
-        .clear_l { clear: left; }
-
-        /* ===== Popup overlay ===== */
         .popup_layer {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
             background: rgba(0,0,0,0.4);
             z-index: 200;
             display: flex;
@@ -325,9 +446,7 @@
             font-size: 16px;
             font-weight: 600;
         }
-        .popup_content {
-            margin: 8px 0;
-        }
+        .popup_content { margin: 8px 0; }
         .popup_tbl {
             width: 100%;
             border-collapse: collapse;
@@ -356,15 +475,11 @@
             font-size: 12px;
             margin: 0 4px;
         }
-        .popup_btn button:hover {
-            background: #333;
-        }
+        .popup_btn button:hover { background: #333; }
         .CancleImg {
             position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 16px;
-            height: 16px;
+            top: 10px; right: 10px;
+            width: 16px; height: 16px;
             cursor: pointer;
             opacity: 0.6;
         }
@@ -379,15 +494,56 @@
         </div>
         <div class="header_center">
             <ul class="gnb_menu">
-                <li class="on"><a href="/picenter_dashboard">대시보드</a></li>
-                <li><a href="/picenter_target">타겟</a></li>
-                <li><a href="/picenter_detection">검출</a></li>
-                <li><a href="/picenter_scan">스캔</a></li>
-                <li><a href="/picenter_report">보고서</a></li>
+                <li class="on"><a href="/picenter_dashboard">Dashboard</a></li>
+                <li><a href="/picenter_target">대상 관리</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_target">대상조회 및 현행화</a></li>
+                        <li><a href="/picenter_target_group">대상 그룹 관리</a></li>
+                        <li><a href="/picenter_global_filters">예외 관리</a></li>
+                    </ul>
+                </li>
+                <li><a href="/picenter_detection">결과 관리</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_detection">결과조회</a></li>
+                        <li><a href="/picenter_exception">조치계획 승인요청</a></li>
+                        <li><a href="/picenter_approval">결재 진행현황</a></li>
+                    </ul>
+                </li>
+                <li><a href="/picenter_scan">검색 관리</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_scan">검색 실행</a></li>
+                        <li><a href="/picenter_search_regist">검색 스케줄</a></li>
+                        <li><a href="/picenter_search_list">검색 현황</a></li>
+                    </ul>
+                </li>
+                <li><a href="/picenter_report">보고서</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_report">통합 보고서</a></li>
+                        <li><a href="/picenter_report_except">예외보고서</a></li>
+                    </ul>
+                </li>
                 <li><a href="/picenter_statistics">통계</a></li>
-                <li><a href="/picenter_user">사용자</a></li>
-                <li><a href="/picenter_notice">공지사항</a></li>
-                <li><a href="/picenter_setting">설정</a></li>
+                <li><a href="/picenter_user">사용자</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_user">사용자 관리</a></li>
+                        <li><a href="/picenter_userlog">로그관리</a></li>
+                        <li><a href="/picenter_user_lockdown">잠금관리</a></li>
+                    </ul>
+                </li>
+                <li><a href="/picenter_notice">커뮤니티</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_notice">공지사항</a></li>
+                        <li><a href="/picenter_faq">FAQ</a></li>
+                        <li><a href="/picenter_download">프로그램 다운로드</a></li>
+                    </ul>
+                </li>
+                <li><a href="/picenter_setting">설정</a>
+                    <ul class="gnb_sub_menu">
+                        <li><a href="/picenter_setting">시스템설정</a></li>
+                        <li><a href="/picenter_node">무결성 체크</a></li>
+                        <li><a href="/picenter_interlock">통합 관리</a></li>
+                    </ul>
+                </li>
             </ul>
         </div>
         <div class="header_right">
@@ -398,106 +554,244 @@
 
     <!-- ===== Dashboard Content ===== -->
     <div class="content_wrap">
+
+        <!-- System Status Cards -->
+        <div class="system_cards" id="systemCards">
+            <div class="system_card">
+                <div class="card_title">에이전트 연결</div>
+                <div class="card_value green" id="cardAgentConnected">-</div>
+                <div class="card_sub">연결 / <span id="cardAgentTotal">-</span> 전체</div>
+            </div>
+            <div class="system_card">
+                <div class="card_title">에이전트 미연결</div>
+                <div class="card_value red" id="cardAgentDisconnected">-</div>
+                <div class="card_sub">미연결 에이전트</div>
+            </div>
+            <div class="system_card">
+                <div class="card_title">대기 승인</div>
+                <div class="card_value orange" id="cardPendingApprovals">-</div>
+                <div class="card_sub">승인 대기 건수</div>
+            </div>
+            <div class="system_card">
+                <div class="card_title">조치 이행률</div>
+                <div class="card_value" id="cardImplementationRate">-%</div>
+                <div class="card_sub"><span id="cardProcessed">-</span> / <span id="cardTotalFindings">-</span></div>
+            </div>
+            <div class="system_card">
+                <div class="card_title">마지막 스캔</div>
+                <div class="card_value" id="cardLastScan" style="font-size:14px;">-</div>
+                <div class="card_sub" id="cardLastScanTarget">-</div>
+            </div>
+            <div class="system_card">
+                <div class="card_title">완료율</div>
+                <div class="card_value green" id="cardCompletionRate">-%</div>
+                <div class="card_sub">승인완료 / 전체</div>
+            </div>
+        </div>
+
+        <!-- Dashboard switch button -->
+        <button type="button" class="dashboard-switch-btn" id="btnSwitchDashboard">대시보드 변경</button>
+
+        <!-- ===== Main 3-Column Layout (RM 스타일) ===== -->
         <div class="container_main">
 
-            <!-- ========== LEFT: 대상 현황 (351px) ========== -->
+            <!-- ========== LEFT: 검색 스케줄 현황 + 자산 현황 (20%) ========== -->
             <div class="left_area">
-                <h4>대상 현황</h4>
-                <table class="user_info_table">
-                    <tbody>
-                        <tr>
-                            <th>대상조회</th>
-                            <td>
-                                <input type="text" id="targetSearch" placeholder="호스트명을 입력하세요." size="10">
-                            </td>
-                            <td>
-                                <input type="button" class="btn_look_approval" id="btn_sch_target">
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="left_box" id="treeArea">
-                    <div class="empty_msg">데이터를 불러오는 중...</div>
+                <!-- 검색 스케줄 현황 -->
+                <div id="left_top" style="margin-bottom: 10px;">
+                    <h4 style="margin-top: 0; padding-bottom: 5px;">검색 스케줄 현황</h4>
+                    <table class="sch_target_tbl">
+                        <tbody>
+                            <tr>
+                                <td class="date_row">
+                                    <input type="date" id="fromDate" style="text-align:center; width:115px;" readonly>
+                                    <span style="margin:0 2px; color:#000">~</span>
+                                    <input type="date" id="toDate" style="text-align:center; width:115px;" readonly>
+                                    <button type="button" id="btn_sch_list" class="btn_sch_target"></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="left_box" id="scheduleTree">
+                        <div class="tree_loading">스케줄을 불러오는 중...</div>
+                    </div>
+                </div>
+
+                <!-- 자산 현황 -->
+                <div id="left_bottom">
+                    <h4 style="margin-top: 13px;">자산 현황</h4>
+                    <table class="sch_target_tbl">
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <input type="text" id="targetSearch" placeholder="호스트명, IP, 그룹을 기입하세요" style="width:calc(100% - 40px); height:30px; padding-left:5px; border:1px solid #c8ced3;">
+                                </td>
+                                <td>
+                                    <button type="button" id="btn_sch_target" class="btn_sch_target"></button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="left_box" id="treeArea">
+                        <div class="tree_loading">자산 현황을 불러오는 중...</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- ========== CHART AREA ========== -->
-            <div class="chart_area">
+            <!-- ========== CENTER: Todo + Chart + Grid (58%) ========== -->
+            <div class="center_area">
+                <!-- Todo boxes -->
+                <div class="todo_area" id="todoArea">
+                    <div class="todo_box" id="todoDetection" onclick="location.href='/picenter_detection'">
+                        <p>개인정보 조치<br>(미완료 누적)</p>
+                        <span class="todo_count" id="todo_result_list">0건</span>
+                    </div>
+                    <div class="todo_box" id="todoApproval" onclick="location.href='/picenter_approval'">
+                        <p>결재 신청/관리<br>&nbsp;</p>
+                        <span class="todo_count" id="todo_result_approval">0건</span>
+                    </div>
+                    <div class="todo_box" id="todoSchedule" onclick="location.href='/picenter_search_list'">
+                        <p>스케줄 현황<br>&nbsp;</p>
+                        <span class="todo_count" id="todo_result_schedule">0건</span>
+                    </div>
+                </div>
 
-                <!-- ===== Chart Left (413px): 도넛차트 + 순위 ===== -->
-                <div class="chart_left">
-                    <h4>검출 현황 요약</h4>
-                    <div class="left_box_chart">
-                        <div class="chart_box_donut">
-                            <div id="circleGraph" style="height: 100%; width: 405px;"></div>
+                <!-- Center bottom: Pie chart + Rankings -->
+                <div class="center_bottom">
+                    <!-- Pie Chart (서버 검출현황 요약) -->
+                    <div class="center_left">
+                        <h4 id="systemStatus" style="margin-top: 0;">서버 검출현황 요약</h4>
+                        <div class="pie_chart_wrap" id="dash_main_pie">
+                            <div id="circleGraph"></div>
+                            <div class="progress_area">
+                                <p>
+                                    <label id="topStatus">파일서버</label> 검출진행률
+                                    <span class="percent_value" id="serverPercent"></span> 총
+                                    <span id="serverTotal">0</span>대 중
+                                    <span id="serverComplete">0</span>대 완료
+                                </p>
+                                <progress id="file_progress" value="0" max="100" style="width:95%; margin:0 13px;"></progress>
+                                <p>
+                                    <label id="bottomStatus">DB서버</label> 검출진행률
+                                    <span class="percent_value" id="dbPercent"></span> 총
+                                    <span id="dbTotal">0</span>대 중
+                                    <span id="dbComplete">0</span>대 완료
+                                </p>
+                                <progress id="db_progress" value="0" max="100" style="width:95%; margin:0 13px;"></progress>
+                            </div>
                         </div>
                     </div>
 
-                    <h4 id="managerRank">개인정보 보유 순위</h4>
-                    <div class="left_box_dash_rank">
-                        <table class="data_table" id="rankTable">
-                            <thead>
-                                <tr>
-                                    <th style="width:40%;">대상</th>
-                                    <th style="width:35%;">검출파일수(컬럼수)</th>
-                                    <th style="width:25%;">검출건수</th>
-                                </tr>
-                            </thead>
-                            <tbody id="rankingsBody">
-                                <tr><td colspan="3" class="empty_msg">데이터를 불러오는 중...</td></tr>
-                            </tbody>
+                    <!-- Rankings Grid (개인정보 보유 서버순위) -->
+                    <div class="center_right">
+                        <h4 id="serverRank" style="margin-top: 0;">개인정보 보유 서버순위</h4>
+                        <div class="rank_grid_wrap" id="dash_main_grid">
+                            <table class="data_table" id="rankTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40%;">서버</th>
+                                        <th style="width:35%;">검출파일수(컬럼수)</th>
+                                        <th style="width:25%;">검출건수</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rankingsBody">
+                                    <tr><td colspan="3" class="empty_msg">데이터를 불러오는 중...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== RIGHT: 공지사항 + 검출현황 + 조치현황 (22%) ========== -->
+            <div class="right_area">
+                <!-- 공지사항 -->
+                <div id="right_top">
+                    <h4 style="margin-top: 0;">공지사항</h4>
+                    <a href="/picenter_notice" class="notice_more">more</a>
+                    <div id="noticeList" style="clear:both;">
+                        <div class="empty_msg">로딩 중...</div>
+                    </div>
+                </div>
+
+                <!-- 검출 현황 -->
+                <div class="detection_section" id="detection_list">
+                    <h4>검출 현황</h4>
+                    <div class="status_box">
+                        <table class="status_table">
+                            <tr>
+                                <td>검출 파일수</td>
+                                <td class="val_td" id="total_tbl">-</td>
+                            </tr>
+                            <tr>
+                                <td>미조치 파일수</td>
+                                <td class="val_td" id="incomplete_tbl">-</td>
+                            </tr>
+                            <tr>
+                                <td>조치 파일수</td>
+                                <td class="val_td" id="complete_tbl">-</td>
+                            </tr>
+                            <tr>
+                                <td>검출불가 파일수</td>
+                                <td class="val_td" id="inaccess_tbl">-</td>
+                            </tr>
                         </table>
                     </div>
                 </div>
 
-                <!-- ===== Chart Center (나머지): 막대 차트 ===== -->
-                <div class="chart_center">
-                    <h4 id="rm_title">검출 현황 - 전체</h4>
-                    <div class="chart_box_bar">
-                        <div class="date_area">
-                            <select id="days">
-                                <option value="days">7일 전</option>
-                                <option value="month">1개월 전</option>
-                                <option value="three_month">3개월 전</option>
-                                <option value="six_month">6개월 전</option>
-                                <option value="year" selected>1년 전</option>
-                            </select>
-                            <input type="hidden" id="tree_id" value="">
-                        </div>
-                        <div id="main_graph"></div>
+                <!-- 조치 현황 -->
+                <div class="detection_section" id="processing_list">
+                    <h4>조치 현황</h4>
+                    <div class="status_box">
+                        <table class="status_table">
+                            <tr>
+                                <td>보유등록 파일수</td>
+                                <td class="val_td" id="own_tbl">-</td>
+                            </tr>
+                            <tr>
+                                <td>오탐등록 파일수</td>
+                                <td class="val_td" id="fal_tbl">-</td>
+                            </tr>
+                        </table>
                     </div>
                 </div>
-
-                <div class="clear_l"></div>
             </div>
 
-            <div class="clear"></div>
         </div>
     </div>
 
-    <!-- ===== Detail Popup ===== -->
-    <div id="pcDetailPopup" class="popup_layer" style="display: none;">
-        <div class="popup_box" style="height: 200px; width: 850px;">
-            <span class="CancleImg" id="btnCanclePCDetailPopup" title="닫기">&#10005;</span>
-            <div class="popup_top">
-                <h1>상세 조회</h1>
-            </div>
+    <!-- ===== Notice Detail Popup ===== -->
+    <div id="noticeDetailPopup" class="popup_layer" style="display: none;">
+        <div class="popup_box" style="width: 600px;">
+            <span class="CancleImg" id="btnCancleNoticePopup" title="닫기">&#10005;</span>
+            <div class="popup_top"><h1 id="noticePopTitle">공지사항</h1></div>
             <div class="popup_content">
-                <div style="background: #fff; border: 1px solid #c8ced3; padding: 10px;">
-                    <table class="popup_tbl">
-                        <colgroup>
-                            <col width="20%"><col width="25%"><col width="15%"><col width="20%"><col width="20%">
-                        </colgroup>
-                        <tbody id="popup_details"></tbody>
-                    </table>
-                </div>
+                <div id="noticePopContent" style="background:#fff; border:1px solid #c8ced3; padding:15px; min-height:100px; font-size:13px; line-height:1.6;"></div>
             </div>
             <div class="popup_btn">
-                <button type="button" id="btnClose">닫기</button>
+                <button type="button" id="btnCloseNotice">닫기</button>
             </div>
         </div>
     </div>
 
+<script>
+// Submenu hover show/hide
+(function() {
+    var menuItems = document.querySelectorAll('.gnb_menu > li');
+    for (var i = 0; i < menuItems.length; i++) {
+        (function(item) {
+            var sub = item.querySelector('.gnb_sub_menu');
+            if (!sub) return;
+            item.addEventListener('mouseenter', function() {
+                sub.style.display = 'block';
+            });
+            item.addEventListener('mouseleave', function() {
+                sub.style.display = 'none';
+            });
+        })(menuItems[i]);
+    }
+})();
+</script>
 <script>
 (function() {
     'use strict';
@@ -516,7 +810,7 @@
         try {
             var user = JSON.parse(userStr);
             var userUpper = (user.userId || '').toUpperCase();
-            document.getElementById('user_Information').textContent =
+            document.getElementById('userInfo').textContent =
                 (user.userName || '') + '(' + userUpper + ')';
         } catch(e) {}
     }
@@ -527,6 +821,11 @@
         localStorage.removeItem('picenter_refresh_token');
         localStorage.removeItem('picenter_user');
         window.location.href = '/login.html';
+    });
+
+    // ===== Dashboard Switch =====
+    document.getElementById('btnSwitchDashboard').addEventListener('click', function() {
+        location.href = '/picenter_target';
     });
 
     // ===== API Helper =====
@@ -546,13 +845,11 @@
         });
     }
 
-    // ===== Number formatter (comma separator) =====
     function formatNumber(n) {
         if (n === null || n === undefined || n === '') return '0';
         return Number(n).toLocaleString();
     }
 
-    // ===== HTML Escape =====
     function escapeHtml(str) {
         if (!str) return '';
         var div = document.createElement('div');
@@ -560,140 +857,311 @@
         return div.innerHTML;
     }
 
-    // ===== Selected tree node tracking =====
-    var selectedTargetId = null;
-    var selectedTargetType = null;
-    var selectedTargetText = null;
+    // ===== Date Init =====
+    function initDates() {
+        var today = new Date();
+        var fromDate = new Date(today);
+        fromDate.setDate(fromDate.getDate() - 31);
+
+        document.getElementById('toDate').value = formatDate(today);
+        document.getElementById('fromDate').value = formatDate(fromDate);
+    }
+
+    function formatDate(d) {
+        var y = d.getFullYear();
+        var m = ('0' + (d.getMonth() + 1)).slice(-2);
+        var dd = ('0' + d.getDate()).slice(-2);
+        return y + '-' + m + '-' + dd;
+    }
+
+    initDates();
 
     // =========================================================
-    //  1. LEFT AREA: 대상 현황 (Groups Tree)
+    //  1. LEFT: 검색 스케줄 현황
     // =========================================================
-    function loadGroups() {
-        api('/api/v1/targets/groups').then(function(data) {
-            if (!data) return;
-            var treeArea = document.getElementById('treeArea');
+    // 상태코드 한글 변환 맵
+    var scanStatusMap = {
+        'completed': '완료', 'scanning': '검색중', 'error': '오류',
+        'stopped': '중지', 'waiting': '대기', 'notscanned': '미검색',
+        'running': '진행중', 'pending': '대기'
+    };
+    var scanStatusColor = {
+        'completed': '#2e7d32', 'scanning': '#1565c0', 'error': '#c62828',
+        'stopped': '#e65100', 'waiting': '#888', 'running': '#1565c0'
+    };
+
+    function loadScheduleTree() {
+        var from = document.getElementById('fromDate').value;
+        var to = document.getElementById('toDate').value;
+        var scheduleTree = document.getElementById('scheduleTree');
+        scheduleTree.innerHTML = '<div class="tree_loading">검색 스케줄을 불러오는 중...</div>';
+
+        // 스캔 목록 + 타겟 이름 매핑을 위해 동시 로드
+        Promise.all([
+            api('/api/v1/scans?fromDate=' + from + '&toDate=' + to + '&page=1&size=200'),
+            api('/api/v1/targets?page=0&size=9999')
+        ]).then(function(results) {
+            var scanData = results[0];
+            var targetData = results[1];
+            if (!scanData) return;
+
             var items = [];
+            if (scanData.success && scanData.data) {
+                items = scanData.data.content || scanData.data.list || (Array.isArray(scanData.data) ? scanData.data : []);
+            }
 
-            if (data.success && data.data) {
-                items = Array.isArray(data.data) ? data.data : [];
-            } else if (Array.isArray(data)) {
-                items = data;
+            // 타겟 ID → 이름 매핑
+            var targetNameMap = {};
+            if (targetData && targetData.success && targetData.data) {
+                var targets = targetData.data.content || targetData.data.list || [];
+                targets.forEach(function(t) {
+                    var tid = String(t.targetId || t.id || '');
+                    var tname = t.targetName || t.name || t.hostName || '';
+                    if (tid && tname) targetNameMap[tid] = tname;
+                });
             }
 
             if (items.length === 0) {
-                treeArea.innerHTML = '<div class="empty_msg">등록된 대상이 없습니다</div>';
+                scheduleTree.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#128197;</span>검색 스케줄이 없습니다</div>';
                 return;
             }
 
-            var html = '';
-            // Root node: "전체"
-            html += '<div class="tree_group">';
-            html += '<div class="tree_group_name" data-id="target" data-type="0" data-text="전체">';
-            html += '<span class="tree_toggle">-</span> 전체';
-            html += '</div>';
-            html += '<div class="tree_children open" id="tree_root_children">';
-
+            // 타겟별 그룹핑 (이름 교차 조회)
+            var byTarget = {};
+            var targetOrder = [];
             for (var i = 0; i < items.length; i++) {
-                var group = items[i];
-                var groupName = group.groupName || group.name || group.grpName || group.text || ('그룹 ' + (i + 1));
-                var groupId = group.id || group.groupId || ('group_' + i);
-                var children = group.targets || group.children || group.hosts || [];
-                var childCount = group.targetCount || group.count || children.length || 0;
+                var item = items[i];
+                var tId = String(item.targetId || item.id || '');
+                var tName = item.targetName || item.name || targetNameMap[tId] || '';
+                var displayName = tName || (tId.length > 10 ? tId.substring(0, 8) + '...' : tId) || '(알수없음)';
+                item._displayName = displayName;
+                if (!byTarget[displayName]) {
+                    byTarget[displayName] = [];
+                    targetOrder.push(displayName);
+                }
+                byTarget[displayName].push(item);
+            }
 
-                html += '<div class="tree_group" style="padding-left: 8px;">';
-                html += '<div class="tree_group_name" data-idx="' + i + '" data-id="' + escapeHtml(String(groupId)) + '" data-type="0" data-text="' + escapeHtml(groupName) + '">';
-                html += '<span class="tree_toggle">+</span>';
-                html += escapeHtml(groupName) + ' (' + childCount + ')';
+            var totalCount = scanData.data.totalElements || items.length;
+            var html = '<div class="dash_tree_group">';
+            html += '<div class="dash_tree_header"><span class="tree_arrow expanded"></span><span class="tree_ico tree_ico_schedule"></span> 검색 스케줄 <span class="tree_count">' + totalCount + '</span></div>';
+            html += '<div class="dash_tree_children open">';
+
+            for (var t = 0; t < targetOrder.length; t++) {
+                var tKey = targetOrder[t];
+                var scans = byTarget[tKey];
+                html += '<div class="dash_tree_group" style="margin-bottom:2px;">';
+                html += '<div class="dash_tree_header" style="font-size:12px;padding:3px 6px;">';
+                html += '<span class="tree_arrow"></span>';
+                html += '<span class="tree_ico tree_ico_server"></span>';
+                html += '<span style="flex:1;">' + escapeHtml(tKey) + '</span>';
+                html += '<span class="tree_count">' + scans.length + '</span>';
                 html += '</div>';
-
-                if (children.length > 0) {
-                    html += '<div class="tree_children" id="tree_children_' + i + '">';
-                    for (var j = 0; j < children.length; j++) {
-                        var child = children[j];
-                        var childName = child.hostName || child.targetName || child.name || child.text || child.ip || '-';
-                        var childId = child.id || child.targetId || child.hostId || ('child_' + i + '_' + j);
-                        var childAp = child.ap || child.apNo || '';
-                        var childConnected = child.connected || '';
-                        html += '<div class="tree_child_item" data-id="' + escapeHtml(String(childId)) + '" data-type="1" data-ap="' + escapeHtml(String(childAp)) + '" data-text="' + escapeHtml(childName) + '">';
-                        html += escapeHtml(childName);
-                        if (child.ip) html += ' <span style="color:#999;">(' + escapeHtml(child.ip) + ')</span>';
-                        html += '</div>';
-                    }
+                html += '<div class="dash_tree_children">';
+                for (var s = 0; s < scans.length; s++) {
+                    var sc = scans[s];
+                    var rawStatus = sc.scanStatus || sc.status || '';
+                    var statusLabel = scanStatusMap[rawStatus] || rawStatus || '-';
+                    var sColor = scanStatusColor[rawStatus] || '#888';
+                    var scanDate = sc.regDt || sc.regDate || '';
+                    html += '<div class="dash_tree_child">';
+                    html += '<span style="color:' + sColor + ';font-weight:600;font-size:11px;">' + escapeHtml(statusLabel) + '</span>';
+                    if (scanDate) html += ' <span style="color:#999;font-size:11px;">' + escapeHtml(scanDate) + '</span>';
                     html += '</div>';
                 }
+                html += '</div></div>';
+            }
 
+            html += '</div></div>';
+            scheduleTree.innerHTML = html;
+
+            // 토글 바인딩
+            scheduleTree.querySelectorAll('.dash_tree_header').forEach(function(hdr) {
+                hdr.addEventListener('click', function() {
+                    var childDiv = this.parentElement.querySelector('.dash_tree_children');
+                    var arrowEl = this.querySelector('.tree_arrow');
+                    if (childDiv) {
+                        if (childDiv.classList.contains('open')) {
+                            childDiv.classList.remove('open');
+                            if (arrowEl) arrowEl.classList.remove('expanded');
+                        } else {
+                            childDiv.classList.add('open');
+                            if (arrowEl) arrowEl.classList.add('expanded');
+                        }
+                    }
+                });
+            });
+        }).catch(function() {
+            scheduleTree.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#9888;</span>로드 실패</div>';
+        });
+    }
+
+    document.getElementById('btn_sch_list').addEventListener('click', function() {
+        loadScheduleTree();
+        loadCircleGraph();
+    });
+
+    // =========================================================
+    //  2. LEFT: 자산 현황 (Groups Tree)
+    // =========================================================
+    var selectedTargetId = null;
+    var selectedTargetText = null;
+
+    function loadGroups() {
+        var treeArea = document.getElementById('treeArea');
+        treeArea.innerHTML = '<div class="tree_loading">자산 현황을 불러오는 중...</div>';
+
+        // 그룹 + 타겟을 동시 로드
+        Promise.all([
+            api('/api/v1/targets/groups'),
+            api('/api/v1/targets?page=0&size=9999')
+        ]).then(function(results) {
+            var groupData = results[0];
+            var targetData = results[1];
+            if (!groupData || !targetData) return;
+
+            var groups = [];
+            if (groupData.success && groupData.data) {
+                groups = Array.isArray(groupData.data) ? groupData.data : [];
+            }
+
+            var targets = [];
+            if (targetData.success && targetData.data) {
+                targets = targetData.data.content || targetData.data.list || [];
+            }
+
+            if (groups.length === 0 && targets.length === 0) {
+                treeArea.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#128187;</span>등록된 대상이 없습니다</div>';
+                return;
+            }
+
+            // 그룹별 타겟 매핑
+            var groupMap = {};
+            groups.forEach(function(g) {
+                var gid = String(g.groupId || g.id || '');
+                groupMap[gid] = { group: g, targets: [] };
+            });
+            var ungrouped = [];
+            targets.forEach(function(t) {
+                var gid = String(t.groupId || '');
+                if (gid && groupMap[gid]) {
+                    groupMap[gid].targets.push(t);
+                } else {
+                    ungrouped.push(t);
+                }
+            });
+
+            var html = '<div class="dash_tree_group">';
+            html += '<div class="dash_tree_header" data-id="target" data-type="0" data-text="전체">';
+            html += '<span class="tree_arrow expanded"></span><span class="tree_ico tree_ico_folder open"></span> 전체 <span class="tree_count">' + targets.length + '</span>';
+            html += '</div>';
+            html += '<div class="dash_tree_children open" id="tree_root_children">';
+
+            var idx = 0;
+            groups.forEach(function(g) {
+                var gid = String(g.groupId || g.id || '');
+                var groupName = g.groupName || g.name || '(그룹)';
+                var gTargets = groupMap[gid] ? groupMap[gid].targets : [];
+
+                html += '<div class="dash_tree_group">';
+                html += '<div class="dash_tree_header" data-idx="' + idx + '" data-id="' + escapeHtml(gid) + '" data-type="0" data-text="' + escapeHtml(groupName) + '">';
+                html += '<span class="tree_arrow' + (gTargets.length > 0 ? '' : '') + '"></span>';
+                html += '<span class="tree_ico tree_ico_folder"></span>';
+                html += escapeHtml(groupName) + ' <span class="tree_count">' + gTargets.length + '</span>';
                 html += '</div>';
+
+                if (gTargets.length > 0) {
+                    html += '<div class="dash_tree_children" id="tree_children_' + idx + '">';
+                    gTargets.forEach(function(t) {
+                        var tName = t.targetName || t.name || t.hostName || '-';
+                        var tId = String(t.targetId || t.id || '');
+                        var tIp = t.targetIp || t.ip || '';
+                        var isConn = t.agentStatus === '1' || t.agentStatus === 'RUNNING' || t.agentStatus === 'active';
+                        html += '<div class="dash_tree_child" data-id="' + escapeHtml(tId) + '" data-type="1" data-text="' + escapeHtml(tName) + '">';
+                        html += '<span class="tree_ico ' + (isConn ? 'tree_ico_connected' : 'tree_ico_disconnected') + '" style="width:14px;height:14px;font-size:10px;"></span> ';
+                        html += escapeHtml(tName);
+                        if (tIp && tIp !== 'None') html += ' <span class="tree_ip_label">(' + escapeHtml(tIp) + ')</span>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                }
+                html += '</div>';
+                idx++;
+            });
+
+            // 미분류 타겟
+            if (ungrouped.length > 0) {
+                html += '<div class="dash_tree_group">';
+                html += '<div class="dash_tree_header" data-idx="' + idx + '" data-id="ungrouped" data-type="0" data-text="미분류">';
+                html += '<span class="tree_arrow"></span>';
+                html += '<span class="tree_ico tree_ico_folder"></span>';
+                html += '미분류 <span class="tree_count">' + ungrouped.length + '</span>';
+                html += '</div>';
+                html += '<div class="dash_tree_children" id="tree_children_' + idx + '">';
+                ungrouped.forEach(function(t) {
+                    var tName = t.targetName || t.name || t.hostName || '-';
+                    var tId = String(t.targetId || t.id || '');
+                    var tIp = t.targetIp || t.ip || '';
+                    var isConn = t.agentStatus === '1' || t.agentStatus === 'RUNNING' || t.agentStatus === 'active';
+                    html += '<div class="dash_tree_child" data-id="' + escapeHtml(tId) + '" data-type="1" data-text="' + escapeHtml(tName) + '">';
+                    html += '<span class="tree_ico ' + (isConn ? 'tree_ico_connected' : 'tree_ico_disconnected') + '" style="width:14px;height:14px;font-size:10px;"></span> ';
+                    html += escapeHtml(tName);
+                    if (tIp && tIp !== 'None') html += ' <span class="tree_ip_label">(' + escapeHtml(tIp) + ')</span>';
+                    html += '</div>';
+                });
+                html += '</div></div>';
             }
 
             html += '</div></div>';
             treeArea.innerHTML = html;
 
-            // Toggle tree expand/collapse
+            // 토글 이벤트 바인딩
             treeArea.addEventListener('click', function(e) {
-                var groupName = e.target.closest('.tree_group_name');
-                if (groupName) {
-                    var idx = groupName.getAttribute('data-idx');
-                    if (idx !== null) {
-                        var childrenEl = document.getElementById('tree_children_' + idx);
-                        var toggleEl = groupName.querySelector('.tree_toggle');
+                var header = e.target.closest('.dash_tree_header');
+                if (header) {
+                    var didx = header.getAttribute('data-idx');
+                    if (didx !== null) {
+                        var childrenEl = document.getElementById('tree_children_' + didx);
+                        var arrowEl = header.querySelector('.tree_arrow');
+                        var icoEl = header.querySelector('.tree_ico_folder');
                         if (childrenEl) {
                             if (childrenEl.classList.contains('open')) {
                                 childrenEl.classList.remove('open');
-                                if (toggleEl) toggleEl.textContent = '+';
+                                if (arrowEl) arrowEl.classList.remove('expanded');
+                                if (icoEl) icoEl.classList.remove('open');
                             } else {
                                 childrenEl.classList.add('open');
-                                if (toggleEl) toggleEl.textContent = '-';
+                                if (arrowEl) arrowEl.classList.add('expanded');
+                                if (icoEl) icoEl.classList.add('open');
                             }
                         }
                     }
-                    // Handle tree node selection for charts
-                    handleTreeNodeClick(groupName);
                 }
-
-                var childItem = e.target.closest('.tree_child_item');
+                var childItem = e.target.closest('.dash_tree_child');
                 if (childItem) {
-                    handleTreeNodeClick(childItem);
+                    var prev = document.querySelectorAll('.dash_tree_child.selected');
+                    for (var k = 0; k < prev.length; k++) prev[k].classList.remove('selected');
+                    childItem.classList.add('selected');
                 }
             });
         }).catch(function() {
-            document.getElementById('treeArea').innerHTML = '<div class="empty_msg">데이터 로드 실패</div>';
+            treeArea.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#9888;</span>데이터 로드 실패</div>';
         });
     }
 
-    function handleTreeNodeClick(el) {
-        // Remove previous selection
-        var prev = document.querySelectorAll('.tree_child_item.selected, .tree_group_name.selected');
-        for (var i = 0; i < prev.length; i++) prev[i].classList.remove('selected');
-        el.classList.add('selected');
-
-        selectedTargetId = el.getAttribute('data-id');
-        selectedTargetType = el.getAttribute('data-type');
-        selectedTargetText = el.getAttribute('data-text') || '전체';
-
-        if (selectedTargetId === 'target' || selectedTargetType === '0') {
-            document.getElementById('rm_title').textContent = '검출 현황 - ' + (selectedTargetText || '전체');
-        } else {
-            document.getElementById('rm_title').textContent = '검출 현황 - ' + selectedTargetText;
-        }
-
-        loadBarChart();
-    }
-
     // Tree search
-    document.getElementById('btn_sch_target').addEventListener('click', function() {
-        doTreeSearch();
-    });
+    document.getElementById('btn_sch_target').addEventListener('click', doTreeSearch);
     document.getElementById('targetSearch').addEventListener('keyup', function(e) {
         if (e.keyCode === 13) doTreeSearch();
     });
 
     function doTreeSearch() {
         var keyword = document.getElementById('targetSearch').value.trim().toLowerCase();
-        var groups = document.querySelectorAll('#treeArea .tree_group');
+        var groups = document.querySelectorAll('#treeArea .dash_tree_group');
         for (var i = 0; i < groups.length; i++) {
-            var nameEl = groups[i].querySelector('.tree_group_name');
-            var nameText = nameEl ? nameEl.textContent.toLowerCase() : '';
-            var childItems = groups[i].querySelectorAll('.tree_child_item');
+            var headerEl = groups[i].querySelector('.dash_tree_header');
+            var nameText = headerEl ? headerEl.textContent.toLowerCase() : '';
+            var childItems = groups[i].querySelectorAll('.dash_tree_child');
             var childMatch = false;
 
             for (var j = 0; j < childItems.length; j++) {
@@ -708,13 +1176,12 @@
 
             if (!keyword || nameText.indexOf(keyword) >= 0 || childMatch) {
                 groups[i].style.display = '';
-                // Expand matching groups
                 if (keyword && childMatch) {
-                    var childrenDiv = groups[i].querySelector('.tree_children');
-                    var toggleEl = groups[i].querySelector('.tree_toggle');
+                    var childrenDiv = groups[i].querySelector('.dash_tree_children');
+                    var arrowEl = groups[i].querySelector('.tree_arrow');
                     if (childrenDiv && !childrenDiv.classList.contains('open')) {
                         childrenDiv.classList.add('open');
-                        if (toggleEl) toggleEl.textContent = '-';
+                        if (arrowEl) arrowEl.classList.add('expanded');
                     }
                 }
             } else {
@@ -724,21 +1191,32 @@
     }
 
     // =========================================================
-    //  2. CENTER LEFT: 검출 현황 요약 (Donut Chart via ECharts)
+    //  3. CENTER: Todo Shortcut
+    // =========================================================
+    function loadTodoShortcuts() {
+        api('/api/v1/dashboard/todo').then(function(data) {
+            if (!data || !data.data) return;
+            var d = data.data;
+            document.getElementById('todo_result_list').textContent = formatNumber(d.detectionCount || d.pendingApprovals || 0) + '건';
+            document.getElementById('todo_result_approval').textContent = formatNumber(d.approvalCount || d.pendingApprovals || 0) + '건';
+            document.getElementById('todo_result_schedule').textContent = formatNumber(d.scheduleCount || 0) + '건';
+        }).catch(function(){});
+    }
+
+    // =========================================================
+    //  4. CENTER: Pie Chart (서버 검출현황 요약)
     // =========================================================
     var circleChart = null;
 
     function loadCircleGraph() {
         api('/api/v1/dashboard/system-current').then(function(data) {
             if (!data) return;
-
             var result = [];
             if (data.success && data.data) {
                 result = Array.isArray(data.data) ? data.data : [data.data];
             } else if (Array.isArray(data)) {
                 result = data;
             }
-
             renderCircleGraph(result);
         }).catch(function() {
             document.getElementById('circleGraph').innerHTML = '<div class="empty_msg">차트 데이터 로드 실패</div>';
@@ -751,33 +1229,79 @@
             return;
         }
 
-        var total = 0, error = 0, searched = 0, wait = 0, complete = 0, scancomp = 0, pause = 0;
+        var DB_total = 0, server_total = 0, DB_completed = 0, server_completed = 0;
+        var statusMap = {
+            error: '오류', scanning: '검색중', scheduled: '미검색',
+            notscanned: '결과없음', stopped: '일시정지', completed: '검출'
+        };
+        var chartResult = [
+            { value: 0, name: '오류' }, { value: 0, name: '검색중' },
+            { value: 0, name: '미검색' }, { value: 0, name: '결과없음' },
+            { value: 0, name: '일시정지' }, { value: 0, name: '검출' }
+        ];
 
         for (var i = 0; i < result.length; i++) {
             var row = result[i];
-            if (row.TOTAL !== undefined) total = Number(row.TOTAL) || 0;
-            if (row.ERROR !== undefined) error += Number(row.ERROR) || 0;
-            if (row.SEARCHED !== undefined) searched += Number(row.SEARCHED) || 0;
-            if (row.WAIT !== undefined) wait += Number(row.WAIT) || 0;
-            if (row.COMPLETE !== undefined) complete += Number(row.COMPLETE) || 0;
-            if (row.SCANCOMP !== undefined) scancomp += Number(row.SCANCOMP) || 0;
-            if (row.PAUSE !== undefined) pause += Number(row.PAUSE) || 0;
-            // Also support lowercase keys
-            if (row.total !== undefined && !row.TOTAL) total = Number(row.total) || 0;
-            if (row.error !== undefined && !row.ERROR) error += Number(row.error) || 0;
-            if (row.searched !== undefined && !row.SEARCHED) searched += Number(row.searched) || 0;
-            if (row.wait !== undefined && !row.WAIT) wait += Number(row.wait) || 0;
-            if (row.complete !== undefined && !row.COMPLETE) complete += Number(row.complete) || 0;
-            if (row.scancomp !== undefined && !row.SCANCOMP) scancomp += Number(row.scancomp) || 0;
-            if (row.pause !== undefined && !row.PAUSE) pause += Number(row.pause) || 0;
+            var cnt = Number(row.total_cnt || row.TOTAL || row.count || 0);
+            var platform = row.platform || row.PLATFORM || '';
+            var status = row.search_status || row.STATUS || '';
+
+            if (platform === 'DB') {
+                DB_total += cnt;
+                if (status === 'completed') DB_completed += cnt;
+            } else {
+                server_total += cnt;
+                if (status === 'completed') server_completed += cnt;
+            }
+
+            var name = statusMap[status];
+            if (name) {
+                var target = chartResult.find(function(r) { return r.name === name; });
+                if (target) target.value += cnt;
+            }
+
+            // Also handle aggregated response format
+            if (row.TOTAL !== undefined && !row.platform) {
+                var total = Number(row.TOTAL) || 0;
+                var error = Number(row.ERROR) || 0;
+                var searched = Number(row.SEARCHED) || 0;
+                var wait = Number(row.WAIT) || 0;
+                var complete = Number(row.COMPLETE) || 0;
+                var scancomp = Number(row.SCANCOMP) || 0;
+                var pause = Number(row.PAUSE) || 0;
+
+                chartResult = [
+                    { value: error, name: '오류' },
+                    { value: searched, name: '검색중' },
+                    { value: complete, name: '결과없음' },
+                    { value: scancomp, name: '검출' },
+                    { value: wait, name: '미검색' },
+                    { value: pause, name: '일시정지' }
+                ];
+                server_total = total;
+            }
         }
 
+        // Update progress bars
+        var serverProg = (server_total > 0 && server_completed > 0) ? Math.round((server_completed / server_total) * 100) : 0;
+        var dbProg = (DB_total > 0 && DB_completed > 0) ? Math.round((DB_completed / DB_total) * 100) : 0;
+
+        document.getElementById('serverTotal').textContent = server_total;
+        document.getElementById('serverComplete').textContent = server_completed;
+        document.getElementById('serverPercent').textContent = serverProg + '%';
+        document.getElementById('file_progress').value = serverProg;
+
+        document.getElementById('dbTotal').textContent = DB_total;
+        document.getElementById('dbComplete').textContent = DB_completed;
+        document.getElementById('dbPercent').textContent = dbProg + '%';
+        document.getElementById('db_progress').value = dbProg;
+
+        // Render chart
         var chartDom = document.getElementById('circleGraph');
-        if (circleChart) {
-            circleChart.dispose();
-        }
+        if (circleChart) circleChart.dispose();
         circleChart = echarts.init(chartDom);
 
+        var totalCount = (server_total + DB_total) || 0;
         circleChart.setOption({
             tooltip: {
                 trigger: 'item',
@@ -785,9 +1309,20 @@
             },
             legend: {
                 data: ['오류', '검색중', '결과없음', '검출', '미검색', '일시정지'],
-                padding: [0, 75, 0, 75],
-                bottom: 3
+                padding: [0, 50, 10, 50],
+                bottom: 0
             },
+            graphic: [{
+                type: 'text',
+                left: 'center',
+                top: '35%',
+                style: {
+                    text: '총 대상수\n' + totalCount,
+                    textAlign: 'center',
+                    fontSize: 14,
+                    fill: '#333'
+                }
+            }],
             textStyle: {
                 fontFamily: "'Malgun Gothic', dotum, sans-serif",
                 fontSize: 14
@@ -797,43 +1332,21 @@
                 type: 'pie',
                 radius: ['30%', '60%'],
                 color: ['#CC0F2E', '#68A62F', '#11088D', '#038FDA', '#6F037F', '#FBCD1F'],
-                center: ['50%', '43%'],
-                data: [
-                    { value: error, name: '오류' },
-                    { value: searched, name: '검색중' },
-                    { value: complete, name: '결과없음' },
-                    { value: scancomp, name: '검출' },
-                    { value: wait, name: '미검색' },
-                    { value: pause, name: '일시정지' }
-                ],
+                center: ['49%', '40%'],
+                data: chartResult,
                 itemStyle: {
                     emphasis: {
                         shadowBlur: 10,
                         shadowOffsetX: 0,
                         shadowColor: 'rgba(0, 0, 0, 0.5)'
                     }
-                },
-                label: {
-                    show: false
                 }
             }]
         });
-
-        // Center text: total count
-        var existingSpan = document.getElementById('spanid');
-        if (existingSpan) existingSpan.remove();
-
-        var totalDiv = document.createElement('div');
-        totalDiv.id = 'spanid';
-        totalDiv.style.cssText = 'display:inline-block; position:absolute; left:50%; top:38%; transform:translateX(-50%) translateY(-50%); text-align:center; pointer-events:none;';
-        totalDiv.innerHTML = '<h4 style="margin:0; font-size:14px; font-weight:normal;">' +
-            '총 대상수<br>' + formatNumber(total) + '</h4>';
-        chartDom.style.position = 'relative';
-        chartDom.appendChild(totalDiv);
     }
 
     // =========================================================
-    //  3. CENTER LEFT: 개인정보 보유 순위 (Rankings Table)
+    //  5. CENTER: Rankings Grid
     // =========================================================
     function loadRankings() {
         api('/api/v1/dashboard/rankings').then(function(data) {
@@ -855,9 +1368,9 @@
             var html = '';
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
-                var name = item.NAME || item.name || item.targetName || item.hostName || '-';
-                var fileCount = item.FILE || item.file || item.fileCount || item.detectionFileCount || 0;
-                var count = item.COUNT || item.count || item.totalCount || item.detectionCount || 0;
+                var name = item.target_name || item.NAME || item.name || item.targetName || '-';
+                var fileCount = item.match_locations || item.FILE || item.file || item.fileCount || 0;
+                var count = item.match || item.COUNT || item.count || item.totalCount || 0;
 
                 html += '<tr>';
                 html += '<td class="td_left">' + escapeHtml(name) + '</td>';
@@ -873,263 +1386,153 @@
     }
 
     // =========================================================
-    //  4. RIGHT: 검출 현황 Bar Chart (ECharts)
+    //  6. RIGHT: 공지사항
     // =========================================================
-    var barChart = null;
-
-    function loadBarChart() {
-        var days = document.getElementById('days').value;
-        var params = 'days=' + encodeURIComponent(days);
-        if (selectedTargetId && selectedTargetId !== 'target') {
-            params += '&target_id=' + encodeURIComponent(selectedTargetId);
-        }
-
-        api('/api/v1/dashboard/charts/bar?' + params).then(function(data) {
+    function loadNotices() {
+        api('/api/v1/notices?page=1&size=5').then(function(data) {
             if (!data) return;
+            var container = document.getElementById('noticeList');
+            var items = [];
 
-            var chartData = null;
             if (data.success && data.data) {
-                chartData = data.data;
-            } else if (data.Data || data.DataTypes) {
-                chartData = data;
+                var d = data.data;
+                items = d.content || d.list || (Array.isArray(d) ? d : []);
+            } else if (Array.isArray(data)) {
+                items = data;
             }
 
-            if (!chartData) {
-                renderBarChartEmpty();
+            if (items.length === 0) {
+                container.innerHTML = '<div class="empty_msg">공지사항이 없습니다</div>';
                 return;
             }
 
-            renderBarChart(chartData);
-        }).catch(function() {
-            renderBarChartEmpty();
-        });
+            var html = '';
+            for (var i = 0; i < Math.min(items.length, 5); i++) {
+                var item = items[i];
+                var title = item.noticeTitle || item.NOTICE_TITLE || item.title || '-';
+                var date = item.regDate || item.REGDATE || item.createdAt || '-';
+                if (date && date.length > 10) date = date.substring(0, 10);
+                var id = item.noticeId || item.NOTICE_ID || item.id || '';
 
-        // Also load datatypes for the legend
-        loadDataTypes();
-    }
-
-    function loadDataTypes() {
-        api('/api/v1/dashboard/datatypes').then(function(data) {
-            // datatypes used for color mapping if needed
-        }).catch(function() {});
-    }
-
-    function renderBarChart(result) {
-        var days = [];
-        var names = [];
-        var colors = [];
-        var series = [];
-
-        // Support legacy format: { Data: [...], DataTypes: [...] }
-        var dataRows = result.Data || result.data || [];
-        var dataTypes = result.DataTypes || result.dataTypes || [];
-
-        if (dataRows.length === 0 && dataTypes.length === 0) {
-            // Try alternative format: { labels: [...], datasets: [...] }
-            if (result.labels && result.datasets) {
-                var lbls = [];
-                var vals = [];
-                for (var i = 0; i < result.labels.length; i++) {
-                    var lbl = result.labels[i];
-                    lbls.push(lbl.label || lbl.name || lbl.date || lbl);
-                }
-                for (var i = 0; i < result.datasets.length; i++) {
-                    var ds = result.datasets[i];
-                    var dsName = ds.label || ds.name || ('데이터 ' + (i + 1));
-                    var dsColor = ds.color || ds.backgroundColor || '#038FDA';
-                    var dsData = ds.data || ds.values || [];
-                    series.push({
-                        name: dsName,
-                        type: 'bar',
-                        color: dsColor,
-                        data: dsData
-                    });
-                    names.push(dsName);
-                    colors.push(dsColor);
-                }
-                days = lbls;
-            } else {
-                renderBarChartEmpty();
-                return;
+                html += '<table class="squareBox"><tr>';
+                html += '<td class="notice_title_td" data-id="' + escapeHtml(String(id)) + '">' + escapeHtml(title) + '</td>';
+                html += '<td class="notice_date_td">' + escapeHtml(date) + '</td>';
+                html += '</tr></table>';
             }
-        } else {
-            // Legacy format processing
-            for (var i = 0; i < dataRows.length; i++) {
-                days.push(dataRows[i].DAYS || dataRows[i].days || dataRows[i].date || '');
-            }
+            container.innerHTML = html;
 
-            for (var i = 0; i < dataTypes.length; i++) {
-                var dtName = dataTypes[i].PATTERN_NAME || dataTypes[i].patternName || dataTypes[i].name || '';
-                var dtId = dataTypes[i].ID || dataTypes[i].id || '';
-                var dtColor = dataTypes[i].COLOR_CODE || dataTypes[i].colorCode || dataTypes[i].color || '#038FDA';
-                var types = [];
-
-                for (var u = 0; u < dataRows.length; u++) {
-                    var row = dataRows[u];
-                    types.push(row[dtId] || 0);
-                }
-
-                names.push(dtName);
-                colors.push(dtColor);
-                series.push({
-                    name: dtName,
-                    type: 'bar',
-                    color: dtColor,
-                    data: types
+            // Click handler for notice detail
+            container.querySelectorAll('.notice_title_td').forEach(function(td) {
+                td.addEventListener('click', function() {
+                    var nid = this.getAttribute('data-id');
+                    if (nid) loadNoticeDetail(nid);
                 });
-            }
-        }
-
-        var chartDom = document.getElementById('main_graph');
-        if (barChart) {
-            barChart.dispose();
-        }
-        barChart = echarts.init(chartDom);
-
-        barChart.setOption({
-            tooltip: {
-                trigger: 'axis',
-                axisPointer: { type: 'shadow' }
-            },
-            grid: {
-                left: '6%',
-                containLabel: true
-            },
-            legend: {
-                data: names,
-                color: colors
-            },
-            xAxis: [{
-                type: 'category',
-                data: days
-            }],
-            yAxis: [{
-                type: 'value',
-                axisLabel: {
-                    textStyle: { fontSize: 11 }
-                }
-            }],
-            series: series,
-            toolbox: {
-                show: true,
-                bottom: 15,
-                right: 60,
-                textStyle: {
-                    fontFamily: "'Malgun Gothic', dotum, sans-serif",
-                    fontSize: 13
-                },
-                feature: {
-                    dataView: {
-                        show: true,
-                        readOnly: false,
-                        title: '데이터',
-                        optionToContent: function(opt) {
-                            var axisData = opt.xAxis[0].data;
-                            var seriesData = opt.series;
-                            var table = '<div style="padding:8px;"><button type="button" onclick="window.__dashboardDownloadCsv()" style="padding:4px 12px; margin:4px; cursor:pointer;">다운로드</button></div>'
-                                + '<table id="chartdata" style="width:100%;text-align:center;border-collapse:collapse;"><tbody><tr style="background:#f5f6f8;">'
-                                + '<td style="padding:6px;border:1px solid #ddd;">날짜</td>';
-                            for (var i = 0; i < seriesData.length; i++) {
-                                table += '<td style="padding:6px;border:1px solid #ddd;">' + seriesData[i].name + '</td>';
-                            }
-                            table += '</tr>';
-                            for (var i = 0; i < axisData.length; i++) {
-                                table += '<tr><td style="padding:4px;border:1px solid #eee;">' + axisData[i] + '</td>';
-                                for (var u = 0; u < seriesData.length; u++) {
-                                    table += '<td style="padding:4px;border:1px solid #eee;">' + (seriesData[u].data[i] || 0) + '</td>';
-                                }
-                                table += '</tr>';
-                            }
-                            table += '</tbody></table>';
-                            return table;
-                        }
-                    },
-                    magicType: {
-                        show: true,
-                        title: { line: '선형차트', bar: '막대차트' },
-                        type: ['line', 'bar']
-                    },
-                    restore: {
-                        show: true,
-                        title: '복원'
-                    },
-                    saveAsImage: {
-                        show: true,
-                        title: '이미지로저장'
-                    }
-                }
-            }
+            });
+        }).catch(function() {
+            document.getElementById('noticeList').innerHTML = '<div class="empty_msg">로드 실패</div>';
         });
     }
 
-    function renderBarChartEmpty() {
-        var chartDom = document.getElementById('main_graph');
-        if (barChart) {
-            barChart.dispose();
-            barChart = null;
-        }
-        chartDom.innerHTML = '<div class="empty_msg" style="padding-top:200px;">차트 데이터가 없습니다</div>';
+    function loadNoticeDetail(id) {
+        api('/api/v1/notices/' + id).then(function(data) {
+            if (!data) return;
+            var item = data.data || data;
+            document.getElementById('noticePopTitle').textContent = item.noticeTitle || item.NOTICE_TITLE || item.title || '공지사항';
+            document.getElementById('noticePopContent').innerHTML = escapeHtml(item.noticeContent || item.NOTICE_CONTENT || item.content || '');
+            document.getElementById('noticeDetailPopup').style.display = 'flex';
+        }).catch(function(){});
     }
 
-    // CSV download for bar chart data view
-    window.__dashboardDownloadCsv = function() {
-        var table = document.getElementById('chartdata');
-        if (!table) return;
-
-        var BOM = '\uFEFF';
-        var csvString = BOM;
-        for (var rowCnt = 0; rowCnt < table.rows.length; rowCnt++) {
-            var rowData = table.rows[rowCnt].cells;
-            for (var colCnt = 0; colCnt < rowData.length; colCnt++) {
-                var columnData = rowData[colCnt].innerHTML.replace(/"/g, '""');
-                csvString += '"' + columnData + '",';
-            }
-            csvString = csvString.substring(0, csvString.length - 1) + '\r\n';
-        }
-        csvString = csvString.substring(0, csvString.length - 1);
-
-        var blob = new Blob([csvString], { type: 'text/csv;charset=utf8' });
-        var csvUrl = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.setAttribute('style', 'display:none');
-        a.setAttribute('href', csvUrl);
-        a.setAttribute('download', 'data.csv');
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-    };
+    document.getElementById('btnCloseNotice').addEventListener('click', function() {
+        document.getElementById('noticeDetailPopup').style.display = 'none';
+    });
+    document.getElementById('btnCancleNoticePopup').addEventListener('click', function() {
+        document.getElementById('noticeDetailPopup').style.display = 'none';
+    });
 
     // =========================================================
-    //  5. Event Listeners
+    //  7. RIGHT: 검출 현황 + 조치 현황
     // =========================================================
+    function loadDetectionStatus() {
+        api('/api/v1/dashboard/detection-status').then(function(data) {
+            if (!data) return;
+            var d = data.data || data;
+            var findPath = Number(d.find_path || d.findPath || d.totalFiles || 0);
+            var completePath = Number(d.processing_path || d.processingPath || d.processedFiles || 0);
+            var incompletePath = findPath - completePath;
+            var inaccessPath = Number(d.inaccess_path || d.inaccessPath || d.inaccessibleFiles || 0);
 
-    // Period change -> reload bar chart
-    document.getElementById('days').addEventListener('change', function() {
-        loadBarChart();
-    });
+            document.getElementById('total_tbl').textContent = formatNumber(findPath);
+            document.getElementById('incomplete_tbl').textContent = formatNumber(incompletePath);
+            document.getElementById('complete_tbl').textContent = formatNumber(completePath);
+            document.getElementById('inaccess_tbl').textContent = formatNumber(inaccessPath);
+        }).catch(function(){});
+    }
 
-    // Detail popup close
-    document.getElementById('btnClose').addEventListener('click', function() {
-        document.getElementById('pcDetailPopup').style.display = 'none';
-    });
-    document.getElementById('btnCanclePCDetailPopup').addEventListener('click', function() {
-        document.getElementById('pcDetailPopup').style.display = 'none';
-    });
+    function loadApprovalStatus() {
+        api('/api/v1/dashboard/approval-status').then(function(data) {
+            if (!data) return;
+            var d = data.data || data;
+            document.getElementById('own_tbl').textContent = formatNumber(d.approval_file || d.approvalFile || d.ownedFiles || 0);
+            document.getElementById('fal_tbl').textContent = formatNumber(d.approval_false || d.approvalFalse || d.falsePositiveFiles || 0);
+        }).catch(function(){});
+    }
 
-    // Window resize - re-render echarts
+    // =========================================================
+    //  8. System Cards
+    // =========================================================
+    function loadSystemCards() {
+        api('/api/v1/dashboard/system-agents').then(function(data) {
+            if (!data || !data.data) return;
+            var d = data.data;
+            document.getElementById('cardAgentConnected').textContent = formatNumber(d.connectedAgents || 0);
+            document.getElementById('cardAgentDisconnected').textContent = formatNumber(d.disconnectedAgents || 0);
+            document.getElementById('cardAgentTotal').textContent = formatNumber(d.totalAgents || 0);
+        }).catch(function(){});
+
+        api('/api/v1/dashboard/implementation').then(function(data) {
+            if (!data || !data.data) return;
+            var d = data.data;
+            document.getElementById('cardImplementationRate').textContent = (d.implementationRate || 0) + '%';
+            document.getElementById('cardProcessed').textContent = formatNumber(d.processedCount || 0);
+            document.getElementById('cardTotalFindings').textContent = formatNumber(d.totalFindings || 0);
+        }).catch(function(){});
+
+        api('/api/v1/dashboard/last-scan').then(function(data) {
+            if (!data || !data.data) return;
+            var d = data.data;
+            document.getElementById('cardLastScan').textContent = d.scanDate || '-';
+            document.getElementById('cardLastScanTarget').textContent = d.targetName || '-';
+        }).catch(function(){});
+
+        api('/api/v1/dashboard/completion').then(function(data) {
+            if (!data || !data.data) return;
+            var d = data.data;
+            document.getElementById('cardCompletionRate').textContent = (d.completionRate || 0) + '%';
+            document.getElementById('cardPendingApprovals').textContent = formatNumber(d.pendingCount || 0);
+        }).catch(function(){});
+    }
+
+    // =========================================================
+    //  9. Resize Handler
+    // =========================================================
     window.addEventListener('resize', function() {
         if (circleChart) circleChart.resize();
-        if (barChart) barChart.resize();
     });
 
     // =========================================================
-    //  6. Initial Data Load
+    //  10. Initial Load
     // =========================================================
     function loadAllData() {
         loadGroups();
+        loadScheduleTree();
         loadCircleGraph();
         loadRankings();
-        loadBarChart();
+        loadTodoShortcuts();
+        loadNotices();
+        loadDetectionStatus();
+        loadApprovalStatus();
+        loadSystemCards();
     }
 
     loadAllData();
@@ -1139,5 +1542,7 @@
 
 })();
 </script>
+<script src="/js/common_menu.js?v=1"></script>
+<script src="/js/table_sort.js?v=3"></script>
 </body>
 </html>

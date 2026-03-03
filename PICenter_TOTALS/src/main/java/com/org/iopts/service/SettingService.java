@@ -31,4 +31,53 @@ public interface SettingService {
      * @param settings list of setting maps (pageName, pageUrl, gradeNo, useYn, sortOrder)
      */
     void savePageSettings(List<Map<String, Object>> settings);
+
+    /**
+     * Get all registered nodes
+     *
+     * @return list of node maps
+     */
+    List<Map<String, Object>> getNodeList();
+
+    /**
+     * Save (create or update) a node
+     *
+     * @param request node data
+     */
+    void saveNode(Map<String, Object> request);
+
+    /**
+     * Delete a node
+     *
+     * @param nodeId node identifier
+     */
+    void deleteNode(String nodeId);
+
+    /**
+     * Get interlock/integration settings
+     *
+     * @return list of interlock setting maps
+     */
+    List<Map<String, Object>> getInterlockSettings();
+
+    /**
+     * Save interlock/integration settings (bulk)
+     *
+     * @param settings list of interlock setting maps
+     */
+    void saveInterlockSettings(List<Map<String, Object>> settings);
+
+    /**
+     * Save a single interlock setting
+     *
+     * @param request interlock setting data
+     */
+    void saveInterlockSetting(Map<String, Object> request);
+
+    /**
+     * Delete an interlock setting
+     *
+     * @param interlockId interlock identifier
+     */
+    void deleteInterlockSetting(String interlockId);
 }

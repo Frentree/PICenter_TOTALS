@@ -20,7 +20,7 @@ import java.util.Map;
 @AllArgsConstructor
 public class ReportDetailResponse {
 
-    private Long targetId;
+    private String targetId;
 
     private String targetName;
 

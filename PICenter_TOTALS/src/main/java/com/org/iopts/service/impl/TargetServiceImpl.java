@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +44,7 @@ public class TargetServiceImpl implements TargetService {
     }
 
     @Override
-    public TargetResponse getTargetDetail(Long targetId) {
+    public TargetResponse getTargetDetail(String targetId) {
         log.debug("Getting target detail: targetId={}", targetId);
 
         TargetResponse target = targetMapper.selectTargetDetail(targetId);
@@ -54,7 +55,7 @@ public class TargetServiceImpl implements TargetService {
     }
 
     @Override
-    public List<UserResponse> getTargetUsers(Long targetId) {
+    public List<UserResponse> getTargetUsers(String targetId) {
         log.debug("Getting users for target: targetId={}", targetId);
 
         // Verify target exists
@@ -68,7 +69,7 @@ public class TargetServiceImpl implements TargetService {
 
     @Override
     @Transactional
-    public void assignUserToTarget(Long targetId, String userNo, String regUserNo) {
+    public void assignUserToTarget(String targetId, String userNo, String regUserNo) {
         log.info("Assigning user {} to target {}", userNo, targetId);
 
         // Check if assignment already exists
@@ -83,7 +84,7 @@ public class TargetServiceImpl implements TargetService {
 
     @Override
     @Transactional
-    public void unassignUserFromTarget(Long targetId, String userNo) {
+    public void unassignUserFromTarget(String targetId, String userNo) {
         log.info("Unassigning user {} from target {}", userNo, targetId);
 
         // Check if assignment exists
@@ -108,7 +109,7 @@ public class TargetServiceImpl implements TargetService {
     }
 
     @Override
-    public List<Map<String, Object>> getServerTopFiles(Long targetId, int topN) {
+    public List<Map<String, Object>> getServerTopFiles(String targetId, int topN) {
         log.debug("Getting top {} files for target: targetId={}", topN, targetId);
 
         // Verify target exists
@@ -158,11 +159,38 @@ public class TargetServiceImpl implements TargetService {
     }
 
     @Override
+    public PageResponse<Map<String, Object>> getGroupListPaged(int page, int size, String searchKeyword) {
+        log.debug("Getting paged group list: page={}, size={}, searchKeyword={}", page, size, searchKeyword);
+
+        Map<String, Object> params = new HashMap<>();
+        params.put("offset", page * size);
+        params.put("limit", size);
+        if (searchKeyword != null && !searchKeyword.isEmpty()) {
+            params.put("searchKeyword", searchKeyword);
+        }
+
+        List<Map<String, Object>> content = targetMapper.selectGroupListPaged(params);
+        long totalElements = targetMapper.countGroupListPaged(params);
+
+        return PageResponse.of(content, page, size, totalElements);
+    }
+
+    @Override
     @Transactional
     public void addGroup(String groupName, String parentId, String regUserNo) {
         log.info("Adding group: name={}, parentId={}", groupName, parentId);
-        targetMapper.insertGroup(groupName, parentId, regUserNo);
-        log.info("Group added successfully: name={}", groupName);
+
+        // parentId 정규화: '#', null, '' → 최상위 그룹(type=99), 그 외 → 하위 그룹(type=98)
+        int groupType;
+        if (parentId == null || parentId.isEmpty() || "#".equals(parentId)) {
+            parentId = "#";
+            groupType = 99;
+        } else {
+            groupType = 98;
+        }
+
+        targetMapper.insertGroup(groupName, parentId, groupType, regUserNo);
+        log.info("Group added successfully: name={}, type={}", groupName, groupType);
     }
 
     @Override
@@ -203,5 +231,34 @@ public class TargetServiceImpl implements TargetService {
         long totalElements = targetMapper.countExceptionList();
 
         return PageResponse.of(content, page, size, totalElements);
+    }
+
+    @Override
+    public List<Map<String, Object>> getGlobalFilters() {
+        log.debug("Getting global filters");
+        return targetMapper.selectGlobalFilters();
+    }
+
+    @Override
+    @Transactional
+    public void saveGlobalFilter(Map<String, Object> request, String userNo) {
+        log.info("Saving global filter by user: {}", userNo);
+
+        request.put("regUserNo", userNo);
+        targetMapper.insertGlobalFilter(request);
+        log.info("Global filter saved successfully");
+    }
+
+    @Override
+    @Transactional
+    public void deleteGlobalFilter(Long filterId) {
+        log.info("Deleting global filter: filterId={}", filterId);
+
+        int result = targetMapper.deleteGlobalFilter(filterId);
+        if (result == 0) {
+            throw new CustomException(ErrorCode.NOT_FOUND, "Global filter not found: " + filterId);
+        }
+
+        log.info("Global filter deleted successfully: filterId={}", filterId);
     }
 }

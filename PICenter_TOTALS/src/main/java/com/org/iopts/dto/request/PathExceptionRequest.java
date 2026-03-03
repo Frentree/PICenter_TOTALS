@@ -31,5 +31,5 @@ public class PathExceptionRequest {
 
     /** Target ID */
     @Schema(description = "타겟 ID", example = "1")
-    private Long targetId;
+    private String targetId;
 }

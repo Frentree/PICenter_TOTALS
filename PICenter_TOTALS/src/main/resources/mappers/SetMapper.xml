@@ -14,7 +14,12 @@
         NOTE: There is NO pi_page_settings table. Use pi_setting instead.
     -->
 
-    <!-- Select all settings (replaces the old selectPageSettings that referenced non-existent pi_page_settings) -->
+    <!--
+        TUNING: selectPageSettings
+        [인덱스 권장] pi_setting(status, seq, idx) 복합 인덱스 → WHERE + ORDER BY 커버
+            - CREATE INDEX idx_pi_setting_status_seq ON pi_setting(status, seq, idx);
+    -->
+    <!-- Select all settings -->
     <select id="selectPageSettings" resultType="map">
         SELECT
             s.idx         AS pageId,
@@ -28,20 +33,132 @@
         ORDER BY s.seq ASC, s.idx ASC
     </select>
 
-    <!-- Save (insert or update) a setting entry -->
-    <insert id="savePageSettings" parameterType="map">
+    <!-- Check if setting exists by idx -->
+    <select id="countSettingByIdx" parameterType="map" resultType="int">
+        SELECT COUNT(*) FROM pi_setting WHERE idx = #{pageId}
+    </select>
+
+    <!-- Insert new setting entry (pi_setting.idx에 auto_increment 없음 → MAX+1 생성) -->
+    <insert id="insertPageSetting" parameterType="map">
         INSERT INTO pi_setting (
-            name, detail_name, type, status, seq
+            idx, name, detail_name, type, status, seq
         ) VALUES (
+            (SELECT IFNULL(MAX(t.idx), 0) + 1 FROM pi_setting t),
             #{pageName}, #{pageUrl}, #{gradeNo},
             #{useYn}, #{sortOrder}
         )
-        ON DUPLICATE KEY UPDATE
-            name        = #{pageName},
+    </insert>
+
+    <!-- Update existing setting entry by idx -->
+    <update id="updatePageSetting" parameterType="map">
+        UPDATE pi_setting
+        SET name        = #{pageName},
             detail_name = #{pageUrl},
             type        = #{gradeNo},
             status      = #{useYn},
             seq         = #{sortOrder}
+        WHERE idx = #{pageId}
+    </update>
+
+    <!-- ==================== Node Management ==================== -->
+
+    <!--
+        Nodes are agents registered in pi_agents table.
+        pi_agents: agent_name(PK), ap_no(PK), agent_version, agent_connected(bit),
+                   agent_connected_ip, AGENT_USE, AGENT_PLATFORM, REGDATE
+    -->
+
+    <!--
+        TUNING: selectNodeList
+        [성능 이슈] 페이지네이션 없이 전체 에이전트 목록 조회 → 대량 데이터 시 메모리 이슈
+        [개선 방안] LIMIT/OFFSET 페이지네이션 추가 권장
+    -->
+    <select id="selectNodeList" resultType="map">
+        SELECT
+            a.AGENT_NAME            AS nodeId,
+            a.AGENT_NAME            AS nodeName,
+            a.AP_NO                 AS port,
+            a.AGENT_VERSION         AS agentVersion,
+            a.AGENT_CONNECTED_IP    AS ipAddress,
+            CASE WHEN a.agent_connected = 1 THEN 'CONNECTED' ELSE 'DISCONNECTED' END AS status,
+            a.AGENT_USE             AS useYn,
+            a.AGENT_PLATFORM        AS platform,
+            a.REGDATE               AS regDate,
+            a.AGENT_CONNECTED_START_DT AS connectedStartDt
+        FROM pi_agents a
+        ORDER BY a.AGENT_NAME ASC
+    </select>
+
+    <insert id="saveNode" parameterType="map">
+        INSERT INTO pi_agents (
+            AGENT_NAME, AP_NO, AGENT_VERSION, AGENT_CONNECTED_IP,
+            AGENT_USE, AGENT_PLATFORM, REGDATE
+        ) VALUES (
+            #{agentName}, #{apNo}, #{agentVersion}, #{connectedIp},
+            IFNULL(#{useYn}, 'Y'), #{platform}, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            AGENT_VERSION      = IFNULL(#{agentVersion}, AGENT_VERSION),
+            AGENT_CONNECTED_IP = IFNULL(#{connectedIp}, AGENT_CONNECTED_IP),
+            AGENT_USE          = IFNULL(#{useYn}, AGENT_USE),
+            AGENT_PLATFORM     = IFNULL(#{platform}, AGENT_PLATFORM)
     </insert>
+
+    <delete id="deleteNode">
+        DELETE FROM pi_agents
+        WHERE AGENT_NAME = #{nodeId}
+    </delete>
+
+    <!-- ==================== Interlock Settings ==================== -->
+
+    <!--
+        Interlock settings stored in pi_setting with a specific type or naming convention.
+        Using type = 2 to distinguish interlock settings from page settings (type = 1).
+    -->
+
+    <!--
+        TUNING: selectInterlockSettings
+        [인덱스 권장] pi_setting(type, seq, idx) 복합 인덱스 → WHERE + ORDER BY 커버
+            - CREATE INDEX idx_pi_setting_type_seq ON pi_setting(type, seq, idx);
+    -->
+    <select id="selectInterlockSettings" resultType="map">
+        SELECT
+            s.idx          AS interlockId,
+            s.name         AS interlockName,
+            s.detail_name  AS interlockUrl,
+            s.status       AS status,
+            s.type         AS interlockType,
+            s.seq          AS sortOrder
+        FROM pi_setting s
+        WHERE s.type = 2
+        ORDER BY s.seq ASC, s.idx ASC
+    </select>
+
+    <!-- Insert new interlock setting (pi_setting.idx에 auto_increment 없음 → MAX+1 생성) -->
+    <insert id="insertInterlockSetting" parameterType="map">
+        INSERT INTO pi_setting (
+            idx, name, detail_name, type, status, seq
+        ) VALUES (
+            (SELECT IFNULL(MAX(t.idx), 0) + 1 FROM pi_setting t),
+            #{settingName}, #{settingValue}, 2,
+            IFNULL(#{useYn}, 'Y'),
+            IFNULL(#{sortOrder}, (SELECT IFNULL(MAX(t2.seq), 0) + 1 FROM pi_setting t2 WHERE t2.type = 2))
+        )
+    </insert>
+
+    <!-- Update existing interlock setting by idx -->
+    <update id="updateInterlockSetting" parameterType="map">
+        UPDATE pi_setting
+        SET name        = #{settingName},
+            detail_name = #{settingValue},
+            status      = IFNULL(#{useYn}, status),
+            seq         = IFNULL(#{sortOrder}, seq)
+        WHERE idx = #{interlockId} AND type = 2
+    </update>
+
+    <delete id="deleteInterlockSetting">
+        DELETE FROM pi_setting
+        WHERE idx = #{interlockId} AND type = 2
+    </delete>
 
 </mapper>

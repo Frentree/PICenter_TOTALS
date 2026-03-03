@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 public class TargetUser {
 
     private Long id;
-    private Long targetId;
+    private String targetId;
     private String userNo;
     private LocalDateTime regDt;
     private String regUser;

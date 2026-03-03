@@ -10,15 +10,15 @@
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/css/common.css">
     <style>
-        /* Page title */
-        .page_title_bar {
-            margin-bottom: 10px;
+        /* Page title - 통일 스타일 */
+        .page_title_area {
+            padding: 20px 0 10px 0;
         }
-        .page_title_bar h3 {
-            font-size: 20px;
-            font-weight: 400;
-            color: #222;
-            padding-top: 10px;
+        .page_title_area h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0c4da2;
+            line-height: 30px;
         }
 
         /* ===== Search table (legacy user_info style, max-width 1246px) ===== */
@@ -51,15 +51,15 @@
             border: 1px solid #c8ced3;
             background: #fff;
         }
-        .search_table td input[type="text"],
-        .search_table td input[type="date"] {
-            height: 27px;
+        .search_table td input[type="text"] {
+            height: 30px;
             padding: 0 5px;
             border: 1px solid #c8ced3;
             font-size: 12px;
             font-family: 'Malgun Gothic', dotum, sans-serif;
             color: #333;
         }
+        /* date input → common.css (width: 140px) */
         .search_table td input[type="text"]:read-only {
             background-color: #f5f5f5;
         }
@@ -72,31 +72,6 @@
         }
 
         /* Buttons */
-        .btn_search_rm {
-            height: 27px;
-            padding: 0 12px;
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") no-repeat center;
-            background-color: #0c4da2;
-            border: none;
-            width: 30px;
-            cursor: pointer;
-            border-radius: 2px;
-        }
-        .btn_search_rm:hover {
-            background-color: #0a3f8a;
-        }
-        .btn_down {
-            background-color: #fff;
-            border: 1px solid #cdcdcd;
-            color: #000;
-            font-size: 12px;
-            font-weight: 500;
-            padding: 5px 14px;
-            cursor: pointer;
-            border-radius: 0.25rem;
-            white-space: nowrap;
-        }
-        .btn_down:hover { background-color: #e4e4e4; }
         .btn_clear {
             background-color: #fff;
             border: 1px solid #cdcdcd;
@@ -105,7 +80,7 @@
             font-weight: 400;
             padding: 0;
             width: 55px;
-            height: 27px;
+            height: 30px;
             cursor: pointer;
             border-radius: 0.25rem;
         }
@@ -228,14 +203,6 @@
             margin-top: 10px;
         }
 
-        /* ===== Footer ===== */
-        .rm_footer {
-            text-align: center;
-            font-size: 11px;
-            color: #aaa;
-            padding: 10px 0;
-            margin-top: 20px;
-        }
     </style>
 </head>
 <body>
@@ -247,15 +214,56 @@
     </div>
     <div class="header_center">
         <ul class="gnb_menu">
-            <li><a href="/picenter_dashboard">대시보드</a></li>
-            <li><a href="/picenter_target">타겟</a></li>
-            <li><a href="/picenter_detection">검출</a></li>
-            <li><a href="/picenter_scan">스캔</a></li>
-            <li class="on"><a href="/picenter_report">보고서</a></li>
+            <li><a href="/picenter_dashboard">Dashboard</a></li>
+            <li><a href="/picenter_target">대상 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_target">대상조회 및 현행화</a></li>
+                    <li><a href="/picenter_target_group">대상 그룹 관리</a></li>
+                    <li><a href="/picenter_global_filters">예외 관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_detection">결과 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_detection">결과조회</a></li>
+                    <li><a href="/picenter_exception">조치계획 승인요청</a></li>
+                    <li><a href="/picenter_approval">결재 진행현황</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_scan">검색 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_scan">검색 실행</a></li>
+                    <li><a href="/picenter_search_regist">검색 스케줄</a></li>
+                    <li><a href="/picenter_search_list">검색 현황</a></li>
+                </ul>
+            </li>
+            <li class="on"><a href="/picenter_report">보고서</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_report">통합 보고서</a></li>
+                    <li><a href="/picenter_report_except">예외보고서</a></li>
+                </ul>
+            </li>
             <li><a href="/picenter_statistics">통계</a></li>
-            <li><a href="/picenter_user">사용자</a></li>
-            <li><a href="/picenter_notice">공지사항</a></li>
-            <li><a href="/picenter_setting">설정</a></li>
+            <li><a href="/picenter_user">사용자</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_user">사용자 관리</a></li>
+                    <li><a href="/picenter_userlog">로그관리</a></li>
+                    <li><a href="/picenter_user_lockdown">잠금관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_notice">커뮤니티</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_notice">공지사항</a></li>
+                    <li><a href="/picenter_faq">FAQ</a></li>
+                    <li><a href="/picenter_download">프로그램 다운로드</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_setting">설정</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_setting">시스템설정</a></li>
+                    <li><a href="/picenter_node">무결성 체크</a></li>
+                    <li><a href="/picenter_interlock">통합 관리</a></li>
+                </ul>
+            </li>
         </ul>
     </div>
     <div class="header_right">
@@ -265,8 +273,8 @@
 </div>
 
 <!-- Content -->
-<div class="main">
-    <div class="page_title_bar">
+<div class="container" style="width:100%; display:inline-block; position:relative; padding:0 65px 20px 65px; background:#f9f9f9; margin-top:55px;">
+    <div class="page_title_area">
         <h3>통합 보고서</h3>
     </div>
 
@@ -283,9 +291,9 @@
                         </td>
                         <th>기간별</th>
                         <td>
-                            <input type="date" id="SCH_FROM_DATE" style="text-align:center; width:186px;">
+                            <input type="date" id="SCH_FROM_DATE" style="text-align:center; width:130px;">
                             <span class="date_sep">~</span>
-                            <input type="date" id="SCH_TO_DATE" style="text-align:center; width:186px;">
+                            <input type="date" id="SCH_TO_DATE" style="text-align:center; width:130px;">
                         </td>
                         <th>경로</th>
                         <td style="width:255px;">
@@ -335,8 +343,26 @@
 </div>
 
 <!-- Footer -->
-<div class="rm_footer">Copyright &copy; PICenter. All Rights Reserved.</div>
+<!-- Footer removed for UI consistency -->
 
+<script>
+// Submenu hover show/hide
+(function() {
+    var menuItems = document.querySelectorAll('.gnb_menu > li');
+    for (var i = 0; i < menuItems.length; i++) {
+        (function(item) {
+            var sub = item.querySelector('.gnb_sub_menu');
+            if (!sub) return;
+            item.addEventListener('mouseenter', function() {
+                sub.style.display = 'block';
+            });
+            item.addEventListener('mouseleave', function() {
+                sub.style.display = 'none';
+            });
+        })(menuItems[i]);
+    }
+})();
+</script>
 <script>
 (function() {
     'use strict';
@@ -472,6 +498,8 @@
     function loadReport(page) {
         document.getElementById('errorMsg').style.display = 'none';
         var url = '/api/v1/reports/summary?' + buildQuery(page);
+
+        document.getElementById('reportBody').innerHTML = '<tr class="loading_row"><td colspan="7"><div class="loading_indicator"><span class="loading_spin"></span> 데이터를 불러오는 중입니다...</div></td></tr>';
 
         api(url).then(function(data) {
             if (!data) return;
@@ -645,5 +673,7 @@
 
 })();
 </script>
+<script src="/js/common_menu.js?v=1"></script>
+<script src="/js/table_sort.js?v=3"></script>
 </body>
 </html>

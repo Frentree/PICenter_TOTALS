@@ -60,7 +60,7 @@ public class TargetController {
     @Operation(summary = "Get target detail", description = "Get target detail by target ID")
     @GetMapping("/{targetId}")
     public ApiResponse<TargetResponse> getTargetDetail(
-            @Parameter(description = "Target ID", example = "1") @PathVariable Long targetId) {
+            @Parameter(description = "Target ID", example = "1") @PathVariable String targetId) {
         log.info("Get target detail: targetId={}", targetId);
         TargetResponse response = targetService.getTargetDetail(targetId);
         return ApiResponse.success(response);
@@ -75,7 +75,7 @@ public class TargetController {
     @Operation(summary = "Get target users", description = "Get users assigned to a target")
     @GetMapping("/{targetId}/users")
     public ApiResponse<List<UserResponse>> getTargetUsers(
-            @Parameter(description = "Target ID", example = "1") @PathVariable Long targetId) {
+            @Parameter(description = "Target ID", example = "1") @PathVariable String targetId) {
         log.info("Get target users: targetId={}", targetId);
         List<UserResponse> response = targetService.getTargetUsers(targetId);
         return ApiResponse.success(response);
@@ -90,7 +90,7 @@ public class TargetController {
     @Operation(summary = "Assign user to target", description = "Assign a user to a target")
     @PostMapping("/{targetId}/users")
     public ApiResponse<Void> assignUserToTarget(
-            @Parameter(description = "Target ID", example = "1") @PathVariable Long targetId,
+            @Parameter(description = "Target ID", example = "1") @PathVariable String targetId,
             @Valid @RequestBody TargetUserRequest request,
             Authentication authentication) {
         String regUserNo = (String) authentication.getPrincipal();
@@ -108,7 +108,7 @@ public class TargetController {
     @Operation(summary = "Unassign user from target", description = "Remove a user assignment from a target")
     @DeleteMapping("/{targetId}/users/{userNo}")
     public ApiResponse<Void> unassignUserFromTarget(
-            @Parameter(description = "Target ID", example = "1") @PathVariable Long targetId,
+            @Parameter(description = "Target ID", example = "1") @PathVariable String targetId,
             @Parameter(description = "User number", example = "1") @PathVariable String userNo) {
         log.info("Unassign user from target: targetId={}, userNo={}", targetId, userNo);
         targetService.unassignUserFromTarget(targetId, userNo);
@@ -140,7 +140,7 @@ public class TargetController {
     @Operation(summary = "Get server top files", description = "Get top detection files for a server target")
     @GetMapping("/servers/{targetId}/top-files")
     public ApiResponse<List<Map<String, Object>>> getServerTopFiles(
-            @Parameter(description = "Target ID", example = "1") @PathVariable Long targetId,
+            @Parameter(description = "Target ID", example = "1") @PathVariable String targetId,
             @Parameter(description = "Top N count", example = "10") @RequestParam(defaultValue = "10") int topN) {
         log.info("Get server top files: targetId={}, topN={}", targetId, topN);
         List<Map<String, Object>> response = targetService.getServerTopFiles(targetId, topN);
@@ -209,8 +209,15 @@ public class TargetController {
      */
     @Operation(summary = "Get group list", description = "Get group tree structure")
     @GetMapping("/groups")
-    public ApiResponse<List<Map<String, Object>>> getGroupList() {
-        log.info("Get group list");
+    public ApiResponse<?> getGroupList(
+            @Parameter(description = "Page number") @RequestParam(required = false) Integer page,
+            @Parameter(description = "Page size") @RequestParam(required = false) Integer size,
+            @Parameter(description = "Search keyword") @RequestParam(required = false) String searchKeyword) {
+        log.info("Get group list: page={}, searchKeyword={}", page, searchKeyword);
+        if (page != null && size != null) {
+            PageResponse<Map<String, Object>> response = targetService.getGroupListPaged(page, size, searchKeyword);
+            return ApiResponse.success(response);
+        }
         List<Map<String, Object>> response = targetService.getGroupList();
         return ApiResponse.success(response);
     }
@@ -224,10 +231,11 @@ public class TargetController {
     @Operation(summary = "Add group", description = "Add a new group")
     @PostMapping("/groups")
     public ApiResponse<Void> addGroup(
-            @Parameter(description = "Group name", example = "개발팀 서버") @RequestParam String groupName,
-            @Parameter(description = "Parent group ID", example = "GRP001") @RequestParam(required = false) String parentId,
+            @RequestBody Map<String, String> request,
             Authentication authentication) {
         String regUserNo = (String) authentication.getPrincipal();
+        String groupName = request.get("groupName");
+        String parentId = request.getOrDefault("parentId", request.get("parentGroupName"));
         log.info("Add group: name={}, parentId={}", groupName, parentId);
         targetService.addGroup(groupName, parentId, regUserNo);
         return ApiResponse.success();
@@ -243,7 +251,8 @@ public class TargetController {
     @PutMapping("/groups/{groupId}")
     public ApiResponse<Void> updateGroup(
             @Parameter(description = "Group ID", example = "GRP001") @PathVariable String groupId,
-            @Parameter(description = "Group name", example = "개발팀 서버") @RequestParam String groupName) {
+            @RequestBody Map<String, String> request) {
+        String groupName = request.get("groupName");
         log.info("Update group: groupId={}, name={}", groupId, groupName);
         targetService.updateGroup(groupId, groupName);
         return ApiResponse.success();
@@ -292,5 +301,47 @@ public class TargetController {
         log.info("Get exception list: page={}, size={}", page, size);
         PageResponse<Map<String, Object>> response = targetService.getExceptionList(page, size);
         return ApiResponse.success(response);
+    }
+
+    /**
+     * Get global filters
+     *
+     * New: GET /api/v1/targets/global-filters
+     */
+    @Operation(summary = "Get global filters", description = "Get global filter list")
+    @GetMapping("/global-filters")
+    public ApiResponse<List<Map<String, Object>>> getGlobalFilters() {
+        log.info("Get global filters");
+        List<Map<String, Object>> response = targetService.getGlobalFilters();
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * Save global filter
+     *
+     * New: POST /api/v1/targets/global-filters
+     */
+    @Operation(summary = "Save global filter", description = "Create or update a global filter")
+    @PostMapping("/global-filters")
+    public ApiResponse<Void> saveGlobalFilter(
+            @RequestBody Map<String, Object> request,
+            Authentication authentication) {
+        String userNo = (String) authentication.getPrincipal();
+        log.info("Save global filter by user: {}", userNo);
+        targetService.saveGlobalFilter(request, userNo);
+        return ApiResponse.success();
+    }
+
+    /**
+     * Delete global filter
+     *
+     * New: DELETE /api/v1/targets/global-filters/{filterId}
+     */
+    @Operation(summary = "Delete global filter", description = "Delete a global filter")
+    @DeleteMapping("/global-filters/{filterId}")
+    public ApiResponse<Void> deleteGlobalFilter(@PathVariable Long filterId) {
+        log.info("Delete global filter: {}", filterId);
+        targetService.deleteGlobalFilter(filterId);
+        return ApiResponse.success();
     }
 }

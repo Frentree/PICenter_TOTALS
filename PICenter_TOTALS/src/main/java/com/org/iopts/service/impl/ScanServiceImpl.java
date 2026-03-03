@@ -29,12 +29,18 @@ public class ScanServiceImpl implements ScanService {
     private final ScanMapper scanMapper;
 
     @Override
-    public PageResponse<ScheduleResponse> getScheduleList(int page, int size) {
-        log.debug("Getting schedule list: page={}, size={}", page, size);
+    public PageResponse<ScheduleResponse> getScheduleList(int page, int size, String hostName, String status) {
+        log.debug("Getting schedule list: page={}, size={}, hostName={}, status={}", page, size, hostName, status);
 
         int offset = page * size;
-        List<ScheduleResponse> content = scanMapper.selectScheduleList(offset, size);
-        long totalElements = scanMapper.countScheduleList();
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("offset", offset);
+        params.put("limit", size);
+        if (hostName != null && !hostName.isEmpty()) params.put("hostName", hostName);
+        if (status != null && !status.isEmpty()) params.put("status", status);
+
+        List<ScheduleResponse> content = scanMapper.selectScheduleListFiltered(params);
+        long totalElements = scanMapper.countScheduleListFiltered(params);
 
         return PageResponse.of(content, page, size, totalElements);
     }
@@ -142,12 +148,19 @@ public class ScanServiceImpl implements ScanService {
     }
 
     @Override
-    public PageResponse<Map<String, Object>> getScanHistory(int page, int size, String targetId) {
+    public PageResponse<Map<String, Object>> getScanHistory(int page, int size, String targetId, String hostName, String status) {
         log.debug("Getting scan history: page={}, size={}, targetId={}", page, size, targetId);
 
         int offset = page * size;
-        List<Map<String, Object>> content = scanMapper.selectScanHistory(offset, size, targetId);
-        long totalElements = scanMapper.countScanHistory(targetId);
+        java.util.Map<String, Object> params = new java.util.HashMap<>();
+        params.put("offset", offset);
+        params.put("limit", size);
+        if (targetId != null && !targetId.isEmpty()) params.put("targetId", targetId);
+        if (hostName != null && !hostName.isEmpty()) params.put("hostName", hostName);
+        if (status != null && !status.isEmpty()) params.put("status", status);
+
+        List<Map<String, Object>> content = scanMapper.selectScanHistoryFiltered(params);
+        long totalElements = scanMapper.countScanHistoryFiltered(params);
 
         return PageResponse.of(content, page, size, totalElements);
     }

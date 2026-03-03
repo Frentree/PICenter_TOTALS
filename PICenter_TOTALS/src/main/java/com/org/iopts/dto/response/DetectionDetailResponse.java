@@ -52,6 +52,9 @@ public class DetectionDetailResponse {
     /** Processing status */
     private String processStatus;
 
+    /** Processing status label (미처리/대기/승인/반려) */
+    private String processStatusLabel;
+
     /** Processing type */
     private String processType;
 

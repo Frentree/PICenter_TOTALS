@@ -48,8 +48,15 @@ public class DetectionController {
             @Parameter(description = "Data type name filter", example = "주민등록번호") @RequestParam(required = false) String datatypeName,
             @Parameter(description = "Start date (yyyy-MM-dd)", example = "2026-01-01") @RequestParam(required = false) String startDate,
             @Parameter(description = "End date (yyyy-MM-dd)", example = "2026-12-31") @RequestParam(required = false) String endDate,
+            @Parameter(description = "Location/path filter") @RequestParam(required = false) String location,
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size) {
+
+        // Map 'location' to searchType=FILE_PATH, searchKeyword=location
+        if (location != null && !location.isEmpty() && (searchKeyword == null || searchKeyword.isEmpty())) {
+            searchType = "FILE_PATH";
+            searchKeyword = location;
+        }
 
         DetectionSearchRequest request = DetectionSearchRequest.builder()
                 .searchType(searchType)
@@ -130,10 +137,11 @@ public class DetectionController {
     @PostMapping("/{findId}/remediate")
     public ApiResponse<Void> remediateDetection(
             @Parameter(description = "Detection ID (hash_id)", example = "abc123") @PathVariable String findId,
-            @Parameter(description = "Remediation type", example = "DELETE") @RequestParam String remediationType,
+            @RequestBody Map<String, String> request,
             Authentication authentication) {
 
         String userNo = (String) authentication.getPrincipal();
+        String remediationType = request.get("remediationType");
         log.info("Remediate detection - findId: {}, type: {}, userNo: {}",
                 findId, remediationType, userNo);
 

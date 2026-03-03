@@ -56,6 +56,19 @@ public class FaqServiceImpl implements FaqService {
     }
 
     /**
+     * Get FAQ detail by ID
+     */
+    @Override
+    public FaqResponse getFaqDetail(Long faqId) {
+        log.debug("getFaqDetail - faqId: {}", faqId);
+        FaqResponse faq = faqMapper.selectFaqDetail(faqId);
+        if (faq == null) {
+            throw new CustomException(ErrorCode.FAQ_NOT_FOUND);
+        }
+        return faq;
+    }
+
+    /**
      * Create a new FAQ
      */
     @Override

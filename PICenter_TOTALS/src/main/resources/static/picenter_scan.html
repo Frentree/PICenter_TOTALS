@@ -6,19 +6,19 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta http-equiv="Cache-Control" content="no-cache">
     <meta http-equiv="Pragma" content="no-cache">
-    <title>PICenter - 스캔 관리</title>
+    <title>PICenter - 검색 관리</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/css/common.css">
     <style>
-        /* Page title */
-        .page_title_bar {
-            margin-bottom: 10px;
+        /* Page title - 통일 스타일 */
+        .page_title_area {
+            padding: 20px 0 10px 0;
         }
-        .page_title_bar h2 {
+        .page_title_area h3 {
             font-size: 16px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 4px;
+            font-weight: 600;
+            color: #0c4da2;
+            line-height: 30px;
         }
 
         /* ===== Search table (legacy table-based) ===== */
@@ -47,7 +47,7 @@
             background: #fff;
         }
         .search_table td input[type="text"] {
-            height: 24px;
+            height: 30px;
             padding: 0 6px;
             border: 1px solid #c8ced3;
             font-size: 12px;
@@ -56,7 +56,7 @@
             width: 180px;
         }
         .search_table td select {
-            height: 24px;
+            height: 30px;
             padding: 0 6px;
             border: 1px solid #c8ced3;
             font-size: 12px;
@@ -65,21 +65,6 @@
             background: #fff;
             width: 140px;
         }
-        .btn_search_rm {
-            height: 26px;
-            padding: 0 16px;
-            background: #0c4da2;
-            color: #fff;
-            border: none;
-            font-size: 12px;
-            font-family: 'Malgun Gothic', dotum, sans-serif;
-            cursor: pointer;
-            border-radius: 2px;
-        }
-        .btn_search_rm:hover {
-            background: #0a3f8a;
-        }
-
         /* ===== Tab Bar (Legacy underline style) ===== */
         .legacy_tabs {
             display: flex;
@@ -224,14 +209,6 @@
             margin-top: 10px;
         }
 
-        /* ===== Footer ===== */
-        .rm_footer {
-            text-align: center;
-            font-size: 11px;
-            color: #aaa;
-            padding: 10px 0;
-            margin-top: 20px;
-        }
     </style>
 </head>
 <body>
@@ -243,15 +220,56 @@
     </div>
     <div class="header_center">
         <ul class="gnb_menu">
-            <li><a href="/picenter_dashboard">대시보드</a></li>
-            <li><a href="/picenter_target">타겟</a></li>
-            <li><a href="/picenter_detection">검출</a></li>
-            <li class="on"><a href="/picenter_scan">스캔</a></li>
-            <li><a href="/picenter_report">보고서</a></li>
+            <li><a href="/picenter_dashboard">Dashboard</a></li>
+            <li><a href="/picenter_target">대상 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_target">대상조회 및 현행화</a></li>
+                    <li><a href="/picenter_target_group">대상 그룹 관리</a></li>
+                    <li><a href="/picenter_global_filters">예외 관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_detection">결과 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_detection">결과조회</a></li>
+                    <li><a href="/picenter_exception">조치계획 승인요청</a></li>
+                    <li><a href="/picenter_approval">결재 진행현황</a></li>
+                </ul>
+            </li>
+            <li class="on"><a href="/picenter_scan">검색 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_scan">검색 실행</a></li>
+                    <li><a href="/picenter_search_regist">검색 스케줄</a></li>
+                    <li><a href="/picenter_search_list">검색 현황</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_report">보고서</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_report">통합 보고서</a></li>
+                    <li><a href="/picenter_report_except">예외보고서</a></li>
+                </ul>
+            </li>
             <li><a href="/picenter_statistics">통계</a></li>
-            <li><a href="/picenter_user">사용자</a></li>
-            <li><a href="/picenter_notice">공지사항</a></li>
-            <li><a href="/picenter_setting">설정</a></li>
+            <li><a href="/picenter_user">사용자</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_user">사용자 관리</a></li>
+                    <li><a href="/picenter_userlog">로그관리</a></li>
+                    <li><a href="/picenter_user_lockdown">잠금관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_notice">커뮤니티</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_notice">공지사항</a></li>
+                    <li><a href="/picenter_faq">FAQ</a></li>
+                    <li><a href="/picenter_download">프로그램 다운로드</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_setting">설정</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_setting">시스템설정</a></li>
+                    <li><a href="/picenter_node">무결성 체크</a></li>
+                    <li><a href="/picenter_interlock">통합 관리</a></li>
+                </ul>
+            </li>
         </ul>
     </div>
     <div class="header_right">
@@ -261,9 +279,9 @@
 </div>
 
 <!-- Content -->
-<div class="main">
-    <div class="page_title_bar">
-        <h2>스캔 관리</h2>
+<div class="container" style="width:100%; display:inline-block; position:relative; padding:0 65px 20px 65px; background:#f9f9f9; margin-top:55px;">
+    <div class="page_title_area">
+        <h3>검색 관리</h3>
     </div>
 
     <!-- Search Area -->
@@ -277,12 +295,11 @@
             <td>
                 <select id="schStatus">
                     <option value="">전체</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="running">Running</option>
-                    <option value="complete">Complete</option>
-                    <option value="error">Error</option>
-                    <option value="pending">Pending</option>
+                    <option value="scheduled">예약됨</option>
+                    <option value="running">실행중</option>
+                    <option value="completed">완료</option>
+                    <option value="failed">실패</option>
+                    <option value="stopped">중지</option>
                 </select>
             </td>
             <td style="width:60px; text-align:center;">
@@ -307,16 +324,15 @@
                 <thead>
                     <tr>
                         <th style="width:50px;">No</th>
-                        <th style="width:180px;">스케줄명</th>
-                        <th style="width:150px;">호스트</th>
+                        <th>스케줄명</th>
+                        <th style="width:150px;">정책명</th>
                         <th style="width:90px;">상태</th>
-                        <th style="width:160px;">시작일</th>
-                        <th style="width:160px;">종료일</th>
-                        <th style="width:140px;">정책명</th>
+                        <th style="width:150px;">등록일</th>
+                        <th style="width:150px;">다음실행</th>
                     </tr>
                 </thead>
                 <tbody id="schedulesBody">
-                    <tr><td colspan="7" class="rm_empty">데이터를 불러오는 중...</td></tr>
+                    <tr><td colspan="6" class="rm_empty">데이터를 불러오는 중...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -332,16 +348,15 @@
                 <thead>
                     <tr>
                         <th style="width:50px;">No</th>
-                        <th style="width:180px;">스케줄명</th>
-                        <th style="width:150px;">호스트</th>
+                        <th>대상명</th>
+                        <th style="width:120px;">대상IP</th>
                         <th style="width:90px;">상태</th>
-                        <th style="width:160px;">시작일</th>
-                        <th style="width:160px;">종료일</th>
-                        <th style="width:140px;">정책명</th>
+                        <th style="width:150px;">시작일시</th>
+                        <th style="width:150px;">등록일</th>
                     </tr>
                 </thead>
                 <tbody id="historyBody">
-                    <tr><td colspan="7" class="rm_empty">스캔이력 탭을 선택하면 데이터가 조회됩니다.</td></tr>
+                    <tr><td colspan="6" class="rm_empty">스캔이력 탭을 선택하면 데이터가 조회됩니다.</td></tr>
                 </tbody>
             </table>
         </div>
@@ -375,9 +390,26 @@
     <div id="errorMsg" class="error_box_legacy" style="display:none;"></div>
 </div>
 
-<!-- Footer -->
-<div class="rm_footer">Copyright &copy; PICenter. All Rights Reserved.</div>
+<!-- Footer removed for UI consistency -->
 
+<script>
+// Submenu hover show/hide
+(function() {
+    var menuItems = document.querySelectorAll('.gnb_menu > li');
+    for (var i = 0; i < menuItems.length; i++) {
+        (function(item) {
+            var sub = item.querySelector('.gnb_sub_menu');
+            if (!sub) return;
+            item.addEventListener('mouseenter', function() {
+                sub.style.display = 'block';
+            });
+            item.addEventListener('mouseleave', function() {
+                sub.style.display = 'none';
+            });
+        })(menuItems[i]);
+    }
+})();
+</script>
 <script>
 (function() {
     'use strict';
@@ -491,6 +523,11 @@
     // Data loader
     // ======================================================================
     function loadTabData(tabName, page) {
+        var bodyMap = {schedules: 'schedulesBody', history: 'historyBody', policies: 'policiesBody'};
+        var colsMap = {schedules: 6, history: 6, policies: 6};
+        var bid = bodyMap[tabName];
+        if (bid) document.getElementById(bid).innerHTML = '<tr class="loading_row"><td colspan="' + colsMap[tabName] + '"><div class="loading_indicator"><span class="loading_spin"></span> 데이터를 불러오는 중입니다...</div></td></tr>';
+
         var urlMap = {
             schedules: '/api/v1/scans/schedules?' + buildQuery(page),
             history:   '/api/v1/scans/history?' + buildQuery(page),
@@ -499,28 +536,58 @@
 
         document.getElementById('errorMsg').style.display = 'none';
 
-        api(urlMap[tabName]).then(function(data) {
-            if (!data) return;
-            if (data.success && data.data) {
-                tabLoaded[tabName] = true;
-                renderTabTable(tabName, data.data, page);
-            } else if (Array.isArray(data)) {
-                tabLoaded[tabName] = true;
-                renderTabTable(tabName, { content: data, totalPages: 1 }, page);
-            } else {
-                showError(data.error ? data.error.message : tabName + ' 데이터를 불러오는데 실패했습니다.');
+        if (tabName === 'history') {
+            Promise.all([
+                api(urlMap[tabName]),
+                api('/api/v1/targets?page=0&size=9999')
+            ]).then(function(results) {
+                var data = results[0];
+                var targetsData = results[1];
+                if (!data) return;
+                var nameMap = {};
+                if (targetsData && targetsData.success && targetsData.data) {
+                    var tList = targetsData.data.content || targetsData.data || [];
+                    if (Array.isArray(tList)) {
+                        for (var ti = 0; ti < tList.length; ti++) {
+                            nameMap[tList[ti].targetId] = tList[ti].targetName || tList[ti].hostName || tList[ti].targetId;
+                        }
+                    }
+                }
+                if (data.success && data.data) {
+                    tabLoaded[tabName] = true;
+                    renderTabTable(tabName, data.data, page, nameMap);
+                } else {
+                    showError(data.error ? data.error.message : '스캔이력을 불러오는데 실패했습니다.');
+                    renderEmptyTab(tabName);
+                }
+            }).catch(function() {
+                showError('서버 연결에 실패했습니다.');
                 renderEmptyTab(tabName);
-            }
-        }).catch(function() {
-            showError('서버 연결에 실패했습니다.');
-            renderEmptyTab(tabName);
-        });
+            });
+        } else {
+            api(urlMap[tabName]).then(function(data) {
+                if (!data) return;
+                if (data.success && data.data) {
+                    tabLoaded[tabName] = true;
+                    renderTabTable(tabName, data.data, page, {});
+                } else if (Array.isArray(data)) {
+                    tabLoaded[tabName] = true;
+                    renderTabTable(tabName, { content: data, totalPages: 1 }, page, {});
+                } else {
+                    showError(data.error ? data.error.message : tabName + ' 데이터를 불러오는데 실패했습니다.');
+                    renderEmptyTab(tabName);
+                }
+            }).catch(function() {
+                showError('서버 연결에 실패했습니다.');
+                renderEmptyTab(tabName);
+            });
+        }
     }
 
     // ======================================================================
     // Render table per tab
     // ======================================================================
-    function renderTabTable(tabName, pageData, page) {
+    function renderTabTable(tabName, pageData, page, targetNameMap) {
         var items = pageData.content || pageData.list || [];
         if (Array.isArray(pageData) && !pageData.content) {
             items = pageData;
@@ -528,8 +595,8 @@
         var totalPages = pageData.totalPages || 1;
 
         var tbodyId, colCount;
-        if (tabName === 'schedules') { tbodyId = 'schedulesBody'; colCount = 7; }
-        else if (tabName === 'history') { tbodyId = 'historyBody'; colCount = 7; }
+        if (tabName === 'schedules') { tbodyId = 'schedulesBody'; colCount = 6; }
+        else if (tabName === 'history') { tbodyId = 'historyBody'; colCount = 6; }
         else { tbodyId = 'policiesBody'; colCount = 6; }
 
         var tbody = document.getElementById(tbodyId);
@@ -548,30 +615,29 @@
             for (var i = 0; i < items.length; i++) {
                 var s = items[i];
                 var sNo = page * PAGE_SIZE + i + 1;
-                var sBadge = getStatusBadge(s.status || s.STATUS);
+                var sBadge = getStatusBadge(s.statusYn || s.status);
                 html += '<tr>' +
                     '<td>' + sNo + '</td>' +
-                    '<td class="td_left">' + escHtml(s.scheduleLabel || s.schedule_label || s.label || s.SCHEDULE_LABEL || '-') + '</td>' +
-                    '<td>' + escHtml(s.targetName || s.target_name || s.hostName || s.TARGET_NAME || '-') + '</td>' +
+                    '<td class="td_left">' + escHtml(s.scheduleName || '-') + '</td>' +
+                    '<td class="td_left">' + escHtml(s.policyName || '-') + '</td>' +
                     '<td>' + sBadge + '</td>' +
-                    '<td>' + (s.startDate || s.start_date || s.startedAt || s.START_DATE || '-') + '</td>' +
-                    '<td>' + (s.endDate || s.end_date || s.endedAt || s.END_DATE || '-') + '</td>' +
-                    '<td>' + escHtml(s.policyName || s.policy_name || s.POLICY_NAME || '-') + '</td>' +
+                    '<td>' + escHtml(s.regDt || '-') + '</td>' +
+                    '<td>' + formatTimestamp(s.nextRunDt) + '</td>' +
                     '</tr>';
             }
         } else if (tabName === 'history') {
             for (var j = 0; j < items.length; j++) {
                 var h = items[j];
                 var hNo = page * PAGE_SIZE + j + 1;
-                var hBadge = getStatusBadge(h.status || h.STATUS);
+                var hBadge = getStatusBadge(h.scanStatus || h.status);
+                var hName = (targetNameMap && targetNameMap[h.targetId]) || h.targetName || h.targetId || '-';
                 html += '<tr>' +
                     '<td>' + hNo + '</td>' +
-                    '<td class="td_left">' + escHtml(h.scheduleLabel || h.schedule_label || h.label || h.SCHEDULE_LABEL || '-') + '</td>' +
-                    '<td>' + escHtml(h.targetName || h.target_name || h.hostName || h.TARGET_NAME || '-') + '</td>' +
+                    '<td class="td_left">' + escHtml(hName) + '</td>' +
+                    '<td>' + escHtml(h.targetIp || '-') + '</td>' +
                     '<td>' + hBadge + '</td>' +
-                    '<td>' + (h.startDate || h.start_date || h.startedAt || h.START_DATE || '-') + '</td>' +
-                    '<td>' + (h.endDate || h.end_date || h.endedAt || h.END_DATE || '-') + '</td>' +
-                    '<td>' + escHtml(h.policyName || h.policy_name || h.POLICY_NAME || '-') + '</td>' +
+                    '<td>' + formatTimestamp(h.startDt) + '</td>' +
+                    '<td>' + escHtml(h.regDt || '-') + '</td>' +
                     '</tr>';
             }
         } else if (tabName === 'policies') {
@@ -604,8 +670,8 @@
 
     function renderEmptyTab(tabName) {
         var tbodyId, colCount;
-        if (tabName === 'schedules') { tbodyId = 'schedulesBody'; colCount = 7; }
-        else if (tabName === 'history') { tbodyId = 'historyBody'; colCount = 7; }
+        if (tabName === 'schedules') { tbodyId = 'schedulesBody'; colCount = 6; }
+        else if (tabName === 'history') { tbodyId = 'historyBody'; colCount = 6; }
         else { tbodyId = 'policiesBody'; colCount = 6; }
 
         document.getElementById(tbodyId).innerHTML =
@@ -652,15 +718,36 @@
     // ======================================================================
     // Status badges
     // ======================================================================
+    function formatTimestamp(ts) {
+        if (!ts) return '-';
+        var n = Number(ts);
+        if (isNaN(n) || n <= 0) return escHtml(String(ts));
+        var d = new Date(n * 1000);
+        return d.getFullYear() + '-' +
+            String(d.getMonth() + 1).padStart(2, '0') + '-' +
+            String(d.getDate()).padStart(2, '0') + ' ' +
+            String(d.getHours()).padStart(2, '0') + ':' +
+            String(d.getMinutes()).padStart(2, '0');
+    }
+
     function getStatusBadge(status) {
         if (!status) return '<span class="badge_status badge_default">-</span>';
         var s = status.toLowerCase();
+        var labelMap = {
+            'scheduled': '예약됨', 'running': '실행중', 'in_progress': '진행중',
+            'scanning': '스캔중', 'completed': '완료', 'complete': '완료',
+            'success': '성공', 'active': '활성', 'enabled': '활성',
+            'inactive': '비활성', 'stopped': '중지', 'disabled': '비활성',
+            'failed': '실패', 'error': '오류', 'timeout': '시간초과',
+            'pending': '대기', 'waiting': '대기'
+        };
+        var label = labelMap[s] || status;
         var cls = 'badge_default';
         if (s === 'active' || s === 'complete' || s === 'completed' || s === 'success' || s === 'enabled') cls = 'badge_active';
         else if (s === 'inactive' || s === 'stopped' || s === 'disabled' || s === 'failed' || s === 'error' || s === 'timeout') cls = 'badge_error';
         else if (s === 'running' || s === 'in_progress' || s === 'scanning') cls = 'badge_running';
         else if (s === 'pending' || s === 'waiting' || s === 'scheduled') cls = 'badge_pending';
-        return '<span class="badge_status ' + cls + '">' + escHtml(status) + '</span>';
+        return '<span class="badge_status ' + cls + '">' + escHtml(label) + '</span>';
     }
 
     // ======================================================================
@@ -686,5 +773,7 @@
 
 })();
 </script>
+<script src="/js/common_menu.js?v=1"></script>
+<script src="/js/table_sort.js?v=3"></script>
 </body>
 </html>

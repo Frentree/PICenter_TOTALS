@@ -21,7 +21,7 @@ public class Detection {
     private Long findId;
 
     /** Target ID (FK to pi_targets) */
-    private Long targetId;
+    private String targetId;
 
     /** Target name (denormalized for display) */
     private String targetName;

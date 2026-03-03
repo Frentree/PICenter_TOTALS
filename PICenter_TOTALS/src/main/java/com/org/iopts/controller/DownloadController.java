@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * Download Controller
  *
@@ -62,12 +64,13 @@ public class DownloadController {
     @Operation(summary = "Create download", description = "Create a new download record")
     @PostMapping
     public ApiResponse<Void> createDownload(
-            @Parameter(description = "다운로드 제목", example = "PICenter Agent v2.1") @RequestParam String title,
-            @Parameter(description = "다운로드 설명", example = "PICenter 에이전트 최신 버전입니다.") @RequestParam(required = false) String content,
-            @Parameter(description = "다운로드 파일 ID", example = "FILE001") @RequestParam(required = false) String downloadFileId,
+            @RequestBody Map<String, String> request,
             Authentication authentication) {
 
         String userNo = (String) authentication.getPrincipal();
+        String title = request.get("title");
+        String content = request.get("content");
+        String downloadFileId = request.get("downloadFileId");
         log.info("POST /api/v1/downloads - title: {}, by: {}", title, userNo);
 
         downloadService.createDownload(title, content, downloadFileId, userNo);

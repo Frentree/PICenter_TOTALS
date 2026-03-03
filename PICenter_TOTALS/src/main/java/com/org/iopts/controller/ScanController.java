@@ -33,6 +33,23 @@ public class ScanController {
     private final ScanService scanService;
 
     /**
+     * Get scan list (root endpoint for dashboard)
+     *
+     * New: GET /api/v1/scans
+     */
+    @Operation(summary = "Get scans", description = "Get paginated scan list with optional date filter")
+    @GetMapping
+    public ApiResponse<PageResponse<Map<String, Object>>> getScans(
+            @Parameter(description = "From date (yyyy-MM-dd)") @RequestParam(required = false) String fromDate,
+            @Parameter(description = "To date (yyyy-MM-dd)") @RequestParam(required = false) String toDate,
+            @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size) {
+        log.info("Get scans: fromDate={}, toDate={}, page={}, size={}", fromDate, toDate, page, size);
+        PageResponse<Map<String, Object>> response = scanService.getScanHistory(Math.max(page, 0), size, null, null, null);
+        return ApiResponse.success(response);
+    }
+
+    /**
      * Get schedule list
      *
      * Legacy: POST /getScheduleList
@@ -42,9 +59,11 @@ public class ScanController {
     @GetMapping("/schedules")
     public ApiResponse<PageResponse<ScheduleResponse>> getScheduleList(
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size) {
-        log.info("Get schedule list: page={}, size={}", page, size);
-        PageResponse<ScheduleResponse> response = scanService.getScheduleList(page, size);
+            @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Host name filter") @RequestParam(required = false) String hostName,
+            @Parameter(description = "Status filter") @RequestParam(required = false) String status) {
+        log.info("Get schedule list: page={}, size={}, hostName={}, status={}", page, size, hostName, status);
+        PageResponse<ScheduleResponse> response = scanService.getScheduleList(page, size, hostName, status);
         return ApiResponse.success(response);
     }
 
@@ -123,7 +142,9 @@ public class ScanController {
     @PatchMapping("/schedules/{scheduleId}/status")
     public ApiResponse<Void> changeScheduleStatus(
             @Parameter(description = "Schedule ID", example = "sched01") @PathVariable String scheduleId,
-            @Parameter(description = "Status Y/N", example = "Y") @RequestParam Character statusYn) {
+            @RequestBody Map<String, Object> request) {
+        Object statusObj = request.get("statusYn");
+        Character statusYn = statusObj != null ? statusObj.toString().charAt(0) : null;
         log.info("Change schedule status: scheduleId={}, statusYn={}", scheduleId, statusYn);
         scanService.changeScheduleStatus(scheduleId, statusYn);
         return ApiResponse.success();
@@ -157,9 +178,11 @@ public class ScanController {
     public ApiResponse<PageResponse<Map<String, Object>>> getScanHistory(
             @Parameter(description = "Page number (0-based)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "Target ID filter", example = "1") @RequestParam(required = false) String targetId) {
-        log.info("Get scan history: page={}, size={}, targetId={}", page, size, targetId);
-        PageResponse<Map<String, Object>> response = scanService.getScanHistory(page, size, targetId);
+            @Parameter(description = "Target ID filter", example = "1") @RequestParam(required = false) String targetId,
+            @Parameter(description = "Host name filter") @RequestParam(required = false) String hostName,
+            @Parameter(description = "Status filter") @RequestParam(required = false) String status) {
+        log.info("Get scan history: page={}, size={}, targetId={}, hostName={}, status={}", page, size, targetId, hostName, status);
+        PageResponse<Map<String, Object>> response = scanService.getScanHistory(page, size, targetId, hostName, status);
         return ApiResponse.success(response);
     }
 

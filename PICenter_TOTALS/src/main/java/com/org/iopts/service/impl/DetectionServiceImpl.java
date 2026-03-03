@@ -93,6 +93,7 @@ public class DetectionServiceImpl implements DetectionService {
                 .matchData(detection.getMatchData())
                 .matchCount(detection.getMatchCount())
                 .processStatus(detection.getProcessStatus())
+                .processStatusLabel(detection.getProcessStatusLabel())
                 .processType(detection.getProcessType())
                 .processUser(detection.getProcessUser())
                 .processDt(detection.getProcessDt())

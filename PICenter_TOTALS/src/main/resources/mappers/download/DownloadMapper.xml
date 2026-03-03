@@ -18,6 +18,11 @@
               download_file_id is int FK, NOT a string.
     -->
 
+    <!--
+        TUNING: selectDownloadList
+        [인덱스 권장] pi_download(regdate DESC) 인덱스 → ORDER BY 정렬 가속
+            - CREATE INDEX idx_pi_download_regdate ON pi_download(regdate DESC);
+    -->
     <!-- Download list with pagination -->
     <select id="selectDownloadList" parameterType="map"
             resultType="com.org.iopts.dto.response.DownloadResponse">

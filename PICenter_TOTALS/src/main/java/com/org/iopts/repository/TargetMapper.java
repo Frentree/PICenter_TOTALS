@@ -31,30 +31,30 @@ public interface TargetMapper {
     /**
      * Get target detail by ID
      */
-    TargetResponse selectTargetDetail(@Param("targetId") Long targetId);
+    TargetResponse selectTargetDetail(@Param("targetId") String targetId);
 
     /**
      * Get users assigned to a target
      */
-    List<UserResponse> selectTargetUsers(@Param("targetId") Long targetId);
+    List<UserResponse> selectTargetUsers(@Param("targetId") String targetId);
 
     /**
      * Assign user to target
      */
-    void insertTargetUser(@Param("targetId") Long targetId,
+    void insertTargetUser(@Param("targetId") String targetId,
                           @Param("userNo") String userNo,
                           @Param("regUserNo") String regUserNo);
 
     /**
      * Unassign user from target
      */
-    void deleteTargetUser(@Param("targetId") Long targetId,
+    void deleteTargetUser(@Param("targetId") String targetId,
                           @Param("userNo") String userNo);
 
     /**
      * Check if target-user assignment exists
      */
-    int countTargetUser(@Param("targetId") Long targetId,
+    int countTargetUser(@Param("targetId") String targetId,
                         @Param("userNo") String userNo);
 
     /**
@@ -71,7 +71,7 @@ public interface TargetMapper {
     /**
      * Get top files for a server target
      */
-    List<Map<String, Object>> selectServerTopFiles(@Param("targetId") Long targetId,
+    List<Map<String, Object>> selectServerTopFiles(@Param("targetId") String targetId,
                                                    @Param("topN") int topN);
 
     /**
@@ -96,10 +96,21 @@ public interface TargetMapper {
     List<Map<String, Object>> selectGroupList();
 
     /**
+     * Get paginated group list with search
+     */
+    List<Map<String, Object>> selectGroupListPaged(Map<String, Object> params);
+
+    /**
+     * Count groups matching search
+     */
+    long countGroupListPaged(Map<String, Object> params);
+
+    /**
      * Add a new group
      */
     void insertGroup(@Param("groupName") String groupName,
                      @Param("parentId") String parentId,
+                     @Param("groupType") int groupType,
                      @Param("regUserNo") String regUserNo);
 
     /**
@@ -133,4 +144,19 @@ public interface TargetMapper {
      * Count total exceptions
      */
     long countExceptionList();
+
+    /**
+     * Select global filter list
+     */
+    List<Map<String, Object>> selectGlobalFilters();
+
+    /**
+     * Insert a global filter
+     */
+    void insertGlobalFilter(Map<String, Object> params);
+
+    /**
+     * Delete a global filter by ID
+     */
+    int deleteGlobalFilter(@Param("filterId") Long filterId);
 }

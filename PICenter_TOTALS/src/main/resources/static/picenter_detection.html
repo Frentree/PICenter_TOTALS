@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>PICenter - 결과 조회</title>
+    <title>PICenter - 결과조회</title>
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="/css/common.css">
     <style>
@@ -51,7 +51,7 @@
         }
         .sidebar_search_table td input[type="text"] {
             width: 100%;
-            height: 27px;
+            height: 30px;
             padding: 0 5px;
             border: 1px solid #c8ced3;
             border-radius: 4px;
@@ -82,78 +82,7 @@
             overflow-x: auto;
             white-space: nowrap;
             border-radius: 0.25rem;
-        }
-
-        /* Tree item styles */
-        .tree_group {
-            padding: 0;
-            margin: 0;
-            list-style: none;
-        }
-        .tree_group .tree_group {
-            padding-left: 18px;
-        }
-        .tree_item {
-            padding: 0;
-            margin: 0;
-        }
-        .tree_item_label {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            padding: 5px 8px;
-            font-size: 12px;
-            color: #333;
-            cursor: pointer;
-            transition: background 0.12s ease;
-            border-bottom: 1px solid #f5f5f5;
-            white-space: nowrap;
-        }
-        .tree_item_label:hover {
-            background: #e8f0fe;
-        }
-        .tree_item_label.selected {
-            background: #d4e4f7;
-            font-weight: 600;
-            color: #0c4da2;
-        }
-        .tree_toggle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 16px;
-            height: 16px;
-            font-size: 10px;
-            color: #999;
-            cursor: pointer;
-            flex-shrink: 0;
-            transition: transform 0.2s ease;
-            user-select: none;
-        }
-        .tree_toggle.open {
-            transform: rotate(90deg);
-        }
-        .tree_icon {
-            width: 16px;
-            height: 16px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: #999;
-            flex-shrink: 0;
-        }
-        .tree_icon.folder { color: #e6a817; }
-        .tree_icon.host { color: #0c4da2; }
-        .tree_text {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .tree_ip {
-            font-size: 11px;
-            color: #888;
-            margin-left: 4px;
+            padding: 6px;
         }
 
         /* Right content area */
@@ -197,7 +126,7 @@
         }
         .detail_search_table input[type="text"] {
             width: 280px;
-            height: 27px;
+            height: 30px;
             padding: 0 5px;
             border: 1px solid #c8ced3;
             border-radius: 4px;
@@ -330,13 +259,7 @@
             margin: 0 8px;
         }
 
-        /* Empty state */
-        .grid_empty {
-            text-align: center;
-            color: #999;
-            padding: 80px 0;
-            font-size: 12px;
-        }
+        /* grid_empty → common.css */
 
         /* ===== Popup: overlay + content ===== */
         .popup_overlay {
@@ -375,24 +298,6 @@
             font-weight: 600;
             color: #222;
         }
-        .popup_close_btn {
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: none;
-            border: none;
-            font-size: 20px;
-            color: #999;
-            cursor: pointer;
-            border-radius: 4px;
-            transition: background 0.2s ease;
-        }
-        .popup_close_btn:hover {
-            background: #eee;
-            color: #333;
-        }
         .popup_body {
             padding: 10px;
             background: #fff;
@@ -404,127 +309,134 @@
         /* Sub-path popup */
         .subpath_popup { width: 70%; min-width: 600px; max-width: 1100px; }
         .subpath_tree {
-            padding: 5px;
             min-height: 200px;
             max-height: 60vh;
             overflow-y: auto;
         }
-        .subpath_tree ul {
-            list-style: none;
-            padding-left: 18px;
-            margin: 0;
-        }
-        .subpath_tree > ul {
-            padding-left: 0;
-        }
-        .subpath_tree li {
-            padding: 3px 0;
-            font-size: 12px;
-            color: #333;
-        }
-        .subpath_tree li a {
-            color: #0c4da2;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        .subpath_tree li a:hover {
-            color: #0a3f8a;
-        }
 
-        /* Detection detail popup */
-        .detail_popup { width: 60%; min-width: 600px; max-width: 900px; height: 420px; }
-        .detail_layout {
-            display: flex;
-            height: 100%;
-            gap: 0;
+        /* Detection detail popup (레거시 스타일) */
+        .detail_popup { width: 80%; min-width: 800px; max-width: 1200px; }
+        .detail_info_table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
         }
-        .detail_left {
-            width: 245px;
-            min-width: 245px;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #c8ced3;
-        }
-        .detail_match_count {
-            padding: 10px;
-            font-size: 14px;
-            font-weight: 700;
-            color: #0c4da2;
-            border-bottom: 1px solid #c8ced3;
-            min-height: 50px;
-            display: flex;
-            align-items: center;
-        }
-        .detail_match_data {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px;
+        .detail_info_table th {
+            background: #e8eef4;
+            border: 1px solid #c8ced3;
+            padding: 7px 10px;
             font-size: 12px;
-            color: #333;
-        }
-        .detail_match_data ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-        .detail_match_data li {
-            padding: 3px 0;
-        }
-        .detail_match_data .match_type_header {
-            cursor: pointer;
             font-weight: 600;
             color: #333;
-            padding: 4px 0;
+            text-align: center;
+            white-space: nowrap;
+            width: 100px;
         }
-        .detail_match_data .match_type_header:hover {
-            color: #0c4da2;
-        }
-        .detail_match_data .match_items {
-            padding-left: 15px;
-            display: none;
-        }
-        .detail_match_data .match_items.open {
-            display: block;
-        }
-        .detail_right {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
+        .detail_info_table td {
+            border: 1px solid #c8ced3;
+            padding: 7px 10px;
             font-size: 12px;
             color: #333;
-            line-height: 1.6;
-            word-break: break-all;
+            background: #fff;
         }
-        .detail_right .highlight {
-            color: #f02533;
+        .detail_info_table td.td_path {
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 11px;
+        }
+        .detail_match_section {
+            border: 1px solid #c8ced3;
+            background: #fff;
+            margin-bottom: 10px;
+        }
+        .detail_match_header {
+            background: #e8eef4;
+            padding: 7px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #c8ced3;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .detail_match_header .match_badge {
+            background: #0c4da2;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
             font-weight: 700;
         }
-        .detail_right strong {
-            color: #222;
-        }
-
-        /* Download button style */
-        .btn_down {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            padding: 0 16px;
-            height: 30px;
-            border: 1px solid #cdcdcd;
-            border-radius: 4px;
+        .detail_match_body {
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
             font-size: 12px;
-            cursor: pointer;
+            color: #333;
+            line-height: 1.8;
+            word-break: break-all;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        .detail_match_body .highlight {
+            color: #f02533;
+            font-weight: 700;
+            background: #fff3cd;
+            padding: 0 2px;
+        }
+        .detail_process_section {
+            border: 1px solid #c8ced3;
             background: #fff;
-            color: #000;
-            font-family: inherit;
-            transition: background 0.2s ease;
-            margin-top: 2px;
         }
-        .btn_down:hover {
+        .detail_process_header {
+            background: #e8eef4;
+            padding: 7px 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #c8ced3;
+        }
+        .detail_process_body {
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .detail_process_body table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .detail_process_body th {
             background: #f5f5f5;
-            border-color: #999;
+            border: 1px solid #e0e0e0;
+            padding: 5px 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            text-align: center;
         }
+        .detail_process_body td {
+            border: 1px solid #e0e0e0;
+            padding: 5px 8px;
+            font-size: 11px;
+            color: #333;
+            text-align: center;
+        }
+        .detail_status_badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status_none { background: #e0e0e0; color: #666; }
+        .status_wait { background: #bbdefb; color: #1565c0; }
+        .status_approve { background: #c8e6c9; color: #2e7d32; }
+        .status_reject { background: #ffcdd2; color: #c62828; }
+
     </style>
 </head>
 <body>
@@ -536,15 +448,56 @@
     </div>
     <div class="header_center">
         <ul class="gnb_menu">
-            <li><a href="/picenter_dashboard">대시보드</a></li>
-            <li><a href="/picenter_target">타겟</a></li>
-            <li class="on"><a href="/picenter_detection">검출</a></li>
-            <li><a href="/picenter_scan">스캔</a></li>
-            <li><a href="/picenter_report">보고서</a></li>
+            <li><a href="/picenter_dashboard">Dashboard</a></li>
+            <li><a href="/picenter_target">대상 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_target">대상조회 및 현행화</a></li>
+                    <li><a href="/picenter_target_group">대상 그룹 관리</a></li>
+                    <li><a href="/picenter_global_filters">예외 관리</a></li>
+                </ul>
+            </li>
+            <li class="on"><a href="/picenter_detection">결과 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_detection">결과조회</a></li>
+                    <li><a href="/picenter_exception">조치계획 승인요청</a></li>
+                    <li><a href="/picenter_approval">결재 진행현황</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_scan">검색 관리</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_scan">검색 실행</a></li>
+                    <li><a href="/picenter_search_regist">검색 스케줄</a></li>
+                    <li><a href="/picenter_search_list">검색 현황</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_report">보고서</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_report">통합 보고서</a></li>
+                    <li><a href="/picenter_report_except">예외보고서</a></li>
+                </ul>
+            </li>
             <li><a href="/picenter_statistics">통계</a></li>
-            <li><a href="/picenter_user">사용자</a></li>
-            <li><a href="/picenter_notice">공지사항</a></li>
-            <li><a href="/picenter_setting">설정</a></li>
+            <li><a href="/picenter_user">사용자</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_user">사용자 관리</a></li>
+                    <li><a href="/picenter_userlog">로그관리</a></li>
+                    <li><a href="/picenter_user_lockdown">잠금관리</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_notice">커뮤니티</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_notice">공지사항</a></li>
+                    <li><a href="/picenter_faq">FAQ</a></li>
+                    <li><a href="/picenter_download">프로그램 다운로드</a></li>
+                </ul>
+            </li>
+            <li><a href="/picenter_setting">설정</a>
+                <ul class="gnb_sub_menu">
+                    <li><a href="/picenter_setting">시스템설정</a></li>
+                    <li><a href="/picenter_node">무결성 체크</a></li>
+                    <li><a href="/picenter_interlock">통합 관리</a></li>
+                </ul>
+            </li>
         </ul>
     </div>
     <div class="header_right">
@@ -555,7 +508,7 @@
 
 <!-- Content -->
 <div class="container">
-    <h3 class="detection_list_title" style="display: inline-block; margin-top: 15px; font-size: 16px; font-weight: 400; color: #0c4da2;">결과 조회</h3>
+    <h3>결과조회</h3>
 
     <div class="detection_wrap">
         <!-- Left sidebar: target tree -->
@@ -574,7 +527,7 @@
                 </tbody>
             </table>
             <div class="left_tree_box" id="treeArea">
-                <div class="grid_empty">대상 목록을 불러오는 중...</div>
+                <div class="tree_loading">대상 목록을 불러오는 중...</div>
             </div>
         </div>
 
@@ -606,15 +559,16 @@
                     <table class="det_table" id="detTable">
                         <thead id="detHead">
                             <tr>
-                                <th style="width:35px;"></th>
-                                <th>경로</th>
-                                <th style="width:150px;">소유주</th>
+                                <th style="width:45px;">No</th>
+                                <th>파일경로</th>
+                                <th style="width:140px;">데이터유형</th>
+                                <th style="width:80px;">검출건수</th>
+                                <th style="width:80px;">처리상태</th>
                                 <th style="width:100px;">검출일</th>
-                                <th style="width:110px;">합계</th>
                             </tr>
                         </thead>
                         <tbody id="detBody">
-                            <tr><td colspan="5" class="grid_empty">대상을 선택하고 조회해주세요</td></tr>
+                            <tr><td colspan="6" class="grid_empty">대상을 선택하고 조회해주세요</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -646,20 +600,73 @@
             <span class="popup_title">개인정보검출 상세정보</span>
             <button class="popup_close_btn" id="detailPopupClose">&times;</button>
         </div>
-        <div class="popup_body" style="padding:0;">
-            <div class="detail_layout">
-                <div class="detail_left">
-                    <div class="detail_match_count" id="detailMatchCount">0 Matches</div>
-                    <div class="detail_match_data" id="detailMatchData"></div>
+        <div class="popup_body" id="detailPopupBody">
+            <div class="tree_loading" id="detailLoading">상세 정보를 불러오는 중...</div>
+
+            <!-- 기본정보 테이블 -->
+            <table class="detail_info_table" id="detailInfoTable" style="display:none;">
+                <tbody>
+                    <tr>
+                        <th>대상명</th>
+                        <td id="detailTargetName"></td>
+                        <th>검출일</th>
+                        <td id="detailFindDt"></td>
+                    </tr>
+                    <tr>
+                        <th>파일경로</th>
+                        <td class="td_path" colspan="3" id="detailFilePath"></td>
+                    </tr>
+                    <tr>
+                        <th>데이터유형</th>
+                        <td id="detailDatatypeName"></td>
+                        <th>검출건수</th>
+                        <td id="detailMatchCount"></td>
+                    </tr>
+                    <tr>
+                        <th>처리상태</th>
+                        <td id="detailProcessStatus"></td>
+                        <th>처리자</th>
+                        <td id="detailProcessUser"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- 검출 데이터 섹션 -->
+            <div class="detail_match_section" id="detailMatchSection" style="display:none;">
+                <div class="detail_match_header">
+                    검출 데이터
+                    <span class="match_badge" id="detailMatchBadge">0건</span>
                 </div>
-                <div class="detail_right" id="detailBodyContents">
-                    <div class="grid_empty">상세 정보를 불러오는 중...</div>
-                </div>
+                <div class="detail_match_body" id="detailMatchData"></div>
+            </div>
+
+            <!-- 처리이력 섹션 -->
+            <div class="detail_process_section" id="detailProcessSection" style="display:none;">
+                <div class="detail_process_header">처리 이력</div>
+                <div class="detail_process_body" id="detailProcessBody"></div>
             </div>
         </div>
     </div>
 </div>
 
+<script>
+// Submenu hover show/hide
+(function() {
+    var menuItems = document.querySelectorAll('.gnb_menu > li');
+    for (var i = 0; i < menuItems.length; i++) {
+        (function(item) {
+            var sub = item.querySelector('.gnb_sub_menu');
+            if (!sub) return;
+            item.addEventListener('mouseenter', function() {
+                sub.style.display = 'block';
+            });
+            item.addEventListener('mouseleave', function() {
+                sub.style.display = 'none';
+            });
+        })(menuItems[i]);
+    }
+})();
+</script>
 <script>
 (function() {
     'use strict';
@@ -720,121 +727,67 @@
 
     // ========== TREE (Left Sidebar) ==========
     function loadTreeData() {
-        api('/api/v1/targets/groups').then(function(data) {
+        var area = document.getElementById('treeArea');
+        area.innerHTML = '<div class="tree_loading">대상 목록을 불러오는 중...</div>';
+        api('/api/v1/targets?page=0&size=9999').then(function(data) {
             if (!data) return;
             var items = [];
             if (data.success && data.data) {
-                items = data.data;
+                items = data.data.content || data.data.list || data.data || [];
             } else if (Array.isArray(data)) {
                 items = data;
-            } else if (data.content) {
-                items = data.content;
             }
             allTreeData = items;
             renderTree(items);
         }).catch(function() {
             document.getElementById('treeArea').innerHTML =
-                '<div class="grid_empty">대상 목록을 불러올 수 없습니다.</div>';
+                '<div class="tree_empty"><span class="tree_empty_icon">&#9888;</span>대상 목록을 불러올 수 없습니다.</div>';
         });
     }
 
     function renderTree(items) {
         var area = document.getElementById('treeArea');
         if (!items || items.length === 0) {
-            area.innerHTML = '<div class="grid_empty">등록된 대상이 없습니다.</div>';
+            area.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#128187;</span>등록된 대상이 없습니다.</div>';
             return;
         }
-        var html = buildTreeHtml(items);
+        var html = '<ul class="tree_ul">';
+        for (var i = 0; i < items.length; i++) {
+            var t = items[i];
+            var id = String(t.targetId || t.id || '');
+            var name = t.targetName || t.name || t.hostName || '';
+            var ip = t.targetIp || t.ip || '';
+            var isConnected = t.agentStatus === '1' || t.agentStatus === 'RUNNING' || t.agentStatus === 'active';
+            html += '<li data-id="' + escAttr(id) + '" data-type="1" data-name="' + escAttr(name) + '">';
+            html += '<div class="tree_label">';
+            html += '<span class="tree_arrow hidden"></span>';
+            html += '<span class="tree_ico ' + (isConnected ? 'tree_ico_connected' : 'tree_ico_disconnected') + '"></span>';
+            html += '<span class="tree_name">' + escHtml(name) + '</span>';
+            if (ip) html += '<span class="tree_ip_label">(' + escHtml(ip) + ')</span>';
+            html += '</div>';
+            html += '</li>';
+        }
+        html += '</ul>';
         area.innerHTML = html;
         bindTreeEvents(area);
     }
 
-    function buildTreeHtml(items) {
-        var html = '<ul class="tree_group">';
-        if (Array.isArray(items)) {
-            for (var i = 0; i < items.length; i++) {
-                html += buildTreeNode(items[i]);
-            }
-        }
-        html += '</ul>';
-        return html;
-    }
-
-    function buildTreeNode(node) {
-        var children = node.children || [];
-        var hasChildren = children.length > 0;
-        var isLeaf = !hasChildren && (node.type === 1 || node.type === 'host' || node.data && node.data.type === 1);
-        var id = node.id || node.targetId || '';
-        var text = node.text || node.name || node.targetName || node.hostName || '';
-        var ip = node.ip || node.targetIp || '';
-        var apNo = (node.data && node.data.ap) || node.ap || node.apNo || '';
-
-        var html = '<li class="tree_item" data-id="' + escAttr(id) + '" data-type="' + (isLeaf ? '1' : '0') + '" data-ap="' + escAttr(apNo) + '" data-name="' + escAttr(text) + '">';
-
-        html += '<div class="tree_item_label">';
-        if (hasChildren) {
-            html += '<span class="tree_toggle">&#9654;</span>';
-            html += '<span class="tree_icon folder">&#128193;</span>';
-        } else if (isLeaf) {
-            html += '<span class="tree_toggle" style="visibility:hidden;">&#9654;</span>';
-            html += '<span class="tree_icon host">&#128187;</span>';
-        } else {
-            html += '<span class="tree_toggle">&#9654;</span>';
-            html += '<span class="tree_icon folder">&#128193;</span>';
-        }
-        html += '<span class="tree_text">' + escHtml(text) + '</span>';
-        if (ip) {
-            html += '<span class="tree_ip">(' + escHtml(ip) + ')</span>';
-        }
-        html += '</div>';
-
-        if (hasChildren) {
-            html += '<ul class="tree_group" style="display:none;">';
-            for (var i = 0; i < children.length; i++) {
-                html += buildTreeNode(children[i]);
-            }
-            html += '</ul>';
-        }
-
-        html += '</li>';
-        return html;
-    }
-
     function bindTreeEvents(area) {
-        // Toggle expand/collapse
-        area.querySelectorAll('.tree_toggle').forEach(function(toggle) {
-            toggle.addEventListener('click', function(e) {
-                e.stopPropagation();
-                var li = this.closest('.tree_item');
-                var subGroup = li.querySelector(':scope > .tree_group');
-                if (subGroup) {
-                    var isOpen = subGroup.style.display !== 'none';
-                    subGroup.style.display = isOpen ? 'none' : 'block';
-                    this.classList.toggle('open', !isOpen);
-                }
-            });
-        });
-
-        // Click on leaf node (host) to load detections
-        area.querySelectorAll('.tree_item_label').forEach(function(label) {
+        area.querySelectorAll('.tree_label').forEach(function(label) {
             label.addEventListener('click', function() {
-                var li = this.closest('.tree_item');
-                var type = li.dataset.type;
-                if (type === '1') {
-                    // Select this host
-                    area.querySelectorAll('.tree_item_label').forEach(function(l) {
-                        l.classList.remove('selected');
-                    });
-                    this.classList.add('selected');
+                var li = this.closest('li');
+                area.querySelectorAll('.tree_label').forEach(function(l) {
+                    l.classList.remove('active');
+                });
+                this.classList.add('active');
 
-                    selectedTargetId = li.dataset.id;
-                    selectedTargetName = li.dataset.name;
-                    document.getElementById('hostSelect').value = selectedTargetId;
-                    document.getElementById('selectedTargetName').value = selectedTargetName;
-                    document.getElementById('searchLocation').value = '';
+                selectedTargetId = li.dataset.id;
+                selectedTargetName = li.dataset.name;
+                document.getElementById('hostSelect').value = selectedTargetId;
+                document.getElementById('selectedTargetName').value = selectedTargetName;
+                document.getElementById('searchLocation').value = '';
 
-                    loadDetections(0);
-                }
+                loadDetections(0);
             });
         });
     }
@@ -851,33 +804,16 @@
             renderTree(allTreeData);
             return;
         }
-        var filtered = filterTreeNodes(allTreeData, keyword);
-        renderTree(filtered);
-        // Expand all after filter
-        var area = document.getElementById('treeArea');
-        area.querySelectorAll('.tree_group').forEach(function(g) { g.style.display = 'block'; });
-        area.querySelectorAll('.tree_toggle').forEach(function(t) { t.classList.add('open'); });
-    }
-
-    function filterTreeNodes(nodes, keyword) {
-        if (!nodes || !Array.isArray(nodes)) return [];
-        var result = [];
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
-            var text = (node.text || node.name || node.targetName || node.hostName || '').toLowerCase();
-            var ip = (node.ip || node.targetIp || '').toLowerCase();
-            var children = node.children || [];
-            var filteredChildren = filterTreeNodes(children, keyword);
-            var matches = text.indexOf(keyword) >= 0 || ip.indexOf(keyword) >= 0;
-            if (matches || filteredChildren.length > 0) {
-                var copy = Object.assign({}, node);
-                if (filteredChildren.length > 0) {
-                    copy.children = filteredChildren;
-                }
-                result.push(copy);
+        var filtered = [];
+        for (var i = 0; i < allTreeData.length; i++) {
+            var t = allTreeData[i];
+            var name = (t.targetName || t.name || '').toLowerCase();
+            var ip = (t.targetIp || t.ip || '').toLowerCase();
+            if (name.indexOf(keyword) >= 0 || ip.indexOf(keyword) >= 0) {
+                filtered.push(t);
             }
         }
-        return result;
+        renderTree(filtered);
     }
 
     // ========== DETECTIONS (Right Grid) ==========
@@ -894,6 +830,8 @@
         if (location) {
             url += '&location=' + encodeURIComponent(location);
         }
+
+        document.getElementById('detBody').innerHTML = '<tr class="loading_row"><td colspan="6"><div class="loading_indicator"><span class="loading_spin"></span> 데이터를 불러오는 중입니다...</div></td></tr>';
 
         api(url).then(function(data) {
             if (!data) return;
@@ -926,8 +864,7 @@
             return;
         }
 
-        // Detect dynamic pattern columns from first item
-        detectPatternColumns(items[0]);
+        // 테이블 헤더 설정
         renderTableHeader();
 
         var tbody = document.getElementById('detBody');
@@ -935,131 +872,69 @@
 
         for (var i = 0; i < items.length; i++) {
             var item = items[i];
-            var isSubRow = item.CHK === '1' || item.chk === '1';
-            var rowClass = isSubRow ? ' class="sub_row"' : '';
 
-            html += '<tr' + rowClass + ' data-id="' + escAttr(item.ID || item.id || '') + '"';
-            html += ' data-pid="' + escAttr(item.PID || item.pid || '') + '"';
-            html += ' data-chk="' + escAttr(item.CHK_C || item.chkC || item.chk_c || '0') + '">';
+            html += '<tr data-id="' + escAttr(item.findId || '') + '"';
+            html += ' data-target="' + escAttr(item.targetId || '') + '">';
 
-            // Sub-file indicator
-            html += '<td>';
-            if (isSubRow) {
-                html += '<span class="sub_arrow"> &gt; </span>';
-            }
-            html += '</td>';
+            // No
+            html += '<td>' + (page * PAGE_SIZE + i + 1) + '</td>';
 
-            // Path (SHORTNAME)
-            var path = item.SHORTNAME || item.shortName || item.filePath || item.path || '';
-            if (path.indexOf('_decrypted') !== -1) {
-                path = path.replace(/_decrypted/g, '');
-            }
+            // 파일경로
+            var path = item.filePath || item.path || item.fileName || '';
             html += '<td class="td_path" title="' + escAttr(path) + '">' + escHtml(path) + '</td>';
 
-            // Owner
-            html += '<td class="td_left">' + escHtml(item.OWNER || item.owner || '') + '</td>';
+            // 데이터유형
+            html += '<td>' + escHtml(item.datatypeName || item.patternName || '-') + '</td>';
 
-            // Detection date
-            var createDt = item.CREATE_DT || item.createDt || item.detectionDate || '';
-            var displayDt = createDt ? createDt.substring(0, 10) : '';
-            html += '<td title="' + escAttr(createDt) + '">' + escHtml(displayDt) + '</td>';
+            // 검출건수
+            html += '<td class="td_right">' + formatNumber(item.matchCount || 0) + '</td>';
 
-            // Total (TYPE)
-            var typeVal = item.TYPE || item.type || item.total || 0;
-            html += '<td class="td_right">' + formatNumber(typeVal) + '</td>';
+            // 처리상태
+            var statusLabel = item.processStatusLabel || item.processStatus || '미처리';
+            var statusClass = '';
+            if (statusLabel === '승인') statusClass = 'color:#2e7d32;';
+            else if (statusLabel === '대기') statusClass = 'color:#1565c0;';
+            else if (statusLabel === '반려') statusClass = 'color:#c62828;';
+            html += '<td' + (statusClass ? ' style="' + statusClass + 'font-weight:600;"' : '') + '>' + escHtml(statusLabel) + '</td>';
 
-            // Dynamic pattern columns
-            for (var p = 0; p < patternColumns.length; p++) {
-                var colField = patternColumns[p].field;
-                var val = item[colField] || 0;
-                html += '<td class="td_right">' + formatNumber(val) + '</td>';
-            }
+            // 검출일
+            var findDt = item.findDt || item.regDt || '';
+            var displayDt = findDt ? String(findDt).substring(0, 10) : '-';
+            html += '<td>' + escHtml(displayDt) + '</td>';
 
             html += '</tr>';
         }
 
         tbody.innerHTML = html;
 
-        // Row click events
+        // Row click events → open detail popup
         tbody.querySelectorAll('tr').forEach(function(tr) {
             tr.addEventListener('click', function() {
                 var id = this.dataset.id;
-                var pid = this.dataset.pid;
-                var chkC = this.dataset.chk;
-
-                if (chkC === '0' || !chkC) {
-                    // Open detection detail popup
-                    openDetailPopup(id, pid);
-                } else {
-                    // Open sub-path popup
-                    openSubpathPopup(id, pid);
-                }
+                var tid = this.dataset.target;
+                if (id) openDetailPopup(id, tid);
             });
         });
 
         renderPagination(page, totalPages);
     }
 
-    function detectPatternColumns(item) {
-        if (!item) return;
-        patternColumns = [];
-        // Known fixed fields
-        var fixedFields = ['ID', 'id', 'PID', 'pid', 'LEVEL', 'level', 'SHORTNAME', 'shortName',
-            'OWNER', 'owner', 'CREATE_DT', 'createDt', 'TYPE', 'type', 'total',
-            'CHK', 'chk', 'CHK_C', 'chkC', 'chk_c', 'SUBFILE', 'subFile',
-            'USER_NO', 'USER_NAME', 'TEAM', 'HOST', 'FILENAME', 'NOTEPAD', 'IDX',
-            'APPROVAL_STATUS', 'APPROVAL_DT', 'APPROVAL_STATUS_PRINT_NAME',
-            'PROCESSING_FLAG', 'PROCESSING_FLAG_NAME', 'LINK_APPROVAL_STATUS',
-            'LINK_PROCESSING_FLAG', 'POLICY_ID', 'ENABLE', 'POLICY_NM', 'DATATYPE_ID',
-            'RRN', 'RRN_CNT', 'RRN_DUP', 'FOREIGNER', 'FOREIGNER_CNT', 'FOREIGNER_DUP',
-            'DRIVER', 'DRIVER_CNT', 'DRIVER_DUP', 'PASSPORT', 'PASSPORT_CNT', 'PASSPORT_DUP',
-            'ACCOUNT', 'ACCOUNT_CNT', 'ACCOUNT_DUP', 'CARD', 'CARD_CNT', 'CARD_DUP',
-            'PHONE', 'PHONE_CNT', 'PHONE_DUP', 'MOBILE_PHONE', 'MOBILE_PHONE_CNT', 'MOBILE_PHONE_DUP',
-            'LOCAL_PHONE', 'LOCAL_PHONE_CNT', 'LOCAL_PHONE_DUP', 'EMAIL', 'EMAIL_CNT', 'EMAIL_DUP',
-            'RECENT', 'filePath', 'path', 'detectionDate', 'targetName', 'hostName',
-            'ap_no', 'apNo', 'onedriveChk'];
-
-        var fixedSet = {};
-        fixedFields.forEach(function(f) { fixedSet[f] = true; });
-
-        // Pattern columns from response metadata
-        if (item._patternColumns && Array.isArray(item._patternColumns)) {
-            item._patternColumns.forEach(function(col) {
-                patternColumns.push({ headerName: col.name || col.headerName, field: col.field });
-            });
-        }
-
-        // Fallback: detect numeric fields that are not fixed
-        if (patternColumns.length === 0) {
-            var keys = Object.keys(item);
-            for (var k = 0; k < keys.length; k++) {
-                var key = keys[k];
-                if (!fixedSet[key] && typeof item[key] === 'number') {
-                    patternColumns.push({ headerName: key, field: key });
-                }
-            }
-        }
-    }
-
     function renderTableHeader() {
         var thead = document.getElementById('detHead');
         var html = '<tr>';
-        html += '<th style="width:35px;"></th>';
-        html += '<th style="min-width:300px;">경로</th>';
-        html += '<th style="width:150px;">소유주</th>';
+        html += '<th style="width:45px;">No</th>';
+        html += '<th style="min-width:300px;">파일경로</th>';
+        html += '<th style="width:140px;">데이터유형</th>';
+        html += '<th style="width:80px;">검출건수</th>';
+        html += '<th style="width:80px;">처리상태</th>';
         html += '<th style="width:100px;">검출일</th>';
-        html += '<th style="width:110px;">합계</th>';
-        for (var p = 0; p < patternColumns.length; p++) {
-            html += '<th style="width:110px;">' + escHtml(patternColumns[p].headerName) + '</th>';
-        }
         html += '</tr>';
         thead.innerHTML = html;
     }
 
     function renderEmptyGrid(msg) {
-        var colCount = 5 + patternColumns.length;
         document.getElementById('detBody').innerHTML =
-            '<tr><td colspan="' + colCount + '" class="grid_empty">' + escHtml(msg) + '</td></tr>';
+            '<tr><td colspan="6" class="grid_empty">' + escHtml(msg) + '</td></tr>';
         document.getElementById('pagination').innerHTML = '';
     }
 
@@ -1095,7 +970,7 @@
     function openSubpathPopup(id, tid) {
         var popup = document.getElementById('pathPopup');
         var content = document.getElementById('subpathContent');
-        content.innerHTML = '<div class="grid_empty">로딩중...</div>';
+        content.innerHTML = '<div class="tree_loading">하위 경로를 불러오는 중...</div>';
         popup.classList.add('show');
 
         var url = '/api/v1/detections/subpaths/' + encodeURIComponent(selectedTargetId);
@@ -1104,7 +979,7 @@
 
         api(url).then(function(data) {
             if (!data) {
-                content.innerHTML = '<div class="grid_empty">하위 경로를 불러올 수 없습니다.</div>';
+                content.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#128194;</span>하위 경로를 불러올 수 없습니다.</div>';
                 return;
             }
             var items = [];
@@ -1115,13 +990,13 @@
             }
             renderSubpathTree(items, content);
         }).catch(function() {
-            content.innerHTML = '<div class="grid_empty">하위 경로를 불러올 수 없습니다.</div>';
+            content.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#9888;</span>하위 경로를 불러올 수 없습니다.</div>';
         });
     }
 
     function renderSubpathTree(items, container) {
         if (!items || items.length === 0) {
-            container.innerHTML = '<div class="grid_empty">하위 경로가 없습니다.</div>';
+            container.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#128194;</span>하위 경로가 없습니다.</div>';
             return;
         }
 
@@ -1185,103 +1060,146 @@
     // ========== POPUP: Detection Detail ==========
     function openDetailPopup(id, tid) {
         var popup = document.getElementById('detailPopup');
-        var matchCountEl = document.getElementById('detailMatchCount');
-        var matchDataEl = document.getElementById('detailMatchData');
-        var bodyEl = document.getElementById('detailBodyContents');
+        var loading = document.getElementById('detailLoading');
+        var infoTable = document.getElementById('detailInfoTable');
+        var matchSection = document.getElementById('detailMatchSection');
+        var processSection = document.getElementById('detailProcessSection');
 
-        matchCountEl.textContent = '0 Matches';
-        matchDataEl.innerHTML = '';
-        bodyEl.innerHTML = '<div class="grid_empty">상세 정보를 불러오는 중...</div>';
+        // 초기화
+        loading.style.display = '';
+        loading.innerHTML = '<div class="tree_loading">상세 정보를 불러오는 중...</div>';
+        infoTable.style.display = 'none';
+        matchSection.style.display = 'none';
+        processSection.style.display = 'none';
+        document.getElementById('detailMatchData').innerHTML = '';
+        document.getElementById('detailProcessBody').innerHTML = '';
         popup.classList.add('show');
 
         var url = '/api/v1/detections/' + encodeURIComponent(id);
         if (tid) url += '?tid=' + encodeURIComponent(tid);
 
         api(url).then(function(data) {
+            loading.style.display = 'none';
+
             if (!data) {
-                bodyEl.innerHTML = '<div class="grid_empty">상세 정보를 불러올 수 없습니다.</div>';
+                loading.style.display = '';
+                loading.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#9888;</span>상세 정보를 불러올 수 없습니다.</div>';
                 return;
             }
 
             var detail = data.success ? data.data : data;
             if (!detail) {
-                bodyEl.innerHTML = '<div class="grid_empty">상세 정보가 없습니다.</div>';
+                loading.style.display = '';
+                loading.innerHTML = '<div class="tree_empty"><span class="tree_empty_icon">&#128196;</span>상세 정보가 없습니다.</div>';
                 return;
             }
 
-            // Render match count
-            var totalCount = detail.totalCount || detail.matchCount || 0;
-            matchCountEl.textContent = formatNumber(totalCount) + (totalCount === 1 ? ' Match' : ' Matches');
+            // === 기본정보 테이블 ===
+            infoTable.style.display = '';
+            document.getElementById('detailTargetName').textContent = detail.targetName || '-';
+            document.getElementById('detailFindDt').textContent = formatDt(detail.findDt);
+            document.getElementById('detailFilePath').textContent = detail.filePath || '-';
+            document.getElementById('detailFilePath').title = detail.filePath || '';
+            document.getElementById('detailDatatypeName').textContent = detail.datatypeName || '-';
 
-            // Render match data (left panel)
-            var matchTypes = detail.matchTypes || detail.patterns || [];
-            var matchHtml = '<ul>';
-            for (var m = 0; m < matchTypes.length; m++) {
-                var mt = matchTypes[m];
-                var mtName = mt.name || mt.patternName || '';
-                var mtCount = mt.count || 0;
-                var mtItems = mt.items || mt.matches || [];
-                matchHtml += '<li>';
-                matchHtml += '<div class="match_type_header" data-idx="' + m + '">';
-                matchHtml += escHtml(mtName) + ' (' + formatNumber(mtCount) + ')';
-                matchHtml += '</div>';
-                matchHtml += '<div class="match_items" data-idx="' + m + '">';
-                for (var mi = 0; mi < mtItems.length; mi++) {
-                    matchHtml += '<div>' + escHtml(mtItems[mi].value || mtItems[mi].content || mtItems[mi]) + '</div>';
+            var mc = detail.matchCount || 0;
+            document.getElementById('detailMatchCount').textContent = formatNumber(mc) + '건';
+
+            // 처리상태 뱃지
+            var statusEl = document.getElementById('detailProcessStatus');
+            var statusCode = detail.processStatus || 'NONE';
+            var statusLabel = detail.processStatusLabel || statusText(statusCode);
+            var badgeCls = 'detail_status_badge ';
+            if (statusCode === 'W') badgeCls += 'status_wait';
+            else if (statusCode === 'Y') badgeCls += 'status_approve';
+            else if (statusCode === 'N') badgeCls += 'status_reject';
+            else badgeCls += 'status_none';
+            statusEl.innerHTML = '<span class="' + badgeCls + '">' + escHtml(statusLabel) + '</span>';
+
+            document.getElementById('detailProcessUser').textContent = detail.processUser || '-';
+
+            // === 검출 데이터 섹션 ===
+            var matchData = detail.matchData || '';
+            if (matchData) {
+                matchSection.style.display = '';
+                document.getElementById('detailMatchBadge').textContent = formatNumber(mc) + '건';
+                var matchBody = document.getElementById('detailMatchData');
+                // matchData는 PERSONAL_INFO (검출된 개인정보 텍스트)
+                // 하이라이트 처리: 줄 단위 표시
+                matchBody.innerHTML = highlightMatchData(matchData, detail.datatypeName);
+            }
+
+            // === 처리이력 섹션 ===
+            var history = detail.processHistory || [];
+            if (history.length > 0) {
+                processSection.style.display = '';
+                var histBody = document.getElementById('detailProcessBody');
+                var histHtml = '<table><thead><tr>';
+                histHtml += '<th style="width:60px;">No</th>';
+                histHtml += '<th>처리유형</th>';
+                histHtml += '<th>결과</th>';
+                histHtml += '<th>처리자</th>';
+                histHtml += '<th>비고</th>';
+                histHtml += '<th style="width:140px;">처리일시</th>';
+                histHtml += '</tr></thead><tbody>';
+                for (var h = 0; h < history.length; h++) {
+                    var hi = history[h];
+                    histHtml += '<tr>';
+                    histHtml += '<td>' + (h + 1) + '</td>';
+                    histHtml += '<td>' + escHtml(processTypeText(hi.processType)) + '</td>';
+                    histHtml += '<td>' + escHtml(statusText(hi.processResult)) + '</td>';
+                    histHtml += '<td>' + escHtml(hi.processUser || '-') + '</td>';
+                    histHtml += '<td style="text-align:left; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="' + escAttr(hi.processComment || '') + '">' + escHtml(hi.processComment || '-') + '</td>';
+                    histHtml += '<td>' + formatDt(hi.processDt) + '</td>';
+                    histHtml += '</tr>';
                 }
-                matchHtml += '</div>';
-                matchHtml += '</li>';
+                histHtml += '</tbody></table>';
+                histBody.innerHTML = histHtml;
             }
-            matchHtml += '</ul>';
-            matchDataEl.innerHTML = matchHtml;
-
-            // Bind toggle on match type headers
-            matchDataEl.querySelectorAll('.match_type_header').forEach(function(hdr) {
-                hdr.addEventListener('click', function() {
-                    var idx = this.dataset.idx;
-                    var items = matchDataEl.querySelector('.match_items[data-idx="' + idx + '"]');
-                    if (items) items.classList.toggle('open');
-                });
-            });
-
-            // Render body contents (right panel)
-            var bodyContent = detail.bodyContents || detail.content || detail.body || '';
-            var filePath = detail.path || detail.filePath || '';
-            var html = '';
-            if (filePath) {
-                html += '<strong>' + escHtml(filePath) + '</strong><br>';
-            }
-
-            // Render metadata
-            var metas = detail.metas || detail.metadata || [];
-            for (var mi2 = 0; mi2 < metas.length; mi2++) {
-                var meta = metas[mi2];
-                html += '<strong>' + escHtml(meta.label || '') + ' : </strong>';
-                if (meta.is_aggregate) {
-                    html += formatNumber(meta.value);
-                } else {
-                    html += escHtml(String(meta.value || ''));
-                }
-                html += '<br>';
-            }
-            html += '<br>';
-
-            if (bodyContent) {
-                html += bodyContent;
-            } else if (detail.chunks) {
-                // Render chunks with highlighting
-                for (var c = 0; c < detail.chunks.length; c++) {
-                    var chunk = detail.chunks[c];
-                    var text = escHtml(chunk.content || '');
-                    html += text + '<br>';
-                }
-            }
-
-            bodyEl.innerHTML = html || '<div class="grid_empty">컨텐츠가 없습니다.</div>';
 
         }).catch(function() {
-            bodyEl.innerHTML = '<div class="grid_empty">상세 정보를 불러올 수 없습니다.</div>';
+            loading.style.display = '';
+            loading.innerHTML = '<div class="grid_empty">상세 정보를 불러올 수 없습니다.</div>';
+            infoTable.style.display = 'none';
+            matchSection.style.display = 'none';
+            processSection.style.display = 'none';
         });
+    }
+
+    function highlightMatchData(rawData, datatype) {
+        if (!rawData) return '<span style="color:#999;">검출 데이터 없음</span>';
+        // PERSONAL_INFO 필드: 줄바꿈 또는 쉼표로 구분된 검출 값
+        var text = escHtml(rawData);
+        // 숫자 패턴 하이라이트 (주민번호, 전화번호, 카드번호 등)
+        text = text.replace(/(\d{6}[-]?\d{7})/g, '<span class="highlight">$1</span>');
+        text = text.replace(/(\d{3}[-]?\d{3,4}[-]?\d{4})/g, '<span class="highlight">$1</span>');
+        text = text.replace(/(\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4})/g, '<span class="highlight">$1</span>');
+        // 이메일 패턴
+        text = text.replace(/([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/g, '<span class="highlight">$1</span>');
+        return text;
+    }
+
+    function statusText(code) {
+        if (code === 'W') return '대기';
+        if (code === 'Y') return '승인';
+        if (code === 'N') return '반려';
+        return '미처리';
+    }
+
+    function processTypeText(flag) {
+        if (flag === '1' || flag === 1) return '정탐';
+        if (flag === '2' || flag === 2) return '오탐';
+        if (flag === '3' || flag === 3) return '경로예외';
+        if (flag === '4' || flag === 4) return '삭제';
+        return flag || '-';
+    }
+
+    function formatDt(dt) {
+        if (!dt) return '-';
+        var s = String(dt);
+        if (s.length >= 16) return s.substring(0, 16).replace('T', ' ');
+        if (s.length >= 10) return s.substring(0, 10);
+        return s;
     }
 
     document.getElementById('detailPopupClose').addEventListener('click', function() {
@@ -1313,10 +1231,7 @@
         }
 
         // Build CSV
-        var headers = ['경로', '소유주', '검출일', '합계'];
-        for (var p = 0; p < patternColumns.length; p++) {
-            headers.push(patternColumns[p].headerName);
-        }
+        var headers = ['No', '파일경로', '데이터유형', '검출건수', '처리상태', '검출일'];
 
         var csvContent = '\uFEFF'; // BOM for Excel
         csvContent += headers.join(',') + '\n';
@@ -1325,8 +1240,7 @@
             var tds = tr.querySelectorAll('td');
             if (tds.length < 4) return;
             var line = [];
-            // Skip first column (sub-arrow), start from index 1
-            for (var i = 1; i < tds.length; i++) {
+            for (var i = 0; i < tds.length; i++) {
                 var val = tds[i].textContent.trim().replace(/"/g, '""');
                 line.push('"' + val + '"');
             }
@@ -1374,5 +1288,7 @@
 
 })();
 </script>
+<script src="/js/common_menu.js?v=1"></script>
+<script src="/js/table_sort.js?v=3"></script>
 </body>
 </html>
